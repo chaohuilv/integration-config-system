@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 调用日志</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        .log-detail-row { display: none; }
+        .log-detail-row.show { display: table-row; }
+        .log-detail-content { background: #f5f7fa; padding: 16px; border-radius: 8px; }
+        .log-detail-content table { background: white; border-radius: 8px; overflow: hidden; }
+        .log-detail-content td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        .log-detail-content td:first-child { color: #999; width: 100px; vertical-align: top; }
+        .log-detail-content pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>📊 调用日志</h2>
+            <p class="view-sub">查看所有接口的调用记录和响应状态</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" onclick="refresh(1)">🔄 刷新</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="stats">
+            <div class="stat-card"><div class="stat-value" id="sTotal">0</div><div class="stat-label">总调用次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sSuccess">0</div><div class="stat-label">成功次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sFail">0</div><div class="stat-label">失败次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sRate">0%</div><div class="stat-label">成功率</div></div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>接口编码</th>
+                        <th>状态码</th>
+                        <th>调用时间</th>
+                        <th>耗时</th>
+                        <th>结果</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="6" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script>
+    const API = '/api';
+    let currentPage = 1;
+    const size = 10;
+    const detailCache = {}; // 缓存已加载的详情
+
+    if (parent.setNav) parent.setNav('logs');
+
+    function refresh(page) {
+        if (page) currentPage = page;
+        fetch(`${API}/invoke/logs?page=${currentPage}&size=${size}`)
+            .then(r => r.json())
+            .then(json => {
+                if (json.code === 200) {
+                    render(json.data);
+                }
+            }).catch(console.error);
+    }
+
+    function render(data) {
+        document.getElementById('sTotal').textContent = data.total || 0;
+        document.getElementById('sSuccess').textContent = data.successCount || 0;
+        document.getElementById('sFail').textContent = data.failCount || 0;
+        document.getElementById('sRate').textContent = data.successRate || '0%';
+        const logs = data.records;
+        const tb = document.getElementById('logsBody');
+        if (!logs || !logs.length) {
+            tb.innerHTML = '<tr><td colspan="6" class="empty"><div class="empty-icon">📭</div>暂无调用日志</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+        tb.innerHTML = logs.map(l => `
+        <tr class="log-row" data-id="${l.id}">
+            <td><code>${l.apiCode||'-'}</code></td>
+            <td><span style="font-weight:600;color:${l.responseStatus>=400?'#ff4d4f':'#52c41a'}">${l.responseStatus||'-'}</span></td>
+            <td>${l.invokeTime?new Date(l.invokeTime).toLocaleString():'-'}</td>
+            <td>${l.costTime!=null?l.costTime+'ms':'-'}</td>
+            <td><span class="badge badge-${l.success?'active':'inactive'}">${l.success?'成功':'失败'}</span></td>
+            <td><button class="btn btn-sm btn-default" onclick="toggleDetail('${l.id}')">详情</button></td>
+        </tr>
+        <tr class="log-detail-row" id="detail-${l.id}">
+            <td colspan="6">
+                <div class="log-detail-content" id="detail-content-${l.id}">
+                    <div style="text-align:center;padding:20px;color:#999;">加载中...</div>
+                </div>
+            </td>
+        </tr>`).join('');
+
+        // 分页
+        const totalPages = Math.ceil((data.total||0) / size);
+        const el = document.getElementById('pagination');
+        if (!totalPages) { el.innerHTML = ''; return; }
+        let html = `<button ${currentPage<=1?'disabled':''} onclick="refresh(${currentPage-1})">上一页</button>`;
+        for (let i = 1; i <= totalPages; i++) {
+            if (i===1 || i===totalPages || (i>=currentPage-2 && i<=currentPage+2))
+                html += `<button class="${i===currentPage?'active':''}" onclick="refresh(${i})">${i}</button>`;
+            else if (i===currentPage-3 || i===currentPage+3)
+                html += `<button disabled>...</button>`;
+        }
+        html += `<button ${currentPage>=totalPages?'disabled':''} onclick="refresh(${currentPage+1})">下一页</button>`;
+        el.innerHTML = html;
+    }
+
+    function toggleDetail(id) {
+        const row = document.getElementById('detail-' + id);
+        if (row.classList.contains('show')) {
+            row.classList.remove('show');
+            return;
+        }
+        // 关闭其他已展开的
+        document.querySelectorAll('.log-detail-row.show').forEach(el => {
+            if (el.id !== 'detail-' + id) el.classList.remove('show');
+        });
+        row.classList.add('show');
+        
+        // 加载详情
+        const content = document.getElementById('detail-content-' + id);
+        if (detailCache[id]) {
+            content.innerHTML = detailCache[id];
+            return;
+        }
+        fetch(`${API}/invoke/logs/detail/${id}`)
+            .then(r => r.json())
+            .then(json => {
+                if (json.code !== 200) {
+                    content.innerHTML = '<div style="text-align:center;padding:20px;color:#ff4d4f;">加载失败</div>';
+                    return;
+                }
+                const d = json.data;
+                const html = `
+                <table style="width:100%;">
+                <tr><td>接口编码</td><td><code>${d.apiCode||'-'}</code></td></tr>
+                <tr><td>状态码</td><td style="font-weight:600;color:${d.responseStatus>=400?'#ff4d4f':'#52c41a'}">${d.responseStatus||'-'}</td></tr>
+                <tr><td>耗时</td><td>${d.costTime!=null?d.costTime+'ms':'-'}</td></tr>
+                <tr><td>调用时间</td><td>${d.invokeTime?new Date(d.invokeTime).toLocaleString():'-'}</td></tr>
+                <tr><td>请求参数</td><td><pre>${d.requestParams||'-'}</pre></td></tr>
+                <tr><td>请求头</td><td><pre>${d.requestHeaders||'-'}</pre></td></tr>
+                <tr><td>请求体</td><td><pre>${d.requestBody||'-'}</pre></td></tr>
+                <tr><td>响应体</td><td><pre style="max-height:200px;overflow:auto;">${(d.responseData||'-').substring(0,5000)}</pre></td></tr>
+                ${d.errorMessage ? `<tr><td style="color:#ff4d4f;">错误信息</td><td style="color:#ff4d4f;"><pre>${d.errorMessage}</pre></td></tr>` : ''}
+                </table>`;
+                detailCache[id] = html;
+                content.innerHTML = html;
+            });
+    }
+
+    refresh();
+    </script>
+</body>
+</html>

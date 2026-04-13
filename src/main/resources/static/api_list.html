@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 列表</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>📋 接口配置</h2>
+            <p class="view-sub">管理所有接口配置，支持 CRUD 和在线调试</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" onclick="parent.loadPage('form')">+ 新建接口</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="search-bar">
+            <input type="text" class="search-input" id="sKeyword" placeholder="搜索接口名称、编码或描述..." onkeyup="refreshList(1)">
+            <select id="sStatus" style="padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;" onchange="refreshList(1)">
+                <option value="">全部状态</option>
+                <option value="ACTIVE">启用</option>
+                <option value="INACTIVE">禁用</option>
+            </select>
+            <button class="btn btn-default" onclick="refreshList(1)">🔍 搜索</button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>接口名称</th>
+                        <th>接口编码</th>
+                        <th>分组</th>
+                        <th>方法</th>
+                        <th>目标URL</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="apiTableBody">
+                    <tr><td colspan="7" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script>
+    const API = '/api';
+    let currentPage = 1;
+    const size = 10;
+
+    // 通知主壳高亮侧边栏
+    if (parent.setNav) parent.setNav('list');
+
+    function refreshList(page) {
+        if (page) currentPage = page;
+        const kw = encodeURIComponent(document.getElementById('sKeyword').value || '');
+        const st = encodeURIComponent(document.getElementById('sStatus').value || '');
+        fetch(`${API}/config/page?keyword=${kw}&status=${st}&page=${currentPage}&size=${size}`)
+            .then(r => r.json())
+            .then(json => {
+                if (json.code === 200) {
+                    renderTable(json.data.records);
+                    renderPagination(json.data.total, json.data.page, json.data.size);
+                }
+            }).catch(console.error);
+    }
+
+    function renderTable(apis) {
+        const tb = document.getElementById('apiTableBody');
+        if (!apis || !apis.length) {
+            tb.innerHTML = '<tr><td colspan="7" class="empty"><div class="empty-icon">📭</div>暂无接口配置<br><br><button class="btn btn-primary" onclick="parent.loadPage(\'form\')">+ 新建第一个接口</button></td></tr>';
+            return;
+        }
+        tb.innerHTML = apis.map(a => `
+        <tr>
+            <td><strong>${a.name}</strong></td>
+            <td><code>${a.code}</code></td>
+            <td style="color:#999;font-size:13px;">${a.groupName||'-'}</td>
+            <td><span class="method method-${a.method.toLowerCase()}">${a.method}</span></td>
+            <td title="${a.url}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.url}</td>
+            <td><span class="badge badge-${a.status.toLowerCase()}">${a.status==='ACTIVE'?'启用':'禁用'}</span></td>
+            <td class="actions">
+                <button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>
+                <button class="btn btn-sm btn-success" onclick="testApi('${a.code}')">测试</button>
+                <button class="btn btn-sm btn-default" onclick="parent.loadPage('form', '${a.id}')">编辑</button>
+                <button class="btn btn-sm btn-default" onclick="toggleStatus('${a.id}')">${a.status==='ACTIVE'?'禁用':'启用'}</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteApi('${a.id}')">删除</button>
+            </td>
+        </tr>`).join('');
+    }
+
+    function renderPagination(total, page, size) {
+        const totalPages = Math.ceil(total / size);
+        const el = document.getElementById('pagination');
+        if (!totalPages) { el.innerHTML = ''; return; }
+        let html = `<button ${page<=1?'disabled':''} onclick="refreshList(${page-1})">上一页</button>`;
+        for (let i = 1; i <= totalPages; i++) {
+            if (i===1 || i===totalPages || (i>=page-2 && i<=page+2))
+                html += `<button class="${i===page?'active':''}" onclick="refreshList(${i})">${i}</button>`;
+            else if (i===page-3 || i===page+3)
+                html += `<button disabled>...</button>`;
+        }
+        html += `<button ${page>=totalPages?'disabled':''} onclick="refreshList(${page+1})">下一页</button>`;
+        el.innerHTML = html;
+    }
+
+    async function toggleStatus(id) {
+        const json = await fetch(`${API}/config/${id}/toggle`, {method:'POST'}).then(r=>r.json());
+        if (json.code===200) refreshList();
+    }
+
+    async function deleteApi(id) {
+        if (!confirm('确定删除？')) return;
+        const json = await fetch(`${API}/config/${id}`, {method:'DELETE'}).then(r=>r.json());
+        if (json.code===200) { alert('删除成功'); refreshList(); }
+        else alert('失败: '+json.message);
+    }
+
+    function testApi(code) {
+        // 打开调试页并预填接口编码
+        sessionStorage.setItem('debugCode', code);
+        parent.loadPage('debug');
+    }
+
+    // 从 sessionStorage 恢复调试接口
+    const savedCode = sessionStorage.getItem('debugCode');
+    if (savedCode) { sessionStorage.removeItem('debugCode'); }
+
+    refreshList();
+    </script>
+</body>
+</html>

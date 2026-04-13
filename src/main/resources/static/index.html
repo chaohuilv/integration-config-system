@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一接口配置系统</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔌</text></svg>">
+    <link rel="stylesheet" href="css/shared.css">
+    <style>
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; }
+    /* 版本更新提示条 */
+    .update-toast {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #1890ff;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        z-index: 10000;
+        display: none;
+        animation: slideDown 0.3s ease;
+    }
+    .update-toast.show { display: block; }
+    .update-toast button {
+        background: white;
+        color: #1890ff;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 4px;
+        margin-left: 12px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .update-toast button:hover { background: #f0f0f0; }
+    .update-toast .close-btn {
+        background: transparent;
+        color: white;
+        margin-left: 8px;
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-100%); }
+        to { transform: translateY(0); }
+    }
+    </style>
+</head>
+<body>
+    <!-- 版本更新提示 -->
+    <div class="update-toast" id="updateToast">
+        <span>🔄 检测到新版本，建议刷新页面</span>
+        <button onclick="location.reload()">立即刷新</button>
+        <button class="close-btn" onclick="closeUpdateToast()">稍后</button>
+    </div>
+
+    <!-- 侧边栏由子页面通过 parent 引用 -->
+    <div class="app-layout" id="appLayout">
+        <!-- 左侧边栏容器 -->
+        <div id="sidebarContainer"></div>
+        <!-- 右侧内容区 iframe -->
+        <main class="main-content">
+            <iframe id="contentFrame" name="contentFrame"
+                src="api_list.html"
+                frameborder="0"
+                style="width:100%;height:100%;border:none;display:block;">
+            </iframe>
+        </main>
+    </div>
+
+    <script>
+    const API = '/api';
+    let currentVersion = null;
+    let versionCheckInterval = null;
+
+    // 加载侧边栏到主壳
+    fetch('_sidebar.html')
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('sidebarContainer').innerHTML = html;
+            updateNav('list');
+        })
+        .catch(() => {
+            document.getElementById('sidebarContainer').innerHTML =
+                '<iframe src="_sidebar.html" style="width:220px;height:100%;border:none;" frameborder="0"></iframe>';
+        });
+
+    // 路由函数：切换右侧 iframe 页面
+    function loadPage(page, params) {
+        const map = {
+            list:   'api_list.html',
+            debug:  'api_debug.html',
+            logs:   'api_logs.html',
+            sdk:    'api_sdk.html',
+            form:   'api_form.html' + (params ? '?id=' + params : ''),
+            detail: 'api_detail.html' + (params ? '?id=' + params : '')
+        };
+        const src = map[page] || 'api_list.html';
+        // 添加时间戳参数强制刷新
+        const separator = src.includes('?') ? '&' : '?';
+        document.getElementById('contentFrame').src = src + separator + '_t=' + Date.now();
+        updateNav(page);
+    }
+
+    // 更新侧边栏高亮
+    function updateNav(page) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const el = document.getElementById('nav-' + page);
+        if (el) el.classList.add('active');
+    }
+
+    // 子页面调用：通知主壳更新侧边栏
+    function setNav(page) { updateNav(page); }
+
+    // 版本检测
+    async function checkVersion() {
+        try {
+            const res = await fetch(`${API}/version`);
+            const json = await res.json();
+            if (json.code === 200 && json.data && json.data.version) {
+                const newVersion = json.data.version;
+                if (currentVersion === null) {
+                    // 首次加载，记录当前版本
+                    currentVersion = newVersion;
+                } else if (newVersion !== currentVersion) {
+                    // 版本变化，显示更新提示
+                    showUpdateToast();
+                }
+            }
+        } catch (e) {
+            console.warn('版本检测失败:', e);
+        }
+    }
+
+    function showUpdateToast() {
+        document.getElementById('updateToast').classList.add('show');
+    }
+
+    function closeUpdateToast() {
+        document.getElementById('updateToast').classList.remove('show');
+    }
+
+    // 启动版本检测（每30秒检测一次）
+    function startVersionCheck() {
+        checkVersion(); // 立即检测一次
+        versionCheckInterval = setInterval(checkVersion, 30000);
+    }
+
+    // 页面可见性变化时检测
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            checkVersion();
+        }
+    });
+
+    // 启动版本检测
+    startVersionCheck();
+    </script>
+</body>
+</html>

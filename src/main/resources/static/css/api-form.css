@@ -1,0 +1,11 @@
+/* ========================
+   api-form.html 专属样式
+   ======================== */
+
+/* 卡片（表单页稍微宽一点） */
+.card { padding: 28px; }
+
+/* 页面提示框 */
+.alert { padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+.alert-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+.alert-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }

@@ -1,0 +1,36 @@
+<!-- 左侧边栏 -->
+<aside class="sidebar">
+    <div class="sidebar-brand" onclick="parent.loadPage('list')">
+        <h1>🔌 集成中心</h1>
+        <p>统一接口配置系统</p>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-section-title">集成管理</div>
+            <div class="nav-item active" id="nav-list" onclick="parent.loadPage('list')">
+                <span class="nav-icon">📋</span>
+                <span>接口配置</span>
+                <span class="nav-arrow">›</span>
+            </div>
+            <div class="nav-item" id="nav-debug" onclick="parent.loadPage('debug')">
+                <span class="nav-icon">🧪</span>
+                <span>接口调试</span>
+                <span class="nav-arrow">›</span>
+            </div>
+            <div class="nav-item" id="nav-logs" onclick="parent.loadPage('logs')">
+                <span class="nav-icon">📊</span>
+                <span>调用日志</span>
+                <span class="nav-arrow">›</span>
+            </div>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">开发文档</div>
+            <div class="nav-item" id="nav-sdk" onclick="parent.loadPage('sdk')">
+                <span class="nav-icon">💻</span>
+                <span>SDK文档</span>
+                <span class="nav-arrow">›</span>
+            </div>
+        </div>
+    </nav>
+    <div class="sidebar-footer">v1.0 · 集成配置系统</div>
+</aside>

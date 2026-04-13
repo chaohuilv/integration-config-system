@@ -1,0 +1,81 @@
+# ===========================================
+# 统一接口配置系统 - application.yml
+# ===========================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: integration-config-system
+
+  # ========== 静态资源开发模式配置 ==========
+  web:
+    resources:
+      cache:
+        period: 0
+      chain:
+        cache: false
+
+  # ========== DevTools 热部署配置 ==========
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/resources/static
+    livereload:
+      enabled: true
+
+  # ========== Config 数据库（接口配置） ==========
+  datasource-config:
+    url: jdbc:h2:./data/integration_config;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # ========== Log 数据库（调用日志） ==========
+  datasource-log:
+    url: jdbc:h2:./data/integration_log;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # ========== Token 数据库（Token缓存） ==========
+  datasource-token:
+    url: jdbc:h2:./data/integration_token;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 控制台（开发时开启）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# ===========================================
+# 自定义配置
+# ===========================================
+integration:
+  http-connect-timeout: 10000
+  http-read-timeout: 30000
+  log-request: true
+  log-response: true
+  max-retry: 3
+
+logging:
+  level:
+    com.integration.config: INFO
+    org.hibernate.SQL: WARN

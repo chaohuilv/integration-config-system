@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - SDK文档</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>💻 SDK文档</h2>
+            <p class="view-sub">客户端 SDK 使用说明和代码示例</p>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="sdk-content">
+            <h3>1. Maven 依赖</h3>
+            <div class="response-box">&lt;dependency&gt;
+    &lt;groupId&gt;com.integration&lt;/groupId&gt;
+    &lt;artifactId&gt;integration-sdk&lt;/artifactId&gt;
+    &lt;version&gt;1.0.0&lt;/version&gt;
+&lt;/dependency&gt;</div>
+
+            <h3>2. 快速开始</h3>
+            <div class="response-box">// 初始化客户端
+IntegrationClient client = new IntegrationClient("http://localhost:8080");
+
+// GET 请求
+String result = client.invoke("user-get", Map.of("id", 1));
+
+// POST 请求
+String result = client.invoke("user-create",
+    Map.of(),  // URL 参数
+    "{\"name\":\"张三\",\"age\":25}"  // 请求体
+);
+
+// 异步调用
+CompletableFuture&lt;String&gt; future = client.invokeAsync("user-list", null, null);
+String result = future.get();</div>
+
+            <h3>3. 完整示例</h3>
+            <div class="response-box">import com.integration.sdk.IntegrationClient;
+import java.util.Map;
+
+public class Example {
+    public static void main(String[] args) {
+        IntegrationClient client = new IntegrationClient("http://localhost:8080");
+        try {
+            String userJson = client.invoke("user-get", Map.of("id", 1001));
+            System.out.println("用户信息: " + userJson);
+
+            String newUserJson = client.invoke("user-create",
+                Map.of("deptId", 10),
+                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}"
+            );
+            System.out.println("创建结果: " + newUserJson);
+        } catch (IntegrationException e) {
+            System.err.println("调用失败: " + e.getMessage());
+        }
+    }
+}</div>
+
+            <h3>4. Header 传参示例</h3>
+            <p style="color:#666;margin-bottom:12px;">当目标接口需要通过请求头传递认证信息（如 API Key、Token）时，按以下步骤配置：</p>
+            
+            <h4 style="margin:16px 0 8px;color:#333;">步骤一：在接口配置中设置认证方式</h4>
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;">
+                <p style="margin:0 0 12px;color:#495057;font-weight:500;">📝 接口配置页面填写示例：</p>
+                <table style="width:100%;font-size:13px;border-collapse:collapse;">
+                    <tr><td style="padding:6px 12px;color:#666;width:120px;">认证类型</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">API_KEY</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">认证位置</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">HEADER</code>（请求头）</td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">认证参数名</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">X-API-Key</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">认证值</td><td style="padding:6px 12px;"><code style="background:#fff3e0;padding:2px 6px;border-radius:4px;">your-secret-api-key-here</code></td></tr>
+                </table>
+                <p style="margin:12px 0 0;color:#868e96;font-size:12px;">💡 系统会自动在请求头中添加：<code>X-API-Key: your-secret-api-key-here</code></p>
+            </div>
+
+            <h4 style="margin:16px 0 8px;color:#333;">步骤二：常见的 Header 认证方式</h4>
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 8px;font-weight:500;color:#495057;">🔹 API Key 认证</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: API_KEY
+认证位置: HEADER
+认证参数名: X-API-Key
+认证值: sk-xxxxxxxxxxxxxx
+
+→ 请求头: X-API-Key: sk-xxxxxxxxxxxxxx</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Bearer Token 认证（OAuth 2.0）</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BEARER
+认证位置: HEADER
+认证参数名: Authorization
+认证值: Bearer eyJhbGciOiJIUzI1NiIs...
+
+→ 请求头: Authorization: Bearer eyJhbGciOiJIUzI1NiIs...</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Basic Auth 认证</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BASIC
+认证位置: HEADER
+认证参数名: Authorization
+认证值: Basic base64(username:password)
+
+→ 请求头: Authorization: Basic dXNlcjpwYXNz</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 自定义 Header（多个请求头）</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">在"请求头"字段中填写（每行一个）：
+Content-Type: application/json
+X-Request-Id: {traceId}
+X-Client-Version: 1.0.0
+
+→ 请求时会自动携带以上请求头</pre>
+            </div>
+
+            <h4 style="margin:16px 0 8px;color:#333;">步骤三：动态 Token 认证（自动获取Token）</h4>
+            <div class="response-box" style="background:#fff3e0;border:1px solid #ffe0b2;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 12px;color:#e65100;font-weight:500;">⚡ 适用场景：Token 有过期时间，需要定期刷新</p>
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:6px 12px;color:#666;width:140px;">认证类型</td><td style="padding:6px 12px;"><code style="background:#fff8e1;padding:2px 6px;border-radius:4px;">DYNAMIC</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token接口编码</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">auth-token-get</code>（系统中已配置的获取Token接口）</td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token提取路径</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">$.data.accessToken</code>（从Token接口响应中提取）</td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token参数位置</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">HEADER</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token请求头参数名</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">Authorization</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token前缀</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">Bearer</code></td></tr>
+                    <tr><td style="padding:6px 12px;color:#666;">Token缓存时间</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">3600</code> 秒（1小时）</td></tr>
+                </table>
+                <p style="margin:12px 0 0;color:#868e96;font-size:12px;">💡 系统会自动调用 auth-token-get 接口获取Token，缓存后用于后续请求</p>
+            </div>
+
+            <h3>5. SDK 方法</h3>
+            <table class="table" style="max-width:600px;">
+                <thead><tr><th>方法</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td><code>invoke(apiCode)</code></td><td>GET 请求，无参数</td></tr>
+                    <tr><td><code>invoke(apiCode, params)</code></td><td>GET 请求，带 URL 参数</td></tr>
+                    <tr><td><code>invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
+                    <tr><td><code>invokeAsync(...)</code></td><td>异步调用，返回 CompletableFuture</td></tr>
+                    <tr><td><code>batchInvoke(items)</code></td><td>批量调用</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    if (parent.setNav) parent.setNav('sdk');
+    </script>
+</body>
+</html>
