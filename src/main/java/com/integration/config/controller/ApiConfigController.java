@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 接口配置管理 Controller
@@ -105,5 +106,31 @@ public class ApiConfigController {
     public Result<List> getSimpleList() {
         List list = apiConfigService.getSimpleList();
         return Result.success(list);
+    }
+
+    // ==================== Curl 一键导入 ====================
+
+    /**
+     * Curl 命令一键导入接口配置
+     * 支持标准 curl 命令格式，自动提取 URL、方法、请求头、请求体
+     *
+     * 示例：
+     * curl -X POST 'https://api.example.com/users' \
+     *   -H 'Content-Type: application/json' \
+     *   -H 'Authorization: Bearer xxx' \
+     *   -d '{"name":"张三"}'
+     */
+    @PostMapping("/import/curl")
+    public Result<String> importFromCurl(@RequestBody Map<String, String> body) {
+        String curl = body.get("curl");
+        if (curl == null || curl.trim().isEmpty()) {
+            return Result.fail("curl 命令不能为空");
+        }
+        try {
+            ApiConfigDTO dto = apiConfigService.importFromCurl(curl);
+            return Result.success("导入成功，接口编码：" + dto.getCode(), dto.getCode());
+        } catch (IllegalArgumentException e) {
+            return Result.fail(e.getMessage());
+        }
     }
 }

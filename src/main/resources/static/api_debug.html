@@ -152,12 +152,16 @@
         <div class="debug-layout">
             <div>
                 <div class="panel">
+                    <h3>📋 请求头 (Headers)</h3>
+                    <textarea id="debugHeaders" class="json-textarea" rows="4" placeholder="每行一个: Key: Value"></textarea>
+                </div>
+                <div class="panel">
                     <h3>📝 请求参数 (JSON)</h3>
-                    <textarea id="debugParams" class="json-textarea" rows="5" placeholder='{"param1": "value1"}'></textarea>
+                    <textarea id="debugParams" class="json-textarea" rows="4" placeholder='{"param1": "value1"}'></textarea>
                 </div>
                 <div class="panel">
                     <h3>📦 请求体 Body (可选)</h3>
-                    <textarea id="debugBody" class="json-textarea" rows="5" placeholder='{"key": "value"}'></textarea>
+                    <textarea id="debugBody" class="json-textarea" rows="4" placeholder='{"key": "value"}'></textarea>
                 </div>
             </div>
             <div>
@@ -253,6 +257,7 @@
     async function loadConfig() {
         var code = document.getElementById('apiSelect').value;
         if (!code) {
+            document.getElementById('debugHeaders').value = '';
             document.getElementById('debugBody').value = '';
             document.getElementById('debugParams').value = '';
             return;
@@ -260,12 +265,34 @@
         try {
             var json = await fetch(API + '/config/code/' + code).then(function(r) { return r.json(); });
             if (json.code === 200) {
-                document.getElementById('debugBody').value = json.data.requestBody || '';
-                document.getElementById('debugParams').value = json.data.requestParams || '{}';
+                var d = json.data;
+                // 请求头：从配置的 headers 字段加载（格式：Key: Value\nKey2: Value2）
+                document.getElementById('debugHeaders').value = d.headers || '';
+                // 请求参数
+                document.getElementById('debugParams').value = d.requestParams || '{}';
+                // 请求体
+                document.getElementById('debugBody').value = d.requestBody || '';
             }
         } catch (e) {
             showToast('加载接口配置失败', 'error');
         }
+    }
+
+    // 解析 "Key: Value\nKey2: Value2" 格式的请求头为 Map
+    function parseHeaders(str) {
+        if (!str || !str.trim()) return null;
+        var headers = {};
+        str.split('\n').forEach(function(line) {
+            line = line.trim();
+            if (!line) return;
+            var idx = line.indexOf(':');
+            if (idx > 0) {
+                var key = line.substring(0, idx).trim();
+                var value = line.substring(idx + 1).trim();
+                if (key) headers[key] = value;
+            }
+        });
+        return Object.keys(headers).length > 0 ? headers : null;
     }
 
     async function send() {
@@ -275,6 +302,10 @@
             return;
         }
         
+        // 解析请求头
+        var headers = parseHeaders(document.getElementById('debugHeaders').value);
+        
+        // 解析请求参数
         var params = null;
         var p = document.getElementById('debugParams').value;
         if (p && p.trim()) {
@@ -286,6 +317,7 @@
             }
         }
         
+        // 请求体
         var body = document.getElementById('debugBody').value || null;
         
         // 显示发送中状态
@@ -306,7 +338,7 @@
             var res = await fetch(API + '/invoke', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiCode: code, params: params, body: body })
+                body: JSON.stringify({ apiCode: code, headers: headers, params: params, body: body })
             });
             var costTime = Date.now() - t0;
             var json = await res.json();

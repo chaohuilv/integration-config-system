@@ -28,35 +28,62 @@
             <div class="response-box">// 初始化客户端
 IntegrationClient client = new IntegrationClient("http://localhost:8080");
 
-// GET 请求
+// GET 请求（无参数）
+String result = client.invoke("user-list");
+
+// GET 请求（带 URL 参数）
 String result = client.invoke("user-get", Map.of("id", 1));
 
-// POST 请求
+// POST 请求（带参数和请求体）
 String result = client.invoke("user-create",
-    Map.of(),  // URL 参数
+    Map.of("deptId", 10),           // URL 参数
     "{\"name\":\"张三\",\"age\":25}"  // 请求体
 );
 
+// POST 请求（带自定义请求头）
+Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
+headers.put("X-Request-Id", "12345");
+headers.put("X-Client-Version", "1.0.0");
+String result = client.invoke("user-create",
+    Map.of(),                        // URL 参数
+    "{\"name\":\"张三\"}",            // 请求体
+    headers                          // 自定义请求头
+);
+
 // 异步调用
-CompletableFuture&lt;String&gt; future = client.invokeAsync("user-list", null, null);
+CompletableFuture&lt;String&gt; future = client.invokeAsync("user-list", null, null, null);
 String result = future.get();</div>
 
             <h3>3. 完整示例</h3>
             <div class="response-box">import com.integration.sdk.IntegrationClient;
 import java.util.Map;
+import java.util.HashMap;
 
 public class Example {
     public static void main(String[] args) {
         IntegrationClient client = new IntegrationClient("http://localhost:8080");
         try {
+            // 示例1：简单 GET 请求
             String userJson = client.invoke("user-get", Map.of("id", 1001));
             System.out.println("用户信息: " + userJson);
 
+            // 示例2：POST 请求，带自定义请求头
+            Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
+            headers.put("X-Request-Id", "req-" + System.currentTimeMillis());
+            headers.put("Accept-Language", "zh-CN");
+            
             String newUserJson = client.invoke("user-create",
                 Map.of("deptId", 10),
-                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}"
+                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}",
+                headers
             );
             System.out.println("创建结果: " + newUserJson);
+
+            // 示例3：覆盖配置中的认证头（调试用）
+            Map&lt;String, String&gt; authHeaders = new HashMap&lt;&gt;();
+            authHeaders.put("Authorization", "Bearer test-token-123");
+            String result = client.invoke("api-test", Map.of(), null, authHeaders);
+            
         } catch (IntegrationException e) {
             System.err.println("调用失败: " + e.getMessage());
         }
@@ -129,16 +156,32 @@ X-Client-Version: 1.0.0
             </div>
 
             <h3>5. SDK 方法</h3>
-            <table class="table" style="max-width:600px;">
+            <table class="table" style="max-width:800px;">
                 <thead><tr><th>方法</th><th>说明</th></tr></thead>
                 <tbody>
                     <tr><td><code>invoke(apiCode)</code></td><td>GET 请求，无参数</td></tr>
-                    <tr><td><code>invoke(apiCode, params)</code></td><td>GET 请求，带 URL 参数</td></tr>
+                    <tr><td><code>invoke(apiCode, params)</code></td><td>GET/POST 请求，带 URL 参数</td></tr>
                     <tr><td><code>invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
+                    <tr><td><code>invoke(apiCode, params, body, headers)</code></td><td>完整调用，带自定义请求头（会与配置合并，动态值优先）</td></tr>
                     <tr><td><code>invokeAsync(...)</code></td><td>异步调用，返回 CompletableFuture</td></tr>
                     <tr><td><code>batchInvoke(items)</code></td><td>批量调用</td></tr>
                 </tbody>
             </table>
+
+            <h3>6. Headers 参数说明</h3>
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 12px;color:#495057;font-weight:500;">📋 headers 参数优先级规则：</p>
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:8px 12px;color:#666;width:140px;">配置表请求头</td><td style="padding:8px 12px;">接口配置中"请求头"字段的内容</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;">认证请求头</td><td style="padding:8px 12px;">根据认证类型自动添加（Bearer / Basic / API Key）</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;font-weight:600;">动态请求头</td><td style="padding:8px 12px;font-weight:600;">SDK 调用时传入的 headers 参数，<span style="color:#e65100;">优先级最高，会覆盖同名配置</span></td></tr>
+                </table>
+                <pre style="margin:12px 0 0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">// 示例：动态覆盖认证头（用于调试或切换账号）
+Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
+headers.put("Authorization", "Bearer another-token-xxx");
+client.invoke("user-get", Map.of("id", 1), null, headers);
+// 此时使用的是 another-token-xxx，而非配置表中的 Token</pre>
+            </div>
         </div>
     </div>
 

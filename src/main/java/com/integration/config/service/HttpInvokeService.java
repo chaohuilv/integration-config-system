@@ -339,24 +339,36 @@ public class HttpInvokeService {
 
     /**
      * 应用认证
+     * authInfo 存储的是纯 token 值（不带 "Bearer "/"Basic " 前缀）
+     * 如果带前缀，则先去掉再重新拼接（保证格式统一）
      */
     private void applyAuth(HttpHeaders headers, ApiConfig config) {
-        switch (config.getAuthType()) {
-            case "bearer":
-                headers.set("Authorization", "Bearer " + config.getAuthInfo());
-                break;
-            case "basic":
-                headers.set("Authorization", "Basic " + config.getAuthInfo());
-                break;
-            case "api-key":
-                // 假设 authInfo 格式为 "key:value" 或直接是值
-                if (config.getAuthInfo() != null && config.getAuthInfo().contains(":")) {
-                    String[] parts = config.getAuthInfo().split(":", 2);
-                    headers.set(parts[0], parts[1]);
-                } else {
-                    headers.set("X-API-Key", config.getAuthInfo());
-                }
-                break;
+        String authType = config.getAuthType() != null ? config.getAuthType().toLowerCase().trim() : "";
+        String authInfo = config.getAuthInfo();
+
+        if ("bearer".equals(authType)) {
+            // 去掉已有的 "bearer " 前缀，只保留 token
+            if (authInfo != null && authInfo.toLowerCase().startsWith("bearer ")) {
+                authInfo = authInfo.substring(7).trim();
+            }
+            if (authInfo != null && !authInfo.isEmpty()) {
+                headers.set("Authorization", "Bearer " + authInfo);
+            }
+        } else if ("basic".equals(authType)) {
+            // Basic Auth 同样处理
+            if (authInfo != null && authInfo.toLowerCase().startsWith("basic ")) {
+                authInfo = authInfo.substring(6).trim();
+            }
+            if (authInfo != null && !authInfo.isEmpty()) {
+                headers.set("Authorization", "Basic " + authInfo);
+            }
+        } else if ("api_key".equals(authType)) {
+            if (authInfo != null && authInfo.contains(":")) {
+                String[] parts = authInfo.split(":", 2);
+                headers.set(parts[0].trim(), parts[1].trim());
+            } else if (authInfo != null && !authInfo.isEmpty()) {
+                headers.set("X-API-Key", authInfo);
+            }
         }
     }
 
@@ -369,17 +381,28 @@ public class HttpInvokeService {
             return request.getBody();
         }
 
-        // 如果没有配置模板，直接用传入的 body
+        // 如果没有配置模板
         if (config.getRequestBody() == null || config.getRequestBody().isEmpty()) {
             String bodyStr = request.getBody();
+
             // 动态Token注入到Body
             if (dynamicToken != null && "body".equals(config.getTokenPosition()) && bodyStr != null) {
                 bodyStr = injectTokenToBody(bodyStr, dynamicToken, config);
             }
+
+            // 如果有动态参数但没有显式 body，则将 params 作为 body
+            if (bodyStr == null && request.getParams() != null && !request.getParams().isEmpty()) {
+                // 转为 JSON 字符串作为 body
+                bodyStr = JsonUtil.toJson(request.getParams());
+                if (integrationConfig.isLogRequest()) {
+                    log.info("[{}] 使用 params 作为请求体: {}", traceId, bodyStr);
+                }
+            }
+
             return bodyStr;
         }
 
-        // 模板 + 参数替换
+        // 有模板：模板 + 参数替换
         String bodyTemplate = config.getRequestBody();
         if (request.getParams() != null && !request.getParams().isEmpty()) {
             for (Map.Entry<String, Object> entry : request.getParams().entrySet()) {
@@ -393,12 +416,10 @@ public class HttpInvokeService {
         if (request.getBody() != null && bodyTemplate.contains("{{body}}")) {
             bodyTemplate = bodyTemplate.replace("{{body}}", request.getBody());
         }
-
         // 动态Token注入到Body
         if (dynamicToken != null && "body".equals(config.getTokenPosition())) {
             bodyTemplate = injectTokenToBody(bodyTemplate, dynamicToken, config);
         }
-
         // 解析为对象或保持字符串
         if (JsonUtil.isValidJson(bodyTemplate)) {
             return JSONUtil.parse(bodyTemplate);

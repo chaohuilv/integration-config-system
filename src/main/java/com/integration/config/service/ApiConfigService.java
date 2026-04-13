@@ -2,9 +2,11 @@ package com.integration.config.service;
 
 import com.integration.config.dto.*;
 import com.integration.config.entity.config.ApiConfig;
+import com.integration.config.enums.HttpMethod;
 import com.integration.config.enums.Status;
 import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
+import com.integration.config.util.CurlParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -139,7 +141,60 @@ public class ApiConfigService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 根据 curl 命令一键导入接口配置
+     * @param curl curl 命令字符串
+     * @return 导入结果，包含解析后的配置信息
+     */
+    public ApiConfigDTO importFromCurl(String curl) {
+        CurlImportDTO parsed = CurlParser.parse(curl);
+        if (!parsed.isSuccess()) {
+            throw new IllegalArgumentException(parsed.getMessage());
+        }
+
+        // 检查编码是否已存在，存在则追加后缀
+        String code = parsed.getCode();
+        if (apiConfigRepository.existsByCode(code)) {
+            code = code + "-" + System.currentTimeMillis() % 1000;
+        }
+
+        // 构建 DTO
+        ApiConfigDTO dto = ApiConfigDTO.builder()
+                .name(parsed.getName())
+                .code(code)
+                .url(parsed.getUrl())
+                .method(parseMethod(parsed.getMethod()))
+                .headers(buildHeadersJson(parsed.getHeaders(), parsed.getAuthParamName()))
+                .requestParams(parsed.getRequestParams())
+                .requestBody(parsed.getBody())
+                .authType(parsed.getAuthType())
+                .authInfo(parsed.getAuthValue())
+                .timeout(30000)
+                .retryCount(0)
+                .status(Status.ACTIVE)
+                .groupName(parsed.getGroupName())
+                .enableDynamicToken(false)
+                .build();
+
+        // 保存
+        ApiConfig entity = toEntity(dto);
+        apiConfigRepository.save(entity);
+
+        // 将解析结果回填到 DTO
+        dto.setId(entity.getId());
+        return dto;
+    }
+
     // ==================== 私有方法 ====================
+
+    private HttpMethod parseMethod(String method) {
+        if (method == null) return HttpMethod.GET;
+        try {
+            return HttpMethod.valueOf(method.toUpperCase());
+        } catch (Exception e) {
+            return HttpMethod.GET;
+        }
+    }
 
     private ApiConfig toEntity(ApiConfigDTO dto) {
         return ApiConfig.builder()
@@ -198,5 +253,50 @@ public class ApiConfigService {
         entity.setTokenParamName(dto.getTokenParamName());
         entity.setTokenPrefix(dto.getTokenPrefix());
         entity.setTokenCacheTime(dto.getTokenCacheTime());
+    }
+
+    /**
+     * 从 URL 中提取分组名称
+     */
+    private String extractGroupName(String url) {
+        try {
+            if (url == null) return "默认分组";
+            int idx = url.indexOf("//");
+            if (idx < 0) return "默认分组";
+            idx = url.indexOf("/", idx + 2);
+            if (idx < 0) return "默认分组";
+            String path = url.substring(idx + 1);
+            String[] parts = path.split("/");
+            if (parts.length > 1) {
+                String group = parts[0];
+                if (group.length() > 1) {
+                    group = group.substring(0, 1).toUpperCase() + group.substring(1);
+                } else if (group.length() == 1) {
+                    group = group.toUpperCase();
+                }
+                return group;
+            }
+            return "默认分组";
+        } catch (Exception e) {
+            return "默认分组";
+        }
+    }
+
+    /**
+     * 构建请求头 JSON 字符串（排除认证头）
+     */
+    private String buildHeadersJson(java.util.Map<String, String> headers, String authParamName) {
+        if (headers == null || headers.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (java.util.Map.Entry<String, String> entry : headers.entrySet()) {
+            if (authParamName != null && entry.getKey().equalsIgnoreCase(authParamName)) {
+                continue;
+            }
+            if (!first) sb.append("\n");
+            sb.append(entry.getKey()).append(": ").append(entry.getValue());
+            first = false;
+        }
+        return sb.length() > 0 ? sb.toString() : null;
     }
 }
