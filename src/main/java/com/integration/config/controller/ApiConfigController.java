@@ -5,6 +5,8 @@ import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.enums.Status;
 import com.integration.config.service.ApiConfigService;
 import com.integration.config.util.Result;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +29,10 @@ public class ApiConfigController {
      * 创建接口配置
      */
     @PostMapping
-    public Result<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto) {
-        ApiConfig config = apiConfigService.create(dto);
+    public Result<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
+        Long userId = getUserId(request);
+        String userName = getUserName(request);
+        ApiConfig config = apiConfigService.create(dto, userId, userName);
         return Result.success("创建成功", config);
     }
 
@@ -36,8 +40,10 @@ public class ApiConfigController {
      * 更新接口配置
      */
     @PutMapping("/{id}")
-    public Result<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto) {
-        ApiConfig config = apiConfigService.update(id, dto);
+    public Result<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
+        Long userId = getUserId(request);
+        String userName = getUserName(request);
+        ApiConfig config = apiConfigService.update(id, dto, userId, userName);
         return Result.success("更新成功", config);
     }
 
@@ -121,16 +127,31 @@ public class ApiConfigController {
      *   -d '{"name":"张三"}'
      */
     @PostMapping("/import/curl")
-    public Result<String> importFromCurl(@RequestBody Map<String, String> body) {
+    public Result<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String curl = body.get("curl");
         if (curl == null || curl.trim().isEmpty()) {
             return Result.fail("curl 命令不能为空");
         }
         try {
-            ApiConfigDTO dto = apiConfigService.importFromCurl(curl);
+            Long userId = getUserId(request);
+            String userName = getUserName(request);
+            ApiConfigDTO dto = apiConfigService.importFromCurl(curl, userId, userName);
             return Result.success("导入成功，接口编码：" + dto.getCode(), dto.getCode());
         } catch (IllegalArgumentException e) {
             return Result.fail(e.getMessage());
         }
+    }
+
+    // ==================== 辅助方法 ====================
+
+    private Long getUserId(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        return session != null ? (Long) session.getAttribute("userId") : null;
+    }
+
+    private String getUserName(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        // 使用 username（用户名称）存储到业务表
+        return session != null ? (String) session.getAttribute("username") : null;
     }
 }

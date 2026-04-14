@@ -40,7 +40,8 @@ public class ApiConfigDetailDTO {
     private String groupName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String createdBy;
+    private String createdByName;
+    private String updatedByName;
 
     // ========== 动态Token配置 ==========
     private Boolean enableDynamicToken;
@@ -83,7 +84,8 @@ public class ApiConfigDetailDTO {
                 .groupName(entity.getGroupName())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
-                .createdBy(entity.getCreatedBy())
+                .createdByName(entity.getCreatedByName())
+                .updatedByName(entity.getUpdatedByName())
                 .enableDynamicToken(entity.getEnableDynamicToken())
                 .tokenApiCode(entity.getTokenApiCode())
                 .tokenExtractPath(entity.getTokenExtractPath())

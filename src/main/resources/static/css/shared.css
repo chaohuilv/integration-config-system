@@ -91,21 +91,33 @@ body {
     gap: 10px;
     padding: 10px 12px;
     border-radius: 8px;
-    color: rgba(255,255,255,0.65);
+    color: rgba(255,255,255,0.6);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
     margin-bottom: 2px;
     user-select: none;
+    position: relative;
 }
 .nav-item:hover {
-    background: rgba(255,255,255,0.08);
-    color: white;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.9);
 }
 .nav-item.active {
-    background: rgba(102,126,234,0.3);
+    background: linear-gradient(135deg, rgba(102,126,234,0.25) 0%, rgba(118,75,162,0.2) 100%);
     color: white;
     font-weight: 500;
+}
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: linear-gradient(180deg, #667eea, #764ba2);
+    border-radius: 0 3px 3px 0;
 }
 .nav-item .nav-icon {
     font-size: 16px;
@@ -121,9 +133,122 @@ body {
 .nav-item.active .nav-arrow { opacity: 0.8; }
 
 .sidebar-footer {
-    padding: 16px 12px;
+    padding: 12px 12px;
     border-top: 1px solid rgba(255,255,255,0.08);
     font-size: 11px;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.2);
     text-align: center;
+}
+
+/* ============================================================
+   侧边栏底部用户信息
+   ============================================================ */
+.sidebar-user {
+    padding: 10px 12px 4px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+}
+
+.sidebar-user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.sidebar-user-card:hover {
+    background: rgba(255,255,255,0.07);
+}
+
+.sidebar-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+}
+.sidebar-user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar-user-role {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 1px;
+}
+
+.sidebar-user-arrow {
+    font-size: 12px;
+    color: rgba(255,255,255,0.25);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+.sidebar-user-card:hover .sidebar-user-arrow {
+    color: rgba(255,255,255,0.5);
+    transform: rotate(90deg);
+}
+
+/* 弹出菜单（向上展开） */
+.sidebar-user-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 12px;
+    right: 12px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05);
+    padding: 6px;
+    animation: menuUp 0.18s ease;
+    z-index: 200;
+}
+.sidebar-user-menu.show { display: block; }
+@keyframes menuUp {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sidebar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #444;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.sidebar-menu-item:hover { background: #f5f6f8; }
+.sidebar-menu-item svg {
+    width: 15px;
+    height: 15px;
+    opacity: 0.55;
+    flex-shrink: 0;
+}
+.sidebar-menu-item.logout { color: #e8473f; }
+.sidebar-menu-item.logout:hover { background: #fff1f0; }
+.sidebar-menu-item.logout svg { opacity: 0.7; }
+
+.sidebar-menu-divider {
+    height: 1px;
+    background: #f0f0f0;
+    margin: 4px 6px;
 }

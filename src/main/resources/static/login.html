@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 统一接口配置系统</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔌</text></svg>">
+    <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .login-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 48px;
+        width: 100%;
+        max-width: 420px;
+        animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .login-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .login-header .logo {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+    .login-header h1 {
+        font-size: 24px;
+        color: #1a1a2e;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .login-header p {
+        color: #666;
+        font-size: 14px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: all 0.2s;
+        outline: none;
+    }
+    .form-group input:focus {
+        border-color: #4a90d9;
+        box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+    }
+    .form-group input::placeholder {
+        color: #aaa;
+    }
+    .login-btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 8px;
+    }
+    .login-btn:hover {
+        background: linear-gradient(135deg, #357abd 0%, #2a5f8f 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+    }
+    .login-btn:active {
+        transform: translateY(0);
+    }
+    .login-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    .error-message {
+        background: #fee;
+        color: #c00;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        display: none;
+        animation: shake 0.3s ease;
+    }
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    .error-message.show { display: block; }
+    .login-footer {
+        text-align: center;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        color: #888;
+        font-size: 13px;
+    }
+    .default-account {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 16px;
+        font-size: 13px;
+        color: #666;
+    }
+    .default-account strong { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">🔌</div>
+            <h1>统一接口配置系统</h1>
+            <p>Integration Config System</p>
+        </div>
+
+        <div class="error-message" id="errorMsg"></div>
+
+        <form id="loginForm" onsubmit="return doLogin(event)">
+            <div class="form-group">
+                <label for="userCode">用户编码</label>
+                <input type="text" id="userCode" name="userCode" placeholder="请输入用户编码" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" autocomplete="off" required>
+            </div>
+            <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+        </form>
+
+        <div class="login-footer">
+            <div class="default-account">
+                默认管理员账号<br>
+                用户编码：<strong>admin</strong> / 密码：<strong>admin123</strong><br>
+                <small>首次登录后请及时修改密码</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API = '/api';
+
+    // 页面加载时检查是否已登录
+    window.onload = async function() {
+        try {
+            const res = await fetch(`${API}/auth/check`);
+            const json = await res.json();
+            if (json.code === 200 && json.data && json.data.loggedIn) {
+                // 已登录，跳转到主页
+                window.location.href = 'index.html';
+            }
+        } catch (e) {
+            // 未登录，继续显示登录页面
+        }
+    };
+
+    async function doLogin(e) {
+        e.preventDefault();
+        const userCode = document.getElementById('userCode').value.trim();
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('loginBtn');
+        const errorMsg = document.getElementById('errorMsg');
+
+        if (!userCode || !password) {
+            showError('请输入用户编码和密码');
+            return false;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '登录中...';
+        errorMsg.classList.remove('show');
+
+        try {
+            const res = await fetch(`${API}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userCode, password })
+            });
+            const json = await res.json();
+
+            if (json.code === 200) {
+                // 登录成功，跳转到主页
+                window.location.href = 'index.html';
+            } else {
+                showError(json.message || '登录失败');
+                btn.disabled = false;
+                btn.textContent = '登 录';
+            }
+        } catch (e) {
+            showError('网络错误，请稍后重试');
+            btn.disabled = false;
+            btn.textContent = '登 录';
+        }
+
+        return false;
+    }
+
+    function showError(msg) {
+        const errorMsg = document.getElementById('errorMsg');
+        errorMsg.textContent = msg;
+        errorMsg.classList.add('show');
+    }
+
+    // 回车提交
+    document.getElementById('password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+        }
+    });
+    </script>
+</body>
+</html>

@@ -146,4 +146,18 @@ public class ApiConfigDTO {
      * Token缓存时间（秒）
      */
     private Integer tokenCacheTime;
+
+    // ========== 审计字段（只读，由服务层填充） ==========
+
+    /** 创建人ID */
+    private Long createdById;
+
+    /** 创建人名称 */
+    private String createdByName;
+
+    /** 更新人ID */
+    private Long updatedById;
+
+    /** 更新人名称 */
+    private String updatedByName;
 }

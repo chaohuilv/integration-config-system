@@ -18,6 +18,7 @@
     font-size: 20px;
     font-weight: 700;
     color: #1a1a2e;
+    letter-spacing: -0.3px;
 }
 .view-sub {
     margin: 0;
@@ -32,7 +33,7 @@
     color: #667eea;
     margin-left: 6px;
 }
-.view-actions { display: flex; gap: 8px; }
+.view-actions { display: flex; gap: 10px; align-items: center; }
 
 .view-body {
     flex: 1;
@@ -52,6 +53,7 @@
     margin-bottom: 20px;
     flex-wrap: wrap;
     flex-shrink: 0;
+    align-items: center;
 }
 .search-input {
     flex: 1;
@@ -60,8 +62,28 @@
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
-.search-input:focus { outline: none; border-color: #667eea; }
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+.search-bar select {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    color: #555;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.search-bar select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
 
 .table-wrap {
     background: white;
@@ -76,7 +98,7 @@
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th, .table td {
     padding: 13px 16px;
-    text-align: left;
+   /* text-align: left;*/
     border-bottom: 1px solid #f5f5f5;
 }
 .table th {
@@ -97,7 +119,8 @@
 .actions code { background: #f0f0f8; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #667eea; }
 
 /* 分页 */
-.pagination { display: flex; justify-content: center; gap: 6px; flex-shrink: 0; margin-top: 12px; }
+.pagination { display: flex; justify-content: center; gap: 6px; flex-shrink: 0; margin-top: 16px; align-items: center; }
+.pagination span { font-size: 13px; color: #999; padding: 0 6px; }
 .pagination button {
     padding: 7px 13px;
     border: 1px solid #e0e0e0;
@@ -106,10 +129,16 @@
     cursor: pointer;
     font-size: 13px;
     color: #555;
+    transition: all 0.15s;
 }
-.pagination button:hover { border-color: #667eea; color: #667eea; }
-.pagination button.active { background: #667eea; color: white; border-color: #667eea; }
-.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination button:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+.pagination button.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 2px 6px rgba(102,126,234,0.3);
+}
+.pagination button:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* 空状态 */
 .empty { text-align: center; padding: 50px 20px; color: #aaa; }
@@ -170,21 +199,34 @@
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     transition: all .15s;
     white-space: nowrap;
+    line-height: 1.4;
 }
-.btn-primary { background: #667eea; color: white; }
-.btn-primary:hover { background: #5568d3; }
-.btn-success { background: #52c41a; color: white; }
-.btn-success:hover { background: #3ba310; }
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.35);
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a72d4 0%, #6a4294 100%);
+    box-shadow: 0 4px 14px rgba(102,126,234,0.45);
+    transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 4px rgba(102,126,234,0.3); }
+.btn-success { background: linear-gradient(135deg, #52c41a 0%, #3ba310 100%); color: white; box-shadow: 0 2px 8px rgba(82,196,26,0.3); }
+.btn-success:hover { box-shadow: 0 4px 12px rgba(82,196,26,0.4); transform: translateY(-1px); }
 .btn-danger { background: #ff4d4f; color: white; }
 .btn-danger:hover { background: #e63d3f; }
 .btn-default { background: #f5f5f5; color: #555; border: 1px solid #e0e0e0; }
-.btn-default:hover { background: #eee; }
+.btn-default:hover { background: #eee; border-color: #ccc; }
 .btn-ghost { background: transparent; color: #667eea; border: 1px solid #667eea; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; }
 .btn-ghost:hover { background: #f0f0f8; }
 .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+.btn-sm.btn-primary { box-shadow: 0 1px 4px rgba(102,126,234,0.25); }
 
 /* ============================================================
    状态标签 & 方法标签

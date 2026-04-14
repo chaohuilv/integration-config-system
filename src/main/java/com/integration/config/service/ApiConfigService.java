@@ -33,13 +33,15 @@ public class ApiConfigService {
      * 创建接口配置
      */
     @Transactional
-    public ApiConfig create(ApiConfigDTO dto) {
+    public ApiConfig create(ApiConfigDTO dto, Long userId, String userName) {
         // 检查编码唯一性
         if (apiConfigRepository.existsByCode(dto.getCode())) {
             throw new IllegalArgumentException("接口编码已存在: " + dto.getCode());
         }
 
         ApiConfig entity = toEntity(dto);
+        entity.setCreatedById(userId);
+        entity.setCreatedByName(userName);
         return apiConfigRepository.save(entity);
     }
 
@@ -47,7 +49,7 @@ public class ApiConfigService {
      * 更新接口配置
      */
     @Transactional
-    public ApiConfig update(Long id, ApiConfigDTO dto) {
+    public ApiConfig update(Long id, ApiConfigDTO dto, Long userId, String userName) {
         ApiConfig entity = apiConfigRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("接口配置不存在: " + id));
 
@@ -58,6 +60,8 @@ public class ApiConfigService {
         }
 
         updateEntity(entity, dto);
+        entity.setUpdatedById(userId);
+        entity.setUpdatedByName(userName);
         return apiConfigRepository.save(entity);
     }
 
@@ -144,9 +148,11 @@ public class ApiConfigService {
     /**
      * 根据 curl 命令一键导入接口配置
      * @param curl curl 命令字符串
+     * @param userId 创建人ID
+     * @param userName 创建人名称
      * @return 导入结果，包含解析后的配置信息
      */
-    public ApiConfigDTO importFromCurl(String curl) {
+    public ApiConfigDTO importFromCurl(String curl, Long userId, String userName) {
         CurlImportDTO parsed = CurlParser.parse(curl);
         if (!parsed.isSuccess()) {
             throw new IllegalArgumentException(parsed.getMessage());
@@ -178,6 +184,8 @@ public class ApiConfigService {
 
         // 保存
         ApiConfig entity = toEntity(dto);
+        entity.setCreatedById(userId);
+        entity.setCreatedByName(userName);
         apiConfigRepository.save(entity);
 
         // 将解析结果回填到 DTO

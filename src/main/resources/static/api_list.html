@@ -21,12 +21,15 @@
     <div class="view-body">
         <div class="search-bar">
             <input type="text" class="search-input" id="sKeyword" placeholder="搜索接口名称、编码或描述..." onkeyup="refreshList(1)">
-            <select id="sStatus" style="padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;" onchange="refreshList(1)">
+            <select id="sStatus" onchange="refreshList(1)">
                 <option value="">全部状态</option>
                 <option value="ACTIVE">启用</option>
                 <option value="INACTIVE">禁用</option>
             </select>
-            <button class="btn btn-default" onclick="refreshList(1)">🔍 搜索</button>
+            <button class="btn btn-ghost" onclick="refreshList(1)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
         </div>
 
         <div class="table-wrap">
@@ -38,12 +41,13 @@
                         <th>分组</th>
                         <th>方法</th>
                         <th>目标URL</th>
+                        <th>创建人</th>
                         <th>状态</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="apiTableBody">
-                    <tr><td colspan="7" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                    <tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -75,7 +79,7 @@
     function renderTable(apis) {
         const tb = document.getElementById('apiTableBody');
         if (!apis || !apis.length) {
-            tb.innerHTML = '<tr><td colspan="7" class="empty"><div class="empty-icon">📭</div>暂无接口配置<br><br><button class="btn btn-primary" onclick="parent.loadPage(\'form\')">+ 新建第一个接口</button></td></tr>';
+            tb.innerHTML = '<tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>暂无接口配置<br></td></tr>';
             return;
         }
         tb.innerHTML = apis.map(a => `
@@ -85,6 +89,7 @@
             <td style="color:#999;font-size:13px;">${a.groupName||'-'}</td>
             <td><span class="method method-${a.method.toLowerCase()}">${a.method}</span></td>
             <td title="${a.url}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.url}</td>
+            <td style="color:#666;font-size:13px;">${a.createdByName||'-'}</td>
             <td><span class="badge badge-${a.status.toLowerCase()}">${a.status==='ACTIVE'?'启用':'禁用'}</span></td>
             <td class="actions">
                 <button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>

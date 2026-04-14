@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 统一接口配置系统</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .status-ACTIVE { background: #e6f7e6; color: #52c41a; }
+    .status-INACTIVE { background: #fff2f0; color: #ff4d4f; }
+    .action-btns { display: flex; gap: 6px; }
+
+    /* 新建/编辑用户弹窗 */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15,23,42,0.55);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+        overflow: hidden;
+        animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.88) translateY(12px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px 18px;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .modal-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #1a1d23; }
+    .modal-close {
+        width: 30px; height: 30px;
+        background: #f4f5f7;
+        border: none; border-radius: 50%;
+        font-size: 16px; cursor: pointer;
+        color: #6b7280; display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: #e8eaed; color: #374151; }
+    .modal-body { padding: 22px 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+    }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 14px;
+        color: #1a1d23;
+        background: #fafbfc;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+    }
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px 20px;
+        border-top: 1px solid #f1f3f5;
+    }
+    .modal-footer .btn { min-width: 90px; padding: 9px 18px; font-size: 14px; border-radius: 9px; border: none; cursor: pointer; font-weight: 600; transition: all 0.18s; }
+    .modal-footer .btn-cancel { background: #f3f4f6; color: #4b5563; }
+    .modal-footer .btn-cancel:hover { background: #e5e7eb; }
+    .modal-footer .btn-danger-submit { background: #ef4444; color: #fff; }
+    .modal-footer .btn-danger-submit:hover { background: #dc2626; }
+    .modal-footer .btn-primary-submit { background: #667eea; color: #fff; }
+    .modal-footer .btn-primary-submit:hover { background: #5a6fd6; }
+
+    /* 确认弹窗 */
+    .confirm-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15,23,42,0.55);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px 28px 22px;
+        max-width: 360px;
+        width: calc(100% - 40px);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+        animation: confirmIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes confirmIn {
+        from { opacity: 0; transform: scale(0.88); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    .confirm-icon { font-size: 42px; text-align: center; margin-bottom: 14px; }
+    .confirm-title { font-size: 16px; font-weight: 700; color: #1a1d23; text-align: center; margin-bottom: 6px; }
+    .confirm-desc { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 22px; line-height: 1.5; }
+    .confirm-btns { display: flex; gap: 10px; }
+    .confirm-btns .btn { flex: 1; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.18s; }
+    .confirm-btns .btn-cancel { background: #f3f4f6; color: #4b5563; }
+    .confirm-btns .btn-cancel:hover { background: #e5e7eb; }
+    .confirm-btns .btn-danger-ok { background: #ef4444; color: #fff; }
+    .confirm-btns .btn-danger-ok:hover { background: #dc2626; }
+
+    /* Toast 提示 */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+    .toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #fff;
+        min-width: 220px;
+        max-width: 340px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        animation: toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        pointer-events: auto;
+    }
+    .toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+    .toast.error   { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .toast.info    { background: linear-gradient(135deg, #667eea, #5a6fd6); }
+    .toast-icon { font-size: 16px; flex-shrink: 0; }
+    .toast-msg { flex: 1; }
+    .toast-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 14px; padding: 0; flex-shrink: 0; }
+    .toast-close:hover { color: #fff; }
+    .toast.out {
+        animation: toastOut 0.2s ease forwards;
+    }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(30px) scale(0.9); }
+        to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    @keyframes toastOut {
+        from { opacity: 1; transform: translateX(0); }
+        to   { opacity: 0; transform: translateX(30px); }
+    }
+
+    .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <!-- Toast 提示 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 确认弹窗 -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-box">
+            <div class="confirm-icon" id="confirmIcon">⚠️</div>
+            <div class="confirm-title" id="confirmTitle">确认操作</div>
+            <div class="confirm-desc" id="confirmDesc">确定要执行此操作吗？</div>
+            <div class="confirm-btns">
+                <button class="btn btn-cancel" onclick="closeConfirm()">取消</button>
+                <button class="btn btn-danger-ok" id="confirmOkBtn" onclick="doConfirm()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="view-header">
+        <div class="view-title">
+            <h2>👤 用户管理</h2>
+            <p class="view-sub">管理系统用户账号、权限和状态</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" onclick="openModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建用户
+            </button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="search-bar">
+            <input type="search" class="search-input" id="searchInput" name="searchKeyword" placeholder="搜索用户编码、名称..." onkeydown="if(event.key==='Enter')search()">
+            <button class="btn btn-ghost" onclick="search()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>用户编码</th>
+                        <th>用户名称</th>
+                        <th>显示名称</th>
+                        <th>邮箱</th>
+                        <th>手机</th>
+                        <th>状态</th>
+                        <th>最后登录</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+            <div class="empty" id="emptyState" style="display:none;">
+                <div class="empty-icon">📭</div>
+                暂无用户数据
+            </div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 新建/编辑用户弹窗 -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新建用户</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label>用户编码 *</label>
+                    <input type="text" id="formUserCode" placeholder="用于登录，如：zhangsan">
+                    <div class="hint">用户编码用于登录，建议使用工号或姓名拼音</div>
+                </div>
+                <div class="form-group">
+                    <label>用户名称 *</label>
+                    <input type="text" id="formUsername" placeholder="显示名称，如：张三">
+                </div>
+                <div class="form-group">
+                    <label>密码 <span id="pwdHint">(新建必填)</span></label>
+                    <input type="password" id="formPassword" placeholder="请输入密码">
+                </div>
+                <div class="form-group">
+                    <label>显示名称</label>
+                    <input type="text" id="formDisplayName" placeholder="可选，用于界面显示">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="formEmail" placeholder="请输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input type="tel" id="formPhone" placeholder="请输入手机号">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="formStatus">
+                        <option value="ACTIVE">启用</option>
+                        <option value="INACTIVE">禁用</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary-submit" id="modalSubmitBtn" onclick="saveUser()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API = '/api';
+    let currentPage = 1;
+    let pageSize = 10;
+    let totalPages = 0;
+    let _confirmResolve = null;
+
+    // ===== Toast 提示 =====
+    function toast(msg, type = 'info', duration = 3000) {
+        const container = document.getElementById('toastContainer');
+        const icons = { success: '✅', error: '❌', info: '💡' };
+        const div = document.createElement('div');
+        div.className = `toast ${type}`;
+        div.innerHTML = `
+            <span class="toast-icon">${icons[type] || '💡'}</span>
+            <span class="toast-msg">${msg}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+        `;
+        container.appendChild(div);
+        setTimeout(() => {
+            div.classList.add('out');
+            setTimeout(() => div.remove(), 220);
+        }, duration);
+    }
+
+    // ===== 确认弹窗 =====
+    function showConfirm(title, desc, icon = '⚠️', danger = false) {
+        return new Promise(resolve => {
+            _confirmResolve = resolve;
+            document.getElementById('confirmIcon').textContent = icon;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmDesc').textContent = desc;
+            const okBtn = document.getElementById('confirmOkBtn');
+            okBtn.textContent = danger ? '确认删除' : '确定';
+            okBtn.className = `btn ${danger ? 'btn-danger-ok' : 'btn-primary-submit'}`;
+            document.getElementById('confirmOverlay').classList.add('show');
+        });
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirmOverlay').classList.remove('show');
+        if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null; }
+    }
+
+    function doConfirm() {
+        document.getElementById('confirmOverlay').classList.remove('show');
+        if (_confirmResolve) { _confirmResolve(true); _confirmResolve = null; }
+    }
+
+    window.onload = function() {
+        // 延迟清空，防止浏览器自动填充缓存
+        setTimeout(() => { document.getElementById('searchInput').value = ''; }, 50);
+        loadUsers();
+    };
+
+    async function loadUsers() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const res = await fetch(`${API}/auth/users?keyword=${encodeURIComponent(keyword)}&page=${currentPage}&size=${pageSize}`);
+        const json = await res.json();
+
+        const tbody = document.getElementById('tableBody');
+        const empty = document.getElementById('emptyState');
+        const pagination = document.getElementById('pagination');
+
+        if (json.code !== 200 || !json.data || json.data.content.length === 0) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            pagination.innerHTML = '';
+            return;
+        }
+
+        empty.style.display = 'none';
+        const users = json.data.content;
+        totalPages = json.data.totalPages;
+
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td><code>${u.userCode}</code></td>
+                <td><strong>${u.username || '-'}</strong></td>
+                <td>${u.displayName || '-'}</td>
+                <td>${u.email || '-'}</td>
+                <td>${u.phone || '-'}</td>
+                <td><span class="status-badge status-${u.status}">${u.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
+                <td>${u.lastLoginTime || '-'}</td>
+                <td class="action-btns">
+                    <button class="btn-sm btn-default" onclick="editUser('${u.id}', '${u.userCode}', '${u.username||''}', '${u.displayName||''}', '${u.email||''}', '${u.phone||''}', '${u.status}')">编辑</button>
+                    <button class="btn-sm btn-danger" onclick="deleteUser('${u.id}', '${u.userCode}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // 分页
+        pagination.innerHTML = `
+            <span>共 ${json.data.totalElements} 条</span>
+            <button onclick="goPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
+            <button onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+            <span>第 ${currentPage} / ${totalPages || 1} 页</span>
+            <button onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+            <button onclick="goPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>末页</button>
+        `;
+    }
+
+    function search() {
+        currentPage = 1;
+        loadUsers();
+    }
+
+    function goPage(p) {
+        if (p < 1 || p > totalPages) return;
+        currentPage = p;
+        loadUsers();
+    }
+
+    function openModal() {
+        document.getElementById('modalTitle').textContent = '新建用户';
+        document.getElementById('userId').value = '';
+        document.getElementById('formUserCode').value = '';
+        document.getElementById('formUserCode').disabled = false;
+        document.getElementById('formUsername').value = '';
+        document.getElementById('formPassword').value = '';
+        document.getElementById('pwdHint').textContent = '(新建必填)';
+        document.getElementById('formDisplayName').value = '';
+        document.getElementById('formEmail').value = '';
+        document.getElementById('formPhone').value = '';
+        document.getElementById('formStatus').value = 'ACTIVE';
+        document.getElementById('userModal').classList.add('show');
+    }
+
+    function editUser(id, userCode, username, displayName, email, phone, status) {
+        document.getElementById('modalTitle').textContent = '编辑用户';
+        document.getElementById('userId').value = id;
+        document.getElementById('formUserCode').value = userCode;
+        document.getElementById('formUserCode').disabled = true;
+        document.getElementById('formUsername').value = username;
+        document.getElementById('formPassword').value = '';
+        document.getElementById('pwdHint').textContent = '(留空则不修改)';
+        document.getElementById('formDisplayName').value = displayName;
+        document.getElementById('formEmail').value = email;
+        document.getElementById('formPhone').value = phone;
+        document.getElementById('formStatus').value = status;
+        document.getElementById('userModal').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('userModal').classList.remove('show');
+    }
+
+    async function saveUser() {
+        const id = document.getElementById('userId').value;
+        const userCode = document.getElementById('formUserCode').value.trim();
+        const username = document.getElementById('formUsername').value.trim();
+        const password = document.getElementById('formPassword').value;
+        const displayName = document.getElementById('formDisplayName').value.trim();
+        const email = document.getElementById('formEmail').value.trim();
+        const phone = document.getElementById('formPhone').value.trim();
+        const status = document.getElementById('formStatus').value;
+
+        if (!userCode) {
+            toast('请输入用户编码', 'error');
+            return;
+        }
+        if (!id && !password) {
+            toast('新建用户必须设置密码', 'error');
+            return;
+        }
+
+        const data = {
+            userCode,
+            username,
+            displayName,
+            email,
+            phone,
+            status
+        };
+        if (password) {
+            data.password = password;
+        }
+
+        try {
+            const url = id ? `${API}/auth/users/${id}` : `${API}/auth/users`;
+            const method = id ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const json = await res.json();
+            if (json.code === 200) {
+                closeModal();
+                loadUsers();
+                toast(id ? '用户信息已更新' : '用户创建成功', 'success');
+            } else {
+                toast(json.message || '操作失败', 'error');
+            }
+        } catch (e) {
+            toast('网络异常，请稍后重试', 'error');
+        }
+    }
+
+    async function deleteUser(id, userCode) {
+        const ok = await showConfirm(
+            '确认删除用户',
+            `确定要删除用户「${userCode}」吗？此操作不可恢复。`,
+            '🗑️',
+            true
+        );
+        if (!ok) return;
+        try {
+            const res = await fetch(`${API}/auth/users/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.code === 200) {
+                loadUsers();
+                toast('用户已删除', 'success');
+            } else {
+                toast(json.message || '删除失败', 'error');
+            }
+        } catch (e) {
+            toast('网络异常，请稍后重试', 'error');
+        }
+    }
+    </script>
+</body>
+</html>

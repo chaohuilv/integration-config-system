@@ -8,44 +8,144 @@
     <link rel="stylesheet" href="css/shared.css">
     <style>
     body, html { margin:0; padding:0; height:100%; overflow:hidden; }
-    /* 版本更新提示条 */
+
+    /* ===== 版本更新提示条 ===== */
     .update-toast {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        background: #1890ff;
+        background: linear-gradient(90deg, #1890ff, #36cfc9);
         color: white;
-        padding: 10px 20px;
+        padding: 10px 24px;
         text-align: center;
         z-index: 10000;
         display: none;
         animation: slideDown 0.3s ease;
+        font-size: 14px;
     }
     .update-toast.show { display: block; }
     .update-toast button {
         background: white;
         color: #1890ff;
         border: none;
-        padding: 6px 16px;
-        border-radius: 4px;
+        padding: 6px 18px;
+        border-radius: 6px;
         margin-left: 12px;
         cursor: pointer;
         font-weight: 600;
+        font-size: 13px;
+        transition: background 0.2s;
     }
     .update-toast button:hover { background: #f0f0f0; }
     .update-toast .close-btn {
         background: transparent;
         color: white;
         margin-left: 8px;
+        font-size: 13px;
     }
     @keyframes slideDown {
         from { transform: translateY(-100%); }
         to { transform: translateY(0); }
     }
+    /* Toast 提示 */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+    .toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #fff;
+        min-width: 220px;
+        max-width: 340px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        animation: toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        pointer-events: auto;
+    }
+    .toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+    .toast.error   { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .toast.info    { background: linear-gradient(135deg, #667eea, #5a6fd6); }
+    .toast-icon { font-size: 16px; flex-shrink: 0; }
+    .toast-msg { flex: 1; }
+    .toast-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 14px; padding: 0; flex-shrink: 0; }
+    .toast-close:hover { color: #fff; }
+    .toast.out { animation: toastOut 0.2s ease forwards; }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(30px) scale(0.9); }
+        to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    @keyframes toastOut {
+        from { opacity: 1; transform: translateX(0); }
+        to   { opacity: 0; transform: translateX(30px); }
+    }
+
+    /* 确认弹窗 */
+    .confirm-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15,23,42,0.55);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px 28px 22px;
+        max-width: 360px;
+        width: calc(100% - 40px);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+        animation: confirmIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes confirmIn {
+        from { opacity: 0; transform: scale(0.88); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    .confirm-icon { font-size: 42px; text-align: center; margin-bottom: 14px; }
+    .confirm-title { font-size: 16px; font-weight: 700; color: #1a1d23; text-align: center; margin-bottom: 6px; }
+    .confirm-desc { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 22px; line-height: 1.5; }
+    .confirm-btns { display: flex; gap: 10px; }
+    .confirm-btns .btn { flex: 1; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.18s; }
+    .confirm-btns .btn-cancel { background: #f3f4f6; color: #4b5563; }
+    .confirm-btns .btn-cancel:hover { background: #e5e7eb; }
+    .confirm-btns .btn-danger-ok { background: #ef4444; color: #fff; }
+    .confirm-btns .btn-danger-ok:hover { background: #dc2626; }
+
     </style>
 </head>
 <body>
+    <!-- 全局 Toast 提示 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 全局确认弹窗 -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-box">
+            <div class="confirm-icon" id="confirmIcon">⚠️</div>
+            <div class="confirm-title" id="confirmTitle">确认操作</div>
+            <div class="confirm-desc" id="confirmDesc">确定要执行此操作吗？</div>
+            <div class="confirm-btns">
+                <button class="btn btn-cancel" onclick="closeConfirm()">取消</button>
+                <button class="btn btn-danger-ok" id="confirmOkBtn" onclick="doConfirm()">确定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 版本更新提示 -->
     <div class="update-toast" id="updateToast">
         <span>🔄 检测到新版本，建议刷新页面</span>
@@ -71,18 +171,127 @@
     const API = '/api';
     let currentVersion = null;
     let versionCheckInterval = null;
+    let currentUser = null;
+
+    // 页面加载时检查登录状态
+    window.onload = async function() {
+        await checkLogin();
+        loadSidebar();
+        startVersionCheck();
+    };
+
+    async function checkLogin() {
+        try {
+            const res = await fetch(`${API}/auth/check`);
+            const json = await res.json();
+            if (json.code === 200 && json.data && json.data.loggedIn) {
+                currentUser = json.data;
+            } else {
+                window.location.href = 'login.html';
+            }
+        } catch (e) {
+            console.error('检查登录状态失败:', e);
+            window.location.href = 'login.html';
+        }
+    }
+
+    // 填充侧边栏用户信息（侧边栏加载完成后调用）
+    function fillSidebarUser() {
+        if (!currentUser) return;
+        const name = currentUser.displayName || currentUser.username || '用户';
+        const avatarEl = document.getElementById('sidebarAvatar');
+        const nameEl   = document.getElementById('sidebarUserName');
+        const roleEl   = document.getElementById('sidebarUserRole');
+        if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+        if (nameEl)   nameEl.textContent = name;
+        if (roleEl)   roleEl.textContent = currentUser.role === 'ADMIN' ? '管理员' : '普通用户';
+    }
+
+    // 侧边栏用户菜单开关（供 _sidebar.html 调用）
+    function toggleUserMenu() {
+        const menu = document.getElementById('sidebarUserMenu');
+        if (!menu) return;
+        menu.classList.toggle('show');
+    }
+
+    // 点击其他地方关闭菜单
+    document.addEventListener('click', function(e) {
+        const userArea = document.getElementById('sidebarUser');
+        const menu = document.getElementById('sidebarUserMenu');
+        if (menu && userArea && !userArea.contains(e.target)) {
+            menu.classList.remove('show');
+        }
+    });
+
+    let _confirmResolve = null;
+
+    // ===== Toast 提示 =====
+    function toast(msg, type = 'info', duration = 3000) {
+        const container = document.getElementById('toastContainer');
+        const icons = { success: '✅', error: '❌', info: '💡' };
+        const div = document.createElement('div');
+        div.className = `toast ${type}`;
+        div.innerHTML = `
+            <span class="toast-icon">${icons[type] || '💡'}</span>
+            <span class="toast-msg">${msg}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+        `;
+        container.appendChild(div);
+        setTimeout(() => {
+            div.classList.add('out');
+            setTimeout(() => div.remove(), 220);
+        }, duration);
+    }
+
+    // ===== 确认弹窗 =====
+    function showConfirm(title, desc, icon = '⚠️', danger = false) {
+        return new Promise(resolve => {
+            _confirmResolve = resolve;
+            document.getElementById('confirmIcon').textContent = icon;
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmDesc').textContent = desc;
+            const okBtn = document.getElementById('confirmOkBtn');
+            okBtn.textContent = danger ? '确认退出' : '确定';
+            okBtn.className = `btn ${danger ? 'btn-danger-ok' : 'btn-cancel'}`;
+            document.getElementById('confirmOverlay').classList.add('show');
+        });
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirmOverlay').classList.remove('show');
+        if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null; }
+    }
+
+    function doConfirm() {
+        document.getElementById('confirmOverlay').classList.remove('show');
+        if (_confirmResolve) { _confirmResolve(true); _confirmResolve = null; }
+    }
+
+    async function doLogout() {
+        const ok = await showConfirm('确认退出', '确定要退出登录吗？下次访问需要重新输入账号密码。', '🚪', true);
+        if (!ok) return;
+        try {
+            await fetch(`${API}/auth/logout`, { method: 'POST' });
+            window.location.href = 'login.html';
+        } catch (e) {
+            toast('退出失败，请重试', 'error');
+        }
+    }
 
     // 加载侧边栏到主壳
-    fetch('_sidebar.html')
-        .then(r => r.text())
-        .then(html => {
-            document.getElementById('sidebarContainer').innerHTML = html;
-            updateNav('list');
-        })
-        .catch(() => {
-            document.getElementById('sidebarContainer').innerHTML =
-                '<iframe src="_sidebar.html" style="width:220px;height:100%;border:none;" frameborder="0"></iframe>';
-        });
+    function loadSidebar() {
+        fetch('_sidebar.html')
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('sidebarContainer').innerHTML = html;
+                updateNav('list');
+                fillSidebarUser();
+            })
+            .catch(() => {
+                document.getElementById('sidebarContainer').innerHTML =
+                    '<iframe src="_sidebar.html" style="width:220px;height:100%;border:none;" frameborder="0"></iframe>';
+            });
+    }
 
     // 路由函数：切换右侧 iframe 页面
     function loadPage(page, params) {
@@ -92,14 +301,17 @@
             debug:  'api_debug.html',
             logs:   'api_logs.html',
             sdk:    'api_sdk.html',
+            users:  'user_list.html',
             form:   'api_form.html' + (params ? '?id=' + params : ''),
             detail: 'api_detail.html' + (params ? '?id=' + params : '')
         };
         const src = map[page] || 'api_list.html';
-        // 添加时间戳参数强制刷新
         const separator = src.includes('?') ? '&' : '?';
         document.getElementById('contentFrame').src = src + separator + '_t=' + Date.now();
         updateNav(page);
+        // 关闭用户菜单
+        const menu = document.getElementById('sidebarUserMenu');
+        if (menu) menu.classList.remove('show');
     }
 
     // 更新侧边栏高亮
@@ -114,22 +326,20 @@
 
     // 版本检测
     async function checkVersion() {
-        try {
+        /*try {
             const res = await fetch(`${API}/version`);
             const json = await res.json();
             if (json.code === 200 && json.data && json.data.version) {
                 const newVersion = json.data.version;
                 if (currentVersion === null) {
-                    // 首次加载，记录当前版本
                     currentVersion = newVersion;
                 } else if (newVersion !== currentVersion) {
-                    // 版本变化，显示更新提示
                     showUpdateToast();
                 }
             }
         } catch (e) {
             console.warn('版本检测失败:', e);
-        }
+        }*/
     }
 
     function showUpdateToast() {
@@ -140,21 +350,17 @@
         document.getElementById('updateToast').classList.remove('show');
     }
 
-    // 启动版本检测（每30秒检测一次）
     function startVersionCheck() {
-        checkVersion(); // 立即检测一次
+        checkVersion();
         versionCheckInterval = setInterval(checkVersion, 30000);
     }
 
-    // 页面可见性变化时检测
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             checkVersion();
+            checkLogin();
         }
     });
-
-    // 启动版本检测
-    startVersionCheck();
     </script>
 </body>
 </html>
