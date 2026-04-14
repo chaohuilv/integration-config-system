@@ -17,6 +17,38 @@
 
     <div class="view-body">
         <div class="sdk-content">
+
+            <!-- 源码下载 -->
+            <div class="sdk-source-downloads">
+                <h3>📦 SDK 源码下载</h3>
+                <div class="download-grid">
+                    <a class="download-card" href="client-sdk/java.zip" download>
+                        <div class="dl-icon java-color">☕</div>
+                        <div class="dl-info">
+                            <div class="dl-name">Java SDK</div>
+                            <div class="dl-files">IntegrationClient.java · IntegrationException.java</div>
+                        </div>
+                        <div class="dl-btn">⬇ 下载</div>
+                    </a>
+                    <a class="download-card" href="client-sdk/csharp.zip" download>
+                        <div class="dl-icon csharp-color">🔷</div>
+                        <div class="dl-info">
+                            <div class="dl-name">C# SDK</div>
+                            <div class="dl-files">IntegrationClient.cs · IntegrationException.cs</div>
+                        </div>
+                        <div class="dl-btn">⬇ 下载</div>
+                    </a>
+                    <a class="download-card" href="client-sdk/python.zip" download>
+                        <div class="dl-icon python-color">🐍</div>
+                        <div class="dl-info">
+                            <div class="dl-name">Python SDK</div>
+                            <div class="dl-files">integration_sdk.py（含 IntegrationException）</div>
+                        </div>
+                        <div class="dl-btn">⬇ 下载</div>
+                    </a>
+                </div>
+            </div>
+
             <h3>1. Maven 依赖</h3>
             <div class="response-box">&lt;dependency&gt;
     &lt;groupId&gt;com.integration&lt;/groupId&gt;
@@ -182,11 +214,296 @@ headers.put("Authorization", "Bearer another-token-xxx");
 client.invoke("user-get", Map.of("id", 1), null, headers);
 // 此时使用的是 another-token-xxx，而非配置表中的 Token</pre>
             </div>
+            <h3>7. C# (.NET) SDK</h3>
+            <div class="sdk-section">
+                <h4>7.1 安装</h4>
+                <div class="response-box"># via NuGet Package Manager
+Install-Package IntegrationSDK
+
+# via .NET CLI
+dotnet add package IntegrationSDK</div>
+
+                <h4>7.2 快速开始</h4>
+                <div class="response-box">// 初始化客户端
+var client = new IntegrationClient("http://localhost:8080");
+
+// GET 请求（无参数）
+string result = client.Invoke("user-list");
+
+// GET 请求（带 URL 参数）
+string result = client.Invoke("user-get", new Dictionary&lt;string, object&gt;
+{
+    { "id", 1001 }
+});
+
+// POST 请求（带请求体）
+string result = client.Invoke("user-create",
+    new Dictionary&lt;string, object&gt; { { "deptId", 10 } },   // URL 参数
+    "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}" // JSON 请求体
+);
+
+// 带自定义请求头
+var headers = new Dictionary&lt;string, string&gt;
+{
+    { "X-Request-Id", "req-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() },
+    { "Accept-Language", "zh-CN" }
+};
+string result = client.Invoke("user-create",
+    new Dictionary&lt;string, object&gt;(),
+    "{\"name\":\"张三\"}",
+    headers
+);</div>
+
+                <h4>7.3 完整示例</h4>
+                <div class="response-box">using IntegrationSDK;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class Example
+{
+    public static async Task Main(string[] args)
+    {
+        var client = new IntegrationClient("http://localhost:8080");
+
+        try
+        {
+            // 示例1：简单 GET 请求
+            string userJson = client.Invoke("user-get",
+                new Dictionary&lt;string, object&gt; { { "id", 1001 } });
+            Console.WriteLine("用户信息: " + userJson);
+
+            // 示例2：POST 请求
+            string newUserJson = client.Invoke("user-create",
+                new Dictionary&lt;string, object&gt; { { "deptId", 10 } },
+                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}");
+            Console.WriteLine("创建结果: " + newUserJson);
+
+            // 示例3：自定义请求头覆盖认证
+            var authHeaders = new Dictionary&lt;string, string&gt;
+            {
+                { "Authorization", "Bearer test-token-123" }
+            };
+            string result = client.Invoke("api-test",
+                new Dictionary&lt;string, object&gt;(),
+                null,
+                authHeaders);
+
+            // 示例4：异步调用
+            string asyncResult = await client.InvokeAsync("user-list");
+            Console.WriteLine("异步结果: " + asyncResult);
+        }
+        catch (IntegrationException ex)
+        {
+            Console.Error.WriteLine("调用失败: " + ex.Message);
+        }
+    }
+}</div>
+
+                <h4>7.4 Header 认证示例</h4>
+                <div class="response-box">// API Key 认证
+var headers = new Dictionary&lt;string, string&gt;
+{
+    { "X-API-Key", "sk-xxxxxxxxxxxxxx" }
+};
+string result = client.Invoke("api-test", null, null, headers);
+
+// Bearer Token 认证
+var authHeaders = new Dictionary&lt;string, string&gt;
+{
+    { "Authorization", "Bearer eyJhbGciOiJIUzI1NiIs..." }
+};
+string result = client.Invoke("api-test", null, null, authHeaders);
+
+// Basic Auth 认证
+var basicHeaders = new Dictionary&lt;string, string&gt;
+{
+    { "Authorization", "Basic " + Convert.ToBase64String(
+        System.Text.Encoding.UTF8.GetBytes("username:password")) }
+};</div>
+
+                <h4>7.5 方法参考</h4>
+                <table class="table">
+                    <thead><tr><th>方法</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>Invoke(apiCode)</code></td><td>GET 请求，无参数</td></tr>
+                        <tr><td><code>Invoke(apiCode, params)</code></td><td>GET 请求，带 URL 参数</td></tr>
+                        <tr><td><code>Invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
+                        <tr><td><code>Invoke(apiCode, params, body, headers)</code></td><td>完整调用，带自定义请求头</td></tr>
+                        <tr><td><code>InvokeAsync(apiCode, ...)</code></td><td>异步调用，返回 Task&lt;string&gt;</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>8. Python SDK</h3>
+            <div class="sdk-section">
+                <h4>8.1 安装</h4>
+                <div class="response-box"># via pip
+pip install integration-sdk
+
+# via poetry
+poetry add integration-sdk</div>
+
+                <h4>8.2 快速开始</h4>
+                <div class="response-box">from integration_sdk import IntegrationClient
+
+# 初始化客户端
+client = IntegrationClient("http://localhost:8080")
+
+# GET 请求（无参数）
+result = client.invoke("user-list")
+
+# GET 请求（带 URL 参数）
+result = client.invoke("user-get", params={"id": 1001})
+
+# POST 请求（带请求体）
+result = client.invoke(
+    "user-create",
+    params={"deptId": 10},                                    # URL 参数
+    body={"username": "zhangsan", "email": "zhangsan@example.com"}  # JSON 请求体
+)
+
+# 带自定义请求头
+headers = {
+    "X-Request-Id": f"req-{int(time.time() * 1000)}",
+    "Accept-Language": "zh-CN"
+}
+result = client.invoke(
+    "user-create",
+    params={},
+    body={"name": "张三"},
+    headers=headers
+)</div>
+
+                <h4>8.3 完整示例</h4>
+                <div class="response-box">from integration_sdk import IntegrationClient
+from integration_sdk.exceptions import IntegrationException
+import json
+
+def main():
+    client = IntegrationClient("http://localhost:8080")
+
+    try:
+        # 示例1：简单 GET 请求
+        user_json = client.invoke("user-get", params={"id": 1001})
+        print(f"用户信息: {user_json}")
+
+        # 示例2：POST 请求
+        new_user_json = client.invoke(
+            "user-create",
+            params={"deptId": 10},
+            body={"username": "zhangsan", "email": "zhangsan@example.com"}
+        )
+        print(f"创建结果: {new_user_json}")
+
+        # 示例3：自定义请求头覆盖认证
+        auth_headers = {
+            "Authorization": "Bearer test-token-123"
+        }
+        result = client.invoke(
+            "api-test",
+            params={},
+            body=None,
+            headers=auth_headers
+        )
+        print(f"调试结果: {result}")
+
+        # 示例4：同步调用（同步模式，同上）
+        result = client.invoke("user-list")
+
+        # 示例5：批量调用
+        results = client.batch_invoke([
+            ("user-get", {"id": 1001}),
+            ("user-get", {"id": 1002}),
+        ])
+        for item in results:
+            print(item)
+
+    except IntegrationException as e:
+        print(f"调用失败: {e.message}", file=sys.stderr)
+
+if __name__ == "__main__":
+    import sys
+    import time
+    main()</div>
+
+                <h4>8.4 Header 认证示例</h4>
+                <div class="response-box"># API Key 认证
+headers = {
+    "X-API-Key": "sk-xxxxxxxxxxxxxx"
+}
+result = client.invoke("api-test", headers=headers)
+
+# Bearer Token 认证
+headers = {
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
+}
+result = client.invoke("api-test", headers=headers)
+
+# Basic Auth 认证
+import base64
+credentials = base64.b64encode(b"username:password").decode("utf-8")
+headers = {
+    "Authorization": f"Basic {credentials}"
+}
+result = client.invoke("api-test", headers=headers)
+
+# 多个自定义 Header
+headers = {
+    "Content-Type": "application/json",
+    "X-Request-Id": "req-12345",
+    "X-Client-Version": "1.0.0"
+}
+result = client.invoke("api-test", headers=headers)</div>
+
+                <h4>8.5 方法参考</h4>
+                <table class="table">
+                    <thead><tr><th>方法</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>invoke(api_code)</code></td><td>GET 请求，无参数</td></tr>
+                        <tr><td><code>invoke(api_code, params={...})</code></td><td>GET 请求，带 URL 参数</td></tr>
+                        <tr><td><code>invoke(api_code, params={...}, body={...})</code></td><td>POST 请求，带参数和请求体</td></tr>
+                        <tr><td><code>invoke(api_code, params={...}, body={...}, headers={...})</code></td><td>完整调用，带自定义请求头</td></tr>
+                        <tr><td><code>batch_invoke(items)</code></td><td>批量调用，items 为 (api_code, params) 元组列表</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
 
     <script>
     if (parent.setNav) parent.setNav('sdk');
+
+    // 响应框复制按钮
+    (function() {
+        var boxes = document.querySelectorAll('.response-box');
+        boxes.forEach(function(box) {
+            var btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = '📋 复制';
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var text = box.textContent
+                    .replace(/^\s*复制\s*/, '')   // 去掉按钮文字干扰
+                    .trim();
+                navigator.clipboard.writeText(text).then(function() {
+                    btn.textContent = '✅ 已复制';
+                    btn.classList.add('copied');
+                    setTimeout(function() {
+                        btn.textContent = '📋 复制';
+                        btn.classList.remove('copied');
+                    }, 1500);
+                }).catch(function() {
+                    btn.textContent = '❌ 失败';
+                    setTimeout(function() {
+                        btn.textContent = '📋 复制';
+                    }, 1500);
+                });
+            });
+            box.appendChild(btn);
+        });
+    })();
     </script>
 </body>
 </html>

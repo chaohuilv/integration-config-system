@@ -162,18 +162,46 @@
 .stat-value { font-size: 26px; font-weight: 700; color: #667eea; }
 .stat-label { font-size: 13px; color: #999; margin-top: 4px; }
 
-/* 响应框 / 代码框 */
 .response-box {
     background: #1e1e1e;
     color: #d4d4d4;
-    padding: 16px;
+    padding: 36px 16px 16px;
     border-radius: 8px;
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 13px;
-    max-height: 350px;
+    /*max-height: 350px;*/
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-all;
+    position: relative;
+    user-select: all;
+}
+
+/* 响应框复制按钮 */
+.response-box .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #aaa;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    z-index: 5;
+    font-family: system-ui, sans-serif;
+    letter-spacing: 0.02em;
+}
+.response-box .copy-btn:hover {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+.response-box .copy-btn.copied {
+    background: rgba(76,175,80,0.25);
+    border-color: rgba(76,175,80,0.5);
+    color: #81c784;
 }
 .json-textarea {
     width: 100%;
@@ -546,6 +574,97 @@
     margin: 28px 0 12px;
 }
 .sdk-content h3:first-child { margin-top: 0; }
+.sdk-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    margin: 20px 0 8px;
+}
+.sdk-content .sdk-section {
+    margin-bottom: 12px;
+}
+
+/* ============================================================
+   SDK 源码下载卡片
+   ============================================================ */
+.sdk-source-downloads {
+    background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+    border: 1px solid #dde3f5;
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 24px;
+}
+.sdk-source-downloads h3 {
+    margin: 0 0 14px !important;
+    font-size: 15px;
+    font-weight: 600;
+    color: #334155;
+}
+.download-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.download-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.18s;
+    cursor: pointer;
+}
+.download-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+    transform: translateY(-1px);
+}
+.download-card:hover .dl-btn {
+    background: #667eea;
+    color: #fff;
+}
+.dl-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+}
+.java-color   { color: #e76f00; }
+.csharp-color { color: #68217a; }
+.python-color { color: #3776ab; }
+.dl-info {
+    flex: 1;
+    min-width: 0;
+}
+.dl-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 3px;
+}
+.dl-files {
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dl-btn {
+    font-size: 12px;
+    font-weight: 600;
+    color: #667eea;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: #eef0ff;
+    border: 1px solid #dde1f5;
+    flex-shrink: 0;
+    transition: all 0.18s;
+}
 
 /* ============================================================
    响应式
