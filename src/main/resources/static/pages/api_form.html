@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 新建/编辑</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 表单页专属样式 */
+        .api-form {
+            max-width: 1200px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group .required {
+            color: #ff4d4f;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-section {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-top: 16px;
+        }
+
+        .form-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 14px;
+            border-bottom: 1px solid #f5f5f5;
+            padding-bottom: 10px;
+        }
+
+        .form-section .form-group {
+            margin-top: 12px;
+        }
+
+        .form-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 20px 28px;
+            border-top: 1px solid #f0f0f0;
+            background: white;
+            flex-shrink: 0;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .json-textarea {
+            font-family: 'Courier New', monospace !important;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="formTitle">➕ 新建接口</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" onclick="parent.loadPage('list')">← 返回列表</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <form class="api-form" id="apiForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>接口名称 <span class="required">*</span></label>
+                    <input type="text" name="name" required placeholder="例如：获取用户信息">
+                </div>
+                <div class="form-group">
+                    <label>接口编码 <span class="required">*</span></label>
+                    <input type="text" name="code" required placeholder="英文唯一标识，如 user-get" id="fCode">
+                </div>
+                <div class="form-group">
+                    <label>分组名称</label>
+                    <input type="text" name="groupName" placeholder="例如：用户服务">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select name="status">
+                        <option value="ACTIVE">✅ 启用</option>
+                        <option value="INACTIVE">⛔ 禁用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>HTTP 方法 <span class="required">*</span></label>
+                    <select name="method" id="fMethod">
+                        <option value="GET">GET - 获取资源</option>
+                        <option value="POST">POST - 创建资源</option>
+                        <option value="PUT">PUT - 更新资源</option>
+                        <option value="DELETE">DELETE - 删除资源</option>
+                        <option value="PATCH">PATCH - 部分更新</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>超时时间(ms)</label>
+                    <input type="number" name="timeout" value="30000" placeholder="30000">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>目标地址</h3>
+                <div class="form-group">
+                    <label>接口URL <span class="required">*</span></label>
+                    <input type="text" name="url" required placeholder="https://api.example.com/users/{id}">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>请求参数 <small style="color:#999;font-weight:400">（URL Query 参数，JSON 格式）</small></h3>
+                <textarea name="requestParams" class="json-textarea" rows="3" placeholder='{"page": 1, "size": 10}'></textarea>
+            </div>
+
+            <div class="form-section">
+                <h3>请求头 <small style="color:#999;font-weight:400">（可选，每行一个，格式：Key: Value）</small></h3>
+                <textarea name="headers" class="json-textarea" rows="3" placeholder="Content-Type: application/json&#10;Authorization: Bearer xxx"></textarea>
+            </div>
+
+            <div class="form-section">
+                <h3>请求体 <small style="color:#999;font-weight:400">（POST/PUT/PATCH 可用，JSON 格式）</small></h3>
+                <textarea name="requestBody" class="json-textarea" rows="4" placeholder='{"key": "value"}'></textarea>
+            </div>
+
+            <div class="form-section">
+                <h3>认证方式</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>认证类型</label>
+                        <select name="authType" id="fAuthType">
+                            <option value="NONE">🔓 无认证</option>
+                            <option value="API_KEY">🔑 API Key</option>
+                            <option value="BEARER">🎫 Bearer Token</option>
+                            <option value="BASIC">🔐 Basic Auth</option>
+                            <option value="DYNAMIC">🔄 动态Token</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>认证参数名</label>
+                        <input type="text" name="authParamName" placeholder="如：X-API-Key">
+                    </div>
+                    <div class="form-group">
+                        <label>认证值</label>
+                        <input type="text" name="authInfo" placeholder="固定值或 {动态}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="dynamicTokenSection" style="display:none">
+                <h3>动态Token配置</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Token接口编码</label>
+                        <input type="text" name="tokenApiCode" placeholder="引用系统中已有的接口编码">
+                    </div>
+                    <div class="form-group">
+                        <label>Token提取路径</label>
+                        <input type="text" name="tokenExtractPath" placeholder="如：$.data.token 或 data.access_token">
+                    </div>
+                    <div class="form-group">
+                        <label>Token参数位置</label>
+                        <select name="tokenPosition">
+                            <option value="header">📋 请求头</option>
+                            <option value="url">🔗 URL参数</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Token请求头参数名</label>
+                        <input type="text" name="tokenParamName" placeholder="如：Authorization">
+                    </div>
+                    <div class="form-group">
+                        <label>Token前缀</label>
+                        <input type="text" name="tokenPrefix" placeholder="如：Bearer （不含空格）">
+                    </div>
+                    <div class="form-group">
+                        <label>动态Token是否启用</label>
+                        <select name="enableDynamicToken">
+                            <option value="true">✅ 启用</option>
+                            <option value="false">⛔ 禁用</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>其他</h3>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea name="description" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;min-height:80px;background:#fafafa;" placeholder="接口用途说明..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <button type="button" class="btn btn-default" onclick="parent.loadPage('list')">取消</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">创建接口</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        const editId = utils.getUrlParam('id');
+        const isEdit = !!editId;
+
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('form');
+
+        // 切换认证类型显示/隐藏动态Token配置
+        function toggleAuth() {
+            const authType = $('#fAuthType').val();
+            if (authType === 'DYNAMIC') {
+                $('#dynamicTokenSection').slideDown(200);
+            } else {
+                $('#dynamicTokenSection').slideUp(200);
+            }
+        }
+
+        // 绑定认证类型切换事件
+        $('#fAuthType').on('change', toggleAuth);
+
+        // 编辑模式：加载数据并填充表单
+        if (isEdit) {
+            $('#formTitle').text('✏️ 编辑接口');
+            $('#submitBtn').text('保存修改');
+            $('#fCode').prop('readonly', true);
+
+            // 加载接口数据
+            API.config.get(editId)
+                .then(json => {
+                    const d = json.data;
+                    const form = document.getElementById('apiForm');
+
+                    // 填充普通字段
+                    const fields = ['name', 'code', 'groupName', 'url', 'requestParams', 'requestBody',
+                        'authParamName', 'authInfo', 'description',
+                        'tokenApiCode', 'tokenExtractPath', 'tokenParamName', 'tokenPrefix'];
+                    
+                    fields.forEach(k => {
+                        if (d[k] && form[k]) {
+                            form[k].value = d[k];
+                        }
+                    });
+
+                    // 填充选择框
+                    if (d.status) form.status.value = d.status;
+                    if (d.method) form.method.value = d.method;
+                    if (d.timeout) form.timeout.value = d.timeout;
+                    if (d.authType) form.authType.value = d.authType;
+                    if (d.tokenPosition) form.tokenPosition.value = d.tokenPosition;
+
+                    // 格式化 headers JSON
+                    if (d.headers) {
+                        try {
+                            form.headers.value = JSON.stringify(JSON.parse(d.headers), null, 2);
+                        } catch (e) {
+                            form.headers.value = d.headers;
+                        }
+                    }
+
+                    // 更新动态Token区域显示状态
+                    toggleAuth();
+                })
+                .catch(err => {
+                    utils.toast('加载失败: ' + err.message, 'error');
+                });
+        }
+
+        // 表单提交
+        $('#apiForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const payload = {};
+
+            // 收集表单数据
+            formData.forEach((v, k) => {
+                if (v !== '') payload[k] = v;
+            });
+
+            // JSON 字段验证和格式化
+            const jsonFields = ['requestParams', 'headers', 'requestBody'];
+            let hasError = false;
+
+            jsonFields.forEach(k => {
+                if (payload[k]) {
+                    try {
+                        // 如果是 headers，保持原始格式（每行一个）
+                        if (k === 'headers') {
+                            // 不转换，保持原始文本
+                        } else {
+                            payload[k] = JSON.stringify(JSON.parse(payload[k]));
+                        }
+                    } catch (err) {
+                        utils.toast(k + ' 格式错误，请输入合法 JSON', 'error');
+                        hasError = true;
+                    }
+                }
+            });
+
+            if (hasError) return;
+
+            // 转换 timeout 为数字
+            if (payload.timeout) {
+                payload.timeout = parseInt(payload.timeout);
+            }
+
+            // 编辑模式添加 ID
+            if (isEdit) {
+                payload.id = editId;
+            }
+
+            // 禁用提交按钮
+            const submitBtn = $('#submitBtn');
+            submitBtn.prop('disabled', true).text('提交中...');
+
+            // 提交数据
+            const request = isEdit 
+                ? API.config.update(editId, payload)
+                : API.config.create(payload);
+
+            request
+                .then(json => {
+                    utils.toast(isEdit ? '保存成功' : '创建成功', 'success');
+                    setTimeout(() => {
+                        parent.loadPage('list');
+                    }, 500);
+                })
+                .catch(err => {
+                    utils.toast('失败: ' + err.message, 'error');
+                })
+                .finally(() => {
+                    submitBtn.prop('disabled', false).text(isEdit ? '保存修改' : '创建接口');
+                });
+        });
+
+        // 初始化：编辑模式下触发一次 toggleAuth
+        if (isEdit) {
+            // 等待数据加载后再触发
+            setTimeout(toggleAuth, 100);
+        }
+    });
+    </script>
+</body>
+</html>

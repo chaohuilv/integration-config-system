@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 详情</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 详情页专属样式 */
+        .detail-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .detail-section {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+
+        .detail-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 14px;
+            border-bottom: 1px solid #f5f5f5;
+            padding-bottom: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid #f8f8f8;
+            font-size: 13px;
+            align-items: flex-start;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #999;
+            min-width: 72px;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+
+        .detail-json {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            max-height: 80px;
+            overflow: auto;
+            background: #fafafa;
+            padding: 6px 8px;
+            border-radius: 4px;
+            flex: 1;
+        }
+
+        /* 日志容器：表格滚动 + 分页固定 */
+        .log-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .log-table-wrap {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .log-pagination {
+            flex-shrink: 0;
+            padding: 12px 0 0;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .detail-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            .detail-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">📄 接口详情</h2>
+            <p class="view-sub" id="pageSub"></p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" id="editBtn">✏️ 编辑</button>
+            <button class="btn btn-ghost" onclick="parent.loadPage('list')">← 返回列表</button>
+        </div>
+    </div>
+
+    <div class="view-body" id="body">
+        <div style="text-align:center;padding:60px;color:#ccc;">加载中...</div>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        let currentData = null;
+        let currentId = null;
+        let apiCode = null;
+        let logPage = 1;
+        let logTotal = 0;
+        const logSize = 10;
+
+        // 获取 URL 参数
+        currentId = utils.getUrlParam('id');
+
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('detail');
+
+        // 编辑按钮点击
+        $('#editBtn').on('click', function() {
+            parent.loadPage('form', currentId);
+        });
+
+        // 加载接口详情
+        async function load() {
+            if (!currentId) {
+                $('#body').html('<div style="text-align:center;padding:60px;">缺少接口ID</div>');
+                return;
+            }
+
+            try {
+                const json = await API.config.get(currentId);
+                currentData = json.data;
+                render();
+            } catch (err) {
+                $('#body').html('<div style="text-align:center;padding:60px;">请求失败: ' + utils.escapeHtml(err.message) + '</div>');
+                utils.toast('加载失败', 'error');
+            }
+        }
+
+        // 渲染详情
+        function render() {
+            const d = currentData;
+
+            // 统计数据
+            const totalCalls = d.invokeCount || 0;
+            const successCalls = d.successCount || 0;
+            const failCalls = totalCalls - successCalls;
+            const successRateDisplay = d.successRate != null ? d.successRate.toFixed(1) + '%' : '0%';
+
+            // 认证类型映射
+            const authTypeMap = {
+                'NONE': '无认证',
+                'BASIC': 'Basic Auth',
+                'BEARER': 'Bearer Token',
+                'API_KEY': 'API Key',
+                'DYNAMIC': '动态Token',
+                'OAUTH2': 'OAuth 2.0'
+            };
+            const authTypeDisplay = authTypeMap[d.authType] || d.authType || '无认证';
+            const hasAuth = d.authType && d.authType !== 'NONE';
+
+            apiCode = d.code || '';
+            $('#pageTitle').text('📄 ' + (d.name || '接口详情'));
+            $('#pageSub').html('<code>' + utils.escapeHtml(d.code || '') + '</code>');
+
+            // 构建认证信息 HTML
+            let authInfoHtml = '<div class="detail-section"><h3>认证信息</h3>';
+            authInfoHtml += '<div class="detail-row"><span class="detail-label">认证类型</span><span>' + utils.escapeHtml(authTypeDisplay) + '</span></div>';
+
+            if (hasAuth && d.authInfo) {
+                const authInfoDisplay = d.authInfo.length > 100 ? d.authInfo.substring(0, 100) + '...' : d.authInfo;
+                authInfoHtml += '<div class="detail-row"><span class="detail-label">认证信息</span><span><code>' + utils.escapeHtml(authInfoDisplay) + '</code></span></div>';
+            }
+
+            if (d.enableDynamicToken) {
+                authInfoHtml += '<div class="detail-row"><span class="detail-label">Token接口</span><span><code>' + utils.escapeHtml(d.tokenApiCode || '-') + '</code></span></div>';
+                authInfoHtml += '<div class="detail-row"><span class="detail-label">提取路径</span><span>' + utils.escapeHtml(d.tokenExtractPath || '-') + '</span></div>';
+                authInfoHtml += '<div class="detail-row"><span class="detail-label">Token位置</span><span>' + utils.escapeHtml(d.tokenPosition || 'HEADER') + '</span></div>';
+                if (d.tokenParamName) {
+                    authInfoHtml += '<div class="detail-row"><span class="detail-label">参数名</span><span>' + utils.escapeHtml(d.tokenParamName) + '</span></div>';
+                }
+                if (d.tokenPrefix) {
+                    authInfoHtml += '<div class="detail-row"><span class="detail-label">前缀</span><span>' + utils.escapeHtml(d.tokenPrefix) + '</span></div>';
+                }
+                authInfoHtml += '<div class="detail-row"><span class="detail-label">缓存时间</span><span>' + (d.tokenCacheTime || 300) + '秒</span></div>';
+            }
+            authInfoHtml += '</div>';
+
+            // 渲染详情内容
+            const html = `
+                <div class="detail-scroll">
+                    <div class="detail-stats">
+                        <div class="stat-card"><div class="stat-value">${totalCalls}</div><div class="stat-label">总调用</div></div>
+                        <div class="stat-card"><div class="stat-value" style="color:#52c41a">${successCalls}</div><div class="stat-label">成功</div></div>
+                        <div class="stat-card"><div class="stat-value" style="color:#ff4d4f">${failCalls}</div><div class="stat-label">失败</div></div>
+                        <div class="stat-card"><div class="stat-value">${successRateDisplay}</div><div class="stat-label">成功率</div></div>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-section">
+                            <h3>基本信息</h3>
+                            <div class="detail-row"><span class="detail-label">接口名称</span><span>${utils.escapeHtml(d.name || '-')}</span></div>
+                            <div class="detail-row"><span class="detail-label">接口编码</span><span><code>${utils.escapeHtml(d.code || '-')}</code></span></div>
+                            <div class="detail-row"><span class="detail-label">分组</span><span>${utils.escapeHtml(d.groupName || '-')}</span></div>
+                            <div class="detail-row"><span class="detail-label">状态</span><span class="badge badge-${(d.status || 'ACTIVE').toLowerCase()}">${d.status === 'ACTIVE' ? '启用' : '禁用'}</span></div>
+                            <div class="detail-row"><span class="detail-label">HTTP方法</span><span class="method method-${(d.method || 'GET').toLowerCase()}">${d.method || '-'}</span></div>
+                            <div class="detail-row"><span class="detail-label">超时时间</span><span>${d.timeout || 30000}ms</span></div>
+                            <div class="detail-row"><span class="detail-label">描述</span><span>${utils.escapeHtml(d.description || '-')}</span></div>
+                        </div>
+                        <div class="detail-section">
+                            <h3>请求信息</h3>
+                            <div class="detail-row"><span class="detail-label">目标URL</span><span style="word-break:break-all">${utils.escapeHtml(d.url || '-')}</span></div>
+                            <div class="detail-row"><span class="detail-label">请求参数</span><pre class="detail-json">${utils.escapeHtml(d.requestParams || '-')}</pre></div>
+                            <div class="detail-row"><span class="detail-label">请求头</span><pre class="detail-json">${utils.escapeHtml(d.headers || '-')}</pre></div>
+                            <div class="detail-row"><span class="detail-label">请求体</span><pre class="detail-json">${utils.escapeHtml(d.requestBody || '-')}</pre></div>
+                        </div>
+                        ${authInfoHtml}
+                    </div>
+
+                    <div class="detail-section" style="margin-top:24px;">
+                        <h3>该接口调用日志 <button class="btn btn-sm btn-default" id="btnRefreshLogs" style="margin-left:12px;">🔄 刷新</button></h3>
+                        <div class="log-container">
+                            <div class="log-table-wrap" id="logsWrap"><div style="text-align:center;padding:40px;color:#ccc;">点击刷新按钮加载日志</div></div>
+                            <div class="log-pagination" id="logPagination"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#body').html(html);
+
+            // 绑定刷新日志按钮事件
+            $('#btnRefreshLogs').on('click', function() {
+                loadLogs(1);
+            });
+
+            // 初始加载日志
+            loadLogs(1);
+        }
+
+        // 加载日志列表
+        async function loadLogs(page) {
+            logPage = page || 1;
+
+            try {
+                const json = await API.invoke.getLogs({
+                    apiCode: apiCode,
+                    page: logPage,
+                    size: logSize
+                });
+
+                const data = json.data;
+                const logs = data.records || [];
+                logTotal = data.total || 0;
+
+                if (!logs.length) {
+                    $('#logsWrap').html('<div style="text-align:center;padding:40px;color:#ccc;">暂无日志记录</div>');
+                    $('#logPagination').html('');
+                    return;
+                }
+
+                // 渲染日志表格
+                const tableHtml = logs.map(l => `
+                    <tr>
+                        <td><code>${utils.escapeHtml(l.apiCode || '-')}</code></td>
+                        <td><span style="font-weight:600;color:${l.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${l.responseStatus || '-'}</span></td>
+                        <td>${utils.formatDate(l.invokeTime)}</td>
+                        <td>${l.costTime != null ? l.costTime + 'ms' : '-'}</td>
+                        <td><span class="badge badge-${l.success ? 'active' : 'inactive'}">${l.success ? '成功' : '失败'}</span></td>
+                        <td><button class="btn btn-sm btn-default btn-log-detail" data-id="${l.id}">详情</button></td>
+                    </tr>
+                `).join('');
+
+                $('#logsWrap').html('<table class="table"><thead><tr><th>接口编码</th><th>状态码</th><th>调用时间</th><th>耗时</th><th>结果</th><th>操作</th></tr></thead><tbody>' + tableHtml + '</tbody></table>');
+
+                // 绑定日志详情按钮事件
+                $('.btn-log-detail').on('click', function() {
+                    const logId = $(this).data('id');
+                    showLogDetail(logId);
+                });
+
+                // 渲染分页
+                renderPagination();
+            } catch (err) {
+                $('#logsWrap').html('<div style="text-align:center;padding:40px;color:#ff4d4f;">加载失败: ' + utils.escapeHtml(err.message) + '</div>');
+                $('#logPagination').html('');
+                utils.toast('日志加载失败', 'error');
+            }
+        }
+
+        // 渲染分页
+        function renderPagination() {
+            const totalPages = Math.ceil(logTotal / logSize);
+            if (totalPages <= 1) {
+                $('#logPagination').html('');
+                return;
+            }
+
+            let pages = [];
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= logPage - 1 && i <= logPage + 1)) {
+                    pages.push(i);
+                } else if (pages[pages.length - 1] !== '...') {
+                    pages.push('...');
+                }
+            }
+
+            let html = '<button class="btn btn-sm btn-default" id="btnLogPrev"' + (logPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+            
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += '<span style="padding:0 8px;">...</span>';
+                } else {
+                    html += '<button class="btn btn-sm ' + (p === logPage ? 'btn-primary' : 'btn-default') + ' btn-log-page" data-page="' + p + '">' + p + '</button>';
+                }
+            });
+
+            html += '<button class="btn btn-sm btn-default" id="btnLogNext"' + (logPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
+            html += '<span style="margin-left:12px;color:#999;">共 ' + logTotal + ' 条</span>';
+
+            $('#logPagination').html(html);
+
+            // 绑定分页按钮事件
+            $('#btnLogPrev').on('click', function() {
+                if (logPage > 1) loadLogs(logPage - 1);
+            });
+
+            $('#btnLogNext').on('click', function() {
+                if (logPage < totalPages) loadLogs(logPage + 1);
+            });
+
+            $('.btn-log-page').on('click', function() {
+                const page = $(this).data('page');
+                loadLogs(page);
+            });
+        }
+
+        // 显示日志详情
+        async function showLogDetail(id) {
+            try {
+                const json = await API.invoke.getLogDetail(id);
+                const d = json.data;
+
+                const detailHtml = `
+                    <div style="background:#f5f7fa;border-radius:8px;padding:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                            <h3 style="margin:0;">日志详情 #${id}</h3>
+                            <button class="btn btn-sm btn-default" id="btnBackToList">← 返回列表</button>
+                        </div>
+                        <table class="table" style="background:white;">
+                            <tr><td style="width:100px;color:#999;">接口编码</td><td><code>${utils.escapeHtml(d.apiCode || '-')}</code></td></tr>
+                            <tr><td style="color:#999;">状态码</td><td style="font-weight:600;color:${d.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${d.responseStatus || '-'}</td></tr>
+                            <tr><td style="color:#999;">耗时</td><td>${d.costTime != null ? d.costTime + 'ms' : '-'}</td></tr>
+                            <tr><td style="color:#999;">调用时间</td><td>${utils.formatDate(d.invokeTime)}</td></tr>
+                            <tr><td style="color:#999;vertical-align:top;">请求参数</td><td><pre style="margin:0;white-space:pre-wrap;word-break:break-all;">${utils.escapeHtml(d.requestParams || '-')}</pre></td></tr>
+                            <tr><td style="color:#999;vertical-align:top;">请求头</td><td><pre style="margin:0;white-space:pre-wrap;word-break:break-all;">${utils.escapeHtml(d.requestHeaders || '-')}</pre></td></tr>
+                            <tr><td style="color:#999;vertical-align:top;">请求体</td><td><pre style="margin:0;white-space:pre-wrap;word-break:break-all;">${utils.escapeHtml(d.requestBody || '-')}</pre></td></tr>
+                            <tr><td style="color:#999;vertical-align:top;">响应体</td><td><pre style="margin:0;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;">${utils.escapeHtml((d.responseData || '-').substring(0, 5000))}</pre></td></tr>
+                            ${d.errorMessage ? '<tr><td style="color:#999;vertical-align:top;">错误信息</td><td style="color:#ff4d4f;"><pre style="margin:0;white-space:pre-wrap;">' + utils.escapeHtml(d.errorMessage) + '</pre></td></tr>' : ''}
+                        </table>
+                    </div>
+                `;
+
+                $('#logsWrap').html(detailHtml);
+                $('#logPagination').html('');
+
+                // 绑定返回列表按钮事件
+                $('#btnBackToList').on('click', function() {
+                    loadLogs(logPage);
+                });
+            } catch (err) {
+                utils.toast('加载日志详情失败', 'error');
+            }
+        }
+
+        // 初始加载
+        load();
+    });
+    </script>
+</body>
+</html>

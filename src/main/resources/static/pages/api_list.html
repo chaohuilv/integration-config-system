@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 列表</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>📋 接口配置</h2>
+            <p class="view-sub">管理所有接口配置，支持 CRUD 和在线调试</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" onclick="parent.loadPage('form')">+ 新建接口</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="search-bar">
+            <input type="text" class="search-input" id="sKeyword" placeholder="搜索接口名称、编码或描述...">
+            <select id="sStatus">
+                <option value="">全部状态</option>
+                <option value="ACTIVE">启用</option>
+                <option value="INACTIVE">禁用</option>
+            </select>
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>接口名称</th>
+                        <th>接口编码</th>
+                        <th>分组</th>
+                        <th>方法</th>
+                        <th>目标URL</th>
+                        <th>创建人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="apiTableBody">
+                    <tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        let currentPage = 1;
+        const size = 10;
+
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('list');
+
+        // 搜索按钮点击
+        $('#btnSearch').on('click', () => refreshList(1));
+
+        // 回车搜索
+        $('#sKeyword').on('keyup', function(e) {
+            if (e.key === 'Enter') refreshList(1);
+        });
+
+        // 状态筛选变化
+        $('#sStatus').on('change', () => refreshList(1));
+
+        function refreshList(page) {
+            if (page) currentPage = page;
+
+            const keyword = $('#sKeyword').val();
+            const status = $('#sStatus').val();
+
+            API.config.list({
+                keyword: keyword,
+                status: status,
+                page: currentPage,
+                size: size
+            })
+            .then(json => {
+                renderTable(json.data.records);
+                renderPagination(json.data.total, json.data.page, json.data.size);
+            })
+            .catch(err => {
+                utils.toast('加载失败: ' + err.message, 'error');
+            });
+        }
+
+        function renderTable(apis) {
+            const tb = $('#apiTableBody');
+            
+            if (!apis || !apis.length) {
+                tb.html('<tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>暂无接口配置</td></tr>');
+                return;
+            }
+
+            const html = apis.map(a => `
+                <tr>
+                    <td><strong>${utils.escapeHtml(a.name)}</strong></td>
+                    <td><code>${utils.escapeHtml(a.code)}</code></td>
+                    <td style="color:#999;font-size:13px;">${utils.escapeHtml(a.groupName || '-')}</td>
+                    <td><span class="method method-${(a.method || 'GET').toLowerCase()}">${a.method}</span></td>
+                    <td title="${utils.escapeHtml(a.url)}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${utils.escapeHtml(a.url)}</td>
+                    <td style="color:#666;font-size:13px;">${utils.escapeHtml(a.createdByName || '-')}</td>
+                    <td><span class="badge badge-${(a.status || 'ACTIVE').toLowerCase()}">${a.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>
+                        <button class="btn btn-sm btn-success" onclick="testApi('${a.code}')">测试</button>
+                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('form', '${a.id}')">编辑</button>
+                        <button class="btn btn-sm btn-default" onclick="toggleStatus('${a.id}')">${a.status === 'ACTIVE' ? '禁用' : '启用'}</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteApi('${a.id}')">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            tb.html(html);
+        }
+
+        function renderPagination(total, page, size) {
+            const totalPages = Math.ceil(total / size);
+            const el = $('#pagination');
+            
+            if (!totalPages) {
+                el.html('');
+                return;
+            }
+
+            let html = `<button ${page <= 1 ? 'disabled' : ''} onclick="refreshList(${page - 1})">上一页</button>`;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                    html += `<button class="${i === page ? 'active' : ''}" onclick="refreshList(${i})">${i}</button>`;
+                } else if (i === page - 3 || i === page + 3) {
+                    html += `<button disabled>...</button>`;
+                }
+            }
+            
+            html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="refreshList(${page + 1})">下一页</button>`;
+            el.html(html);
+        }
+
+        async function toggleStatus(id) {
+            try {
+                await API.config.toggle(id);
+                utils.toast('状态更新成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('操作失败: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteApi(id) {
+            const ok = await utils.showConfirm('确认删除', '确定要删除此接口吗？', '🗑️', true);
+            if (!ok) return;
+
+            try {
+                await API.config.delete(id);
+                utils.toast('删除成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        function testApi(code) {
+            sessionStorage.setItem('debugCode', code);
+            parent.loadPage('debug');
+        }
+
+        // 暴露给全局
+        window.refreshList = refreshList;
+
+        // 初始加载
+        refreshList();
+    });
+    </script>
+</body>
+</html>

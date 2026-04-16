@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 调用日志</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 日志页专属样式 */
+        .log-detail-row {
+            display: none;
+        }
+
+        .log-detail-row.show {
+            display: table-row;
+        }
+
+        .log-detail-content {
+            background: #f5f7fa;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .log-detail-content table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .log-detail-content td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-detail-content td:first-child {
+            color: #999;
+            width: 100px;
+            vertical-align: top;
+        }
+
+        .log-detail-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>📊 调用日志</h2>
+            <p class="view-sub">查看所有接口的调用记录和响应状态</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" id="btnRefresh">🔄 刷新</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="stats">
+            <div class="stat-card"><div class="stat-value" id="sTotal">0</div><div class="stat-label">总调用次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sSuccess">0</div><div class="stat-label">成功次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sFail">0</div><div class="stat-label">失败次数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sRate">0%</div><div class="stat-label">成功率</div></div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>接口编码</th>
+                        <th>状态码</th>
+                        <th>调用时间</th>
+                        <th>耗时</th>
+                        <th>结果</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="6" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        let currentPage = 1;
+        const size = 10;
+        const detailCache = {}; // 缓存已加载的详情
+
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('logs');
+
+        // 加载日志列表
+        function refresh(page) {
+            if (page) currentPage = page;
+
+            API.invoke.getLogs({
+                page: currentPage,
+                size: size
+            })
+            .then(json => {
+                render(json.data);
+            })
+            .catch(err => {
+                utils.toast('加载失败: ' + err.message, 'error');
+            });
+        }
+
+        // 渲染日志列表
+        function render(data) {
+            $('#sTotal').text(data.total || 0);
+            $('#sSuccess').text(data.successCount || 0);
+            $('#sFail').text(data.failCount || 0);
+            $('#sRate').text(data.successRate || '0%');
+
+            const logs = data.records;
+            
+            if (!logs || !logs.length) {
+                $('#logsBody').html('<tr><td colspan="6" class="empty"><div class="empty-icon">📭</div>暂无调用日志</td></tr>');
+                $('#pagination').html('');
+                return;
+            }
+
+            // 渲染表格行
+            const rowsHtml = logs.map(l => `
+                <tr class="log-row" data-id="${l.id}">
+                    <td><code>${utils.escapeHtml(l.apiCode || '-')}</code></td>
+                    <td><span style="font-weight:600;color:${l.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${l.responseStatus || '-'}</span></td>
+                    <td>${utils.formatDate(l.invokeTime)}</td>
+                    <td>${l.costTime != null ? l.costTime + 'ms' : '-'}</td>
+                    <td><span class="badge badge-${l.success ? 'active' : 'inactive'}">${l.success ? '成功' : '失败'}</span></td>
+                    <td><button class="btn btn-sm btn-default btn-toggle-detail" data-id="${l.id}">详情</button></td>
+                </tr>
+                <tr class="log-detail-row" id="detail-${l.id}">
+                    <td colspan="6">
+                        <div class="log-detail-content" id="detail-content-${l.id}">
+                            <div style="text-align:center;padding:20px;color:#999;">加载中...</div>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            $('#logsBody').html(rowsHtml);
+
+            // 绑定详情按钮事件
+            $('.btn-toggle-detail').on('click', function() {
+                const id = $(this).data('id');
+                toggleDetail(id);
+            });
+
+            // 渲染分页
+            renderPagination(data.total || 0);
+        }
+
+        // 渲染分页
+        function renderPagination(total) {
+            const totalPages = Math.ceil(total / size);
+            
+            if (!totalPages) {
+                $('#pagination').html('');
+                return;
+            }
+
+            let html = `<button ${currentPage <= 1 ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage - 1}">上一页</button>`;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-default'} btn-page" data-page="${i}">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<button disabled class="btn btn-sm btn-default">...</button>`;
+                }
+            }
+
+            html += `<button ${currentPage >= totalPages ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage + 1}">下一页</button>`;
+
+            $('#pagination').html(html);
+
+            // 绑定分页按钮事件
+            $('.btn-page').on('click', function() {
+                const page = parseInt($(this).data('page'));
+                if (page >= 1 && page <= totalPages) {
+                    refresh(page);
+                }
+            });
+        }
+
+        // 切换详情显示
+        function toggleDetail(id) {
+            const row = $(`#detail-${id}`);
+            
+            if (row.hasClass('show')) {
+                row.removeClass('show');
+                return;
+            }
+
+            // 关闭其他已展开的
+            $('.log-detail-row.show').each(function() {
+                if ($(this).attr('id') !== `detail-${id}`) {
+                    $(this).removeClass('show');
+                }
+            });
+
+            row.addClass('show');
+
+            // 加载详情
+            const content = $(`#detail-content-${id}`);
+            
+            if (detailCache[id]) {
+                content.html(detailCache[id]);
+                return;
+            }
+
+            API.invoke.getLogDetail(id)
+                .then(json => {
+                    const d = json.data;
+                    const html = `
+                        <table style="width:100%;">
+                            <tr><td>接口编码</td><td><code>${utils.escapeHtml(d.apiCode || '-')}</code></td></tr>
+                            <tr><td>状态码</td><td style="font-weight:600;color:${d.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${d.responseStatus || '-'}</td></tr>
+                            <tr><td>耗时</td><td>${d.costTime != null ? d.costTime + 'ms' : '-'}</td></tr>
+                            <tr><td>调用时间</td><td>${utils.formatDate(d.invokeTime)}</td></tr>
+                            <tr><td>请求参数</td><td><pre>${utils.escapeHtml(d.requestParams || '-')}</pre></td></tr>
+                            <tr><td>请求头</td><td><pre>${utils.escapeHtml(d.requestHeaders || '-')}</pre></td></tr>
+                            <tr><td>请求体</td><td><pre>${utils.escapeHtml(d.requestBody || '-')}</pre></td></tr>
+                            <tr><td>响应体</td><td><pre style="max-height:200px;overflow:auto;">${utils.escapeHtml((d.responseData || '-').substring(0, 5000))}</pre></td></tr>
+                            ${d.errorMessage ? '<tr><td style="color:#ff4d4f;">错误信息</td><td style="color:#ff4d4f;"><pre>' + utils.escapeHtml(d.errorMessage) + '</pre></td></tr>' : ''}
+                        </table>
+                    `;
+                    detailCache[id] = html;
+                    content.html(html);
+                })
+                .catch(err => {
+                    content.html('<div style="text-align:center;padding:20px;color:#ff4d4f;">加载失败: ' + utils.escapeHtml(err.message) + '</div>');
+                });
+        }
+
+        // 绑定刷新按钮
+        $('#btnRefresh').on('click', function() {
+            refresh(1);
+        });
+
+        // 初始加载
+        refresh();
+    });
+    </script>
+</body>
+</html>

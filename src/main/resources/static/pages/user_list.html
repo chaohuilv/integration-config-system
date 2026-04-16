@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 列表</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-ACTIVE {
+            background: #e6f7e6;
+            color: #52c41a;
+        }
+        .status-INACTIVE {
+            background: #fff2f0;
+            color: #ff4d4f;
+        }
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>👤 用户管理</h2>
+            <p class="view-sub">管理系统用户账号、权限和状态</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" onclick="parent.loadPage('userForm')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建用户
+            </button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="search-bar">
+            <input type="search" class="search-input" id="searchInput" placeholder="搜索用户编码、名称...">
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>用户编码</th>
+                        <th>用户名称</th>
+                        <th>显示名称</th>
+                        <th>邮箱</th>
+                        <th>手机</th>
+                        <th>状态</th>
+                        <th>最后登录</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        let currentPage = 1;
+        const pageSize = 10;
+
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('users');
+
+        // 延迟清空搜索框，防止浏览器自动填充缓存
+        setTimeout(() => { $('#searchInput').val(''); }, 50);
+
+        // 加载用户列表
+        function loadUsers(page) {
+            if (page) currentPage = page;
+            const keyword = $('#searchInput').val().trim();
+
+            API.auth.getUsers({
+                keyword: keyword,
+                page: currentPage,
+                size: pageSize
+            })
+            .then(json => renderUsers(json.data))
+            .catch(err => utils.toast('加载失败: ' + err.message, 'error'));
+        }
+
+        // 渲染用户列表
+        function renderUsers(data) {
+            const tbody = $('#tableBody');
+
+            if (!data || !data.content || data.content.length === 0) {
+                tbody.html('<tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>暂无用户数据</td></tr>');
+                $('#pagination').html('');
+                return;
+            }
+
+            const users = data.content;
+            const totalPages = data.totalPages;
+
+            const rowsHtml = users.map(u => `
+                <tr>
+                    <td><code>${utils.escapeHtml(u.userCode)}</code></td>
+                    <td><strong>${utils.escapeHtml(u.username || '-')}</strong></td>
+                    <td>${utils.escapeHtml(u.displayName || '-')}</td>
+                    <td>${utils.escapeHtml(u.email || '-')}</td>
+                    <td>${utils.escapeHtml(u.phone || '-')}</td>
+                    <td><span class="status-badge status-${u.status}">${u.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
+                    <td>${utils.escapeHtml(u.lastLoginTime || '-')}</td>
+                    <td class="action-btns">
+                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('userForm', '${u.id}')">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}', '${utils.escapeHtml(u.userCode)}')">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            tbody.html(rowsHtml);
+            renderPagination(data.totalElements, totalPages);
+        }
+
+        // 渲染分页
+        function renderPagination(total, totalPages) {
+            const el = $('#pagination');
+
+            if (!totalPages || totalPages <= 1) {
+                el.html('');
+                return;
+            }
+
+            const html = `
+                <span>共 ${total} 条</span>
+                <button class="btn btn-sm btn-default" onclick="loadUsers(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
+                <button class="btn btn-sm btn-default" onclick="loadUsers(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                <span>第 ${currentPage} / ${totalPages} 页</span>
+                <button class="btn btn-sm btn-default" onclick="loadUsers(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+                <button class="btn btn-sm btn-default" onclick="loadUsers(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>末页</button>
+            `;
+
+            el.html(html);
+        }
+
+        // 删除用户
+        async function deleteUser(id, userCode) {
+            const ok = await utils.showConfirm(
+                '确认删除用户',
+                `确定要删除用户「${userCode}」吗？此操作不可恢复。`,
+                '🗑️',
+                true
+            );
+            if (!ok) return;
+
+            try {
+                await API.auth.deleteUser(id);
+                utils.toast('用户已删除', 'success');
+                loadUsers();
+            } catch (err) {
+                utils.toast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        // 搜索
+        $('#btnSearch').on('click', () => loadUsers(1));
+        $('#searchInput').on('keydown', function(e) {
+            if (e.key === 'Enter') loadUsers(1);
+        });
+
+        // 暴露给全局
+        window.loadUsers = loadUsers;
+        window.deleteUser = deleteUser;
+
+        // 初始加载
+        loadUsers();
+    });
+    </script>
+</body>
+</html>

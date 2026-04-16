@@ -4,8 +4,123 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>接口配置 - SDK文档</title>
-    <link rel="stylesheet" href="css/shared.css">
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* SDK文档专属样式 */
+        .sdk-content {
+            max-width: 1000px;
+        }
+
+        .sdk-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 24px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .sdk-content h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin: 20px 0 10px;
+        }
+
+        .sdk-content p {
+            color: #666;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        /* SDK源码下载区 */
+        .sdk-source-downloads {
+            margin-bottom: 32px;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .download-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s;
+        }
+
+        .download-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .dl-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .java-color { background: #fff3e0; }
+        .csharp-color { background: #e3f2fd; }
+        .python-color { background: #e8f5e9; }
+
+        .dl-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dl-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .dl-files {
+            font-size: 12px;
+            color: #999;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dl-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .download-card:hover .dl-btn {
+            background: #5568d3;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="view-header">
@@ -125,7 +240,7 @@ public class Example {
             <h3>4. Header 传参示例</h3>
             <p style="color:#666;margin-bottom:12px;">当目标接口需要通过请求头传递认证信息（如 API Key、Token）时，按以下步骤配置：</p>
             
-            <h4 style="margin:16px 0 8px;color:#333;">步骤一：在接口配置中设置认证方式</h4>
+            <h4>步骤一：在接口配置中设置认证方式</h4>
             <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;">
                 <p style="margin:0 0 12px;color:#495057;font-weight:500;">📝 接口配置页面填写示例：</p>
                 <table style="width:100%;font-size:13px;border-collapse:collapse;">
@@ -137,7 +252,7 @@ public class Example {
                 <p style="margin:12px 0 0;color:#868e96;font-size:12px;">💡 系统会自动在请求头中添加：<code>X-API-Key: your-secret-api-key-here</code></p>
             </div>
 
-            <h4 style="margin:16px 0 8px;color:#333;">步骤二：常见的 Header 认证方式</h4>
+            <h4>步骤二：常见的 Header 认证方式</h4>
             <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
                 <p style="margin:0 0 8px;font-weight:500;color:#495057;">🔹 API Key 认证</p>
                 <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: API_KEY
@@ -172,7 +287,7 @@ X-Client-Version: 1.0.0
 → 请求时会自动携带以上请求头</pre>
             </div>
 
-            <h4 style="margin:16px 0 8px;color:#333;">步骤三：动态 Token 认证（自动获取Token）</h4>
+            <h4>步骤三：动态 Token 认证（自动获取Token）</h4>
             <div class="response-box" style="background:#fff3e0;border:1px solid #ffe0b2;padding:16px;border-radius:8px;font-size:13px;">
                 <p style="margin:0 0 12px;color:#e65100;font-weight:500;">⚡ 适用场景：Token 有过期时间，需要定期刷新</p>
                 <table style="width:100%;border-collapse:collapse;">
@@ -214,6 +329,7 @@ headers.put("Authorization", "Bearer another-token-xxx");
 client.invoke("user-get", Map.of("id", 1), null, headers);
 // 此时使用的是 another-token-xxx，而非配置表中的 Token</pre>
             </div>
+
             <h3>7. C# (.NET) SDK</h3>
             <div class="sdk-section">
                 <h4>7.1 安装</h4>
@@ -472,38 +588,42 @@ result = client.invoke("api-test", headers=headers)</div>
         </div>
     </div>
 
-    <script>
-    if (parent.setNav) parent.setNav('sdk');
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
 
-    // 响应框复制按钮
-    (function() {
-        var boxes = document.querySelectorAll('.response-box');
-        boxes.forEach(function(box) {
-            var btn = document.createElement('button');
-            btn.className = 'copy-btn';
-            btn.textContent = '📋 复制';
-            btn.addEventListener('click', function(e) {
+    <script>
+    $(function() {
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('sdk');
+
+        // 为所有响应框添加复制按钮
+        $('.response-box').each(function() {
+            const box = $(this);
+            const btn = $('<button class="copy-btn">📋 复制</button>');
+            
+            btn.on('click', function(e) {
                 e.stopPropagation();
-                var text = box.textContent
-                    .replace(/^\s*复制\s*/, '')   // 去掉按钮文字干扰
-                    .trim();
-                navigator.clipboard.writeText(text).then(function() {
-                    btn.textContent = '✅ 已复制';
-                    btn.classList.add('copied');
-                    setTimeout(function() {
-                        btn.textContent = '📋 复制';
-                        btn.classList.remove('copied');
-                    }, 1500);
-                }).catch(function() {
-                    btn.textContent = '❌ 失败';
-                    setTimeout(function() {
-                        btn.textContent = '📋 复制';
-                    }, 1500);
-                });
+                
+                const text = box.text().replace(/^\s*复制\s*/, '').trim();
+                
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        btn.text('✅ 已复制').addClass('copied');
+                        setTimeout(() => {
+                            btn.text('📋 复制').removeClass('copied');
+                        }, 1500);
+                    })
+                    .catch(() => {
+                        btn.text('❌ 失败');
+                        setTimeout(() => {
+                            btn.text('📋 复制');
+                        }, 1500);
+                    });
             });
-            box.appendChild(btn);
+            
+            box.append(btn);
         });
-    })();
+    });
     </script>
 </body>
 </html>

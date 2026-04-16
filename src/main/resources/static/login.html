@@ -144,7 +144,7 @@
 
         <div class="error-message" id="errorMsg"></div>
 
-        <form id="loginForm" onsubmit="return doLogin(event)">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="userCode">用户编码</label>
                 <input type="text" id="userCode" name="userCode" placeholder="请输入用户编码" autocomplete="off" required>
@@ -165,74 +165,55 @@
         </div>
     </div>
 
+    <!-- 引入 jQuery -->
+    <script src="js/vendor/jquery.min.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="js/api.js"></script>
+
     <script>
-    const API = '/api';
-
-    // 页面加载时检查是否已登录
-    window.onload = async function() {
-        try {
-            const res = await fetch(`${API}/auth/check`);
-            const json = await res.json();
-            if (json.code === 200 && json.data && json.data.loggedIn) {
-                // 已登录，跳转到主页
-                window.location.href = 'index.html';
-            }
-        } catch (e) {
-            // 未登录，继续显示登录页面
-        }
-    };
-
-    async function doLogin(e) {
-        e.preventDefault();
-        const userCode = document.getElementById('userCode').value.trim();
-        const password = document.getElementById('password').value;
-        const btn = document.getElementById('loginBtn');
-        const errorMsg = document.getElementById('errorMsg');
-
-        if (!userCode || !password) {
-            showError('请输入用户编码和密码');
-            return false;
-        }
-
-        btn.disabled = true;
-        btn.textContent = '登录中...';
-        errorMsg.classList.remove('show');
-
-        try {
-            const res = await fetch(`${API}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userCode, password })
+    $(function() {
+        // 页面加载时检查是否已登录
+        API.auth.check()
+            .then(json => {
+                if (json.code === 200 && json.data && json.data.loggedIn) {
+                    window.location.href = 'index.html';
+                }
+            })
+            .catch(() => {
+                // 未登录，继续显示登录页面
             });
-            const json = await res.json();
 
-            if (json.code === 200) {
-                // 登录成功，跳转到主页
-                window.location.href = 'index.html';
-            } else {
-                showError(json.message || '登录失败');
-                btn.disabled = false;
-                btn.textContent = '登 录';
+        // 登录表单提交
+        $('#loginForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const userCode = $('#userCode').val().trim();
+            const password = $('#password').val();
+            const btn = $('#loginBtn');
+            const errorMsg = $('#errorMsg');
+
+            if (!userCode || !password) {
+                showError('请输入用户编码和密码');
+                return false;
             }
-        } catch (e) {
-            showError('网络错误，请稍后重试');
-            btn.disabled = false;
-            btn.textContent = '登 录';
-        }
 
-        return false;
-    }
+            btn.prop('disabled', true).text('登录中...');
+            errorMsg.removeClass('show');
 
-    function showError(msg) {
-        const errorMsg = document.getElementById('errorMsg');
-        errorMsg.textContent = msg;
-        errorMsg.classList.add('show');
-    }
+            API.auth.login({ userCode, password })
+                .then(() => {
+                    window.location.href = 'index.html';
+                })
+                .catch(err => {
+                    showError(err.message || '登录失败');
+                    btn.prop('disabled', false).text('登 录');
+                });
 
-    // 回车提交
-    document.getElementById('password').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            return false;
+        });
+
+        function showError(msg) {
+            $('#errorMsg').text(msg).addClass('show');
         }
     });
     </script>
