@@ -8,31 +8,48 @@ const Utils = (function() {
 
     // ===== Toast 提示 =====
     function toast(msg, type = 'info', duration = 3000) {
-        // 如果在 iframe 中，调用父窗口的 toast
-        if (window.parent && window.parent !== window && window.parent.utils && window.parent.utils.toast) {
-            return window.parent.utils.toast(msg, type, duration);
+        try {
+            // 如果在 iframe 中，调用父窗口的 toast（防御：确保父窗口 toast 存在再调用）
+            if (window.parent && window.parent !== window &&
+                typeof window.parent.utils === 'object' &&
+                typeof window.parent.utils.toast === 'function') {
+                return window.parent.utils.toast(msg, type, duration);
+            }
+
+            const container = document.getElementById('toastContainer');
+            if (!container) {
+                console.warn('Toast container not found, creating one');
+                // 兜底：自己创建一个
+                const fallback = document.body || document.documentElement;
+                if (fallback) {
+                    const div = document.createElement('div');
+                    div.style = 'position:fixed;top:20px;right:20px;z-index:99999;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:14px;';
+                    div.textContent = `[${type}] ${msg}`;
+                    fallback.appendChild(div);
+                    setTimeout(() => div.remove(), duration);
+                }
+                return;
+            }
+
+            const icons = { success: '✅', error: '❌', info: '💡', warning: '⚠️' };
+            const div = document.createElement('div');
+            div.className = `toast ${type}`;
+            div.innerHTML = `
+                <span class="toast-icon">${icons[type] || '💡'}</span>
+                <span class="toast-msg">${msg}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+            `;
+            container.appendChild(div);
+
+            setTimeout(() => {
+                div.classList.add('out');
+                setTimeout(() => div.remove(), 220);
+            }, duration);
+        } catch (e) {
+            console.error('[toast] error:', e);
+            // 最后的兜底：直接 alert
+            alert(`[${type}] ${msg}`);
         }
-
-        const container = document.getElementById('toastContainer');
-        if (!container) {
-            console.warn('Toast container not found');
-            return;
-        }
-
-        const icons = { success: '✅', error: '❌', info: '💡', warning: '⚠️' };
-        const div = document.createElement('div');
-        div.className = `toast ${type}`;
-        div.innerHTML = `
-            <span class="toast-icon">${icons[type] || '💡'}</span>
-            <span class="toast-msg">${msg}</span>
-            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
-        `;
-        container.appendChild(div);
-
-        setTimeout(() => {
-            div.classList.add('out');
-            setTimeout(() => div.remove(), 220);
-        }, duration);
     }
 
     // ===== 确认弹窗 =====

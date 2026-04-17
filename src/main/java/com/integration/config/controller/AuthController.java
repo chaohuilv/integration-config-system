@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.AuditLog;
 import com.integration.config.dto.CreateUserDTO;
 import com.integration.config.dto.LoginRequestDTO;
 import com.integration.config.dto.UserDTO;
@@ -34,6 +35,7 @@ public class AuthController {
      * 返回 access_token，后续请求通过 Authorization: Bearer <token> 认证
      */
     @PostMapping("/login")
+    @AuditLog(operateType = "LOGIN", module = "AUTH", description = "'用户登录: ' + #dto.userCode", targetType = "USER", recordParams = true)
     public Result<Map<String, Object>> login(@RequestBody LoginRequestDTO dto, HttpServletRequest request) {
         User user = userService.login(dto.getUserCode(), dto.getPassword());
         if (user == null) {
@@ -69,6 +71,7 @@ public class AuthController {
      * 从 Authorization header 提取 token 并撤销
      */
     @PostMapping("/logout")
+    @AuditLog(operateType = "LOGOUT", module = "AUTH", description = "'用户注销'")
     public Result<Void> logout(HttpServletRequest request) {
         String token = extractBearerToken(request);
         if (token != null) {
@@ -122,6 +125,7 @@ public class AuthController {
      * 创建用户（需要登录）
      */
     @PostMapping("/users")
+    @AuditLog(operateType = "CREATE", module = "USER", description = "'创建用户: ' + #dto.userCode", targetType = "USER", targetId = "#result.data.id", recordParams = true)
     public Result<UserDTO> createUser(@RequestBody CreateUserDTO dto, HttpServletRequest request) {
         Long creatorId = (Long) request.getAttribute("userId");
         if (creatorId == null) {
@@ -143,6 +147,7 @@ public class AuthController {
      * 更新用户
      */
     @PutMapping("/users/{id}")
+    @AuditLog(operateType = "UPDATE", module = "USER", description = "'更新用户: ' + #dto.userCode", targetType = "USER", targetId = "#id", recordParams = true)
     public Result<UserDTO> updateUser(@PathVariable Long id, @RequestBody CreateUserDTO dto) {
         try {
             userService.update(id, dto);
@@ -161,6 +166,7 @@ public class AuthController {
      * 删除用户
      */
     @DeleteMapping("/users/{id}")
+    @AuditLog(operateType = "DELETE", module = "USER", description = "'删除用户ID: ' + #id", targetType = "USER", targetId = "#id", recordParams = true)
     public Result<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
         Long currentUserId = (Long) request.getAttribute("userId");
         if (currentUserId != null && currentUserId.equals(id)) {

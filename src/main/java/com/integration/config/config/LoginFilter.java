@@ -4,6 +4,7 @@ import com.integration.config.service.TokenService;
 import com.integration.config.service.TokenService.TokenInfo;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -113,7 +114,10 @@ public class LoginFilter implements Filter {
         req.setAttribute("displayName", tokenInfo.getDisplayName());
 
         log.debug("[LoginFilter] Access granted. URI: {}, user: {}", uri, tokenInfo.getUserCode());
-        chain.doFilter(request, response);
+
+        // 用 ContentCachingRequestWrapper 包装，使 body 可被重复读取（AOP 切面需要）
+        CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(req);
+        chain.doFilter(cachedRequest, response);
     }
 
     /**
@@ -130,5 +134,54 @@ public class LoginFilter implements Filter {
             return queryToken.trim();
         }
         return null;
+    }
+
+    // ===== 工具类：包装请求，使 body 可被重复读取 =====
+
+    /**
+     * 将 HttpServletRequest 的 body 缓存起来，
+     * 让 Spring、Filter、AOP 都能多次读取 body（如 getInputStream()）。
+     */
+    private static class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
+
+        private final byte[] cachedBody;
+
+        public CachedBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            // 一次性读取 body 并缓存
+            this.cachedBody = request.getInputStream().readAllBytes();
+        }
+
+        @Override
+        public jakarta.servlet.ServletInputStream getInputStream() {
+            return new CachedBodyServletInputStream(cachedBody);
+        }
+
+        @Override
+        public java.io.BufferedReader getReader() {
+            return new java.io.BufferedReader(
+                    new java.io.InputStreamReader(getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    private static class CachedBodyServletInputStream extends jakarta.servlet.ServletInputStream {
+
+        private final java.io.ByteArrayInputStream stream;
+
+        public CachedBodyServletInputStream(byte[] body) {
+            this.stream = new java.io.ByteArrayInputStream(body);
+        }
+
+        @Override
+        public boolean isFinished() { return stream.available() == 0; }
+
+        @Override
+        public boolean isReady() { return true; }
+
+        @Override
+        public void setReadListener(ReadListener listener) { /* 非阻塞模式暂不支持 */ }
+
+        @Override
+        public int read() { return stream.read(); }
     }
 }

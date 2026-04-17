@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计日志</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .search-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .search-bar select, .search-bar input { min-width: 140px; }
+        .search-bar .date-range { display: flex; align-items: center; gap: 4px; }
+        .search-bar .date-range span { color: #999; font-size: 12px; }
+        .search-bar .date-range input { width: 160px; }
+        .search-bar .col-full { flex: 1; min-width: 200px; }
+        .search-bar .btn-export { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .search-bar .btn-export:hover { background: #6d28d9; }
+        .search-bar .btn-delete-batch { background: #dc2626; color: #fff; border-color: #dc2626; }
+        .search-bar .btn-delete-batch:hover { background: #b91c1c; }
+        .search-bar .btn-delete-batch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .table-wrap { overflow-x: auto; }
+        .table { min-width: 1100px; }
+
+        /* 列宽 */
+        .table .col-time { width: 160px; }
+        .table .col-type { width: 90px; }
+        .table .col-module { width: 90px; }
+        .table .col-desc { min-width: 200px; }
+        .table .col-user { width: 120px; }
+        .table .col-ip { width: 120px; }
+        .table .col-result { width: 70px; }
+        .table .col-cost { width: 70px; }
+        .table .col-op { width: 50px; }
+
+        /* 操作类型标签 */
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .tag-blue { background: #dbeafe; color: #1d4ed8; }
+        .tag-green { background: #dcfce7; color: #15803d; }
+        .tag-orange { background: #ffedd5; color: #c2410c; }
+        .tag-red { background: #fee2e2; color: #b91c1c; }
+        .tag-purple { background: #ede9fe; color: #6d28d9; }
+        .tag-gray { background: #f1f5f9; color: #64748b; }
+        .tag-yellow { background: #fef9c3; color: #854d0e; }
+
+        /* 描述文字 */
+        .desc-text { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desc-text:hover { white-space: normal; word-break: break-all; }
+
+        /* 全选checkbox */
+        .col-check { width: 36px; text-align: center; }
+        .row-check { cursor: pointer; }
+
+
+
+        /* 已选计数 */
+        /* 耗时 */
+        .cost-slow { color: #dc2626; }
+        .cost-normal { color: #64748b; }
+
+        /* 详情代码块 */
+        .detail-code {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 300px;
+            overflow: auto;
+            color: #334155;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🛡️ 审计日志</h2>
+            <p class="view-sub">记录所有系统操作行为，支持多条件查询和批量管理</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary btn-export" id="btnExport">📥 导出</button>
+            <button class="btn btn-danger btn-delete-batch" id="btnBatchDelete" disabled>🗑️ 批量删除<span class="selected-count" id="selectedCount"></span></button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="search-input col-full" id="sKeyword" placeholder="描述 / 用户名 / IP...">
+            <select id="sUserCode"><option value="">操作用户</option></select>
+            <select id="sOperateType">
+                <option value="">操作类型</option>
+                <option value="LOGIN">LOGIN</option>
+                <option value="LOGOUT">LOGOUT</option>
+                <option value="CREATE">CREATE</option>
+                <option value="UPDATE">UPDATE</option>
+                <option value="DELETE">DELETE</option>
+                <option value="IMPORT">IMPORT</option>
+            </select>
+            <select id="sModule">
+                <option value="">模块</option>
+                <option value="AUTH">AUTH</option>
+                <option value="USER">USER</option>
+                <option value="API_CONFIG">API_CONFIG</option>
+                <option value="ENVIRONMENT">ENVIRONMENT</option>
+            </select>
+            <select id="sResult">
+                <option value="">结果</option>
+                <option value="SUCCESS">SUCCESS</option>
+                <option value="FAIL">FAIL</option>
+            </select>
+            <div class="date-range">
+                <input type="datetime-local" id="sStartTime" class="search-input">
+                <span>至</span>
+                <input type="datetime-local" id="sEndTime" class="search-input">
+            </div>
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+            <button class="btn btn-ghost" id="btnReset" style="color:#999;">重置</button>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-check"><input type="checkbox" id="checkAll"></th>
+                        <th class="col-time">操作时间</th>
+                        <th class="col-type">类型</th>
+                        <th class="col-module">模块</th>
+                        <th class="col-desc">描述</th>
+                        <th class="col-user">操作用户</th>
+                        <th class="col-ip">IP</th>
+                        <th class="col-result">结果</th>
+                        <th class="col-cost">耗时</th>
+                        <th class="col-op">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="detail-modal" id="detailModal" style="display:none;">
+        <div class="detail-modal-content">
+            <div class="detail-modal-header">
+                <span>📋 日志详情</span>
+                <span class="close-btn" id="closeDetailModal">×</span>
+            </div>
+            <div class="detail-modal-body" id="detailBody"></div>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+    $(function() {
+        let currentPage = 1;
+        const size = 20;
+        let selectedIds = new Set();
+
+        // ===== 加载操作用户列表 =====
+        function loadUserOptions() {
+            API.auth.listAll().then(json => {
+                if (json.code === 200 && json.data) {
+                    json.data.forEach(u => {
+                        $('#sUserCode').append(`<option value="${u.userCode}">${u.displayName || u.userCode}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ===== 刷新列表 =====
+        function refreshList(page) {
+            currentPage = page || 1;
+            const params = {
+                page: currentPage,
+                size: size,
+                userCode: $('#sUserCode').val() || undefined,
+                operateType: $('#sOperateType').val() || undefined,
+                module: $('#sModule').val() || undefined,
+                result: $('#sResult').val() || undefined,
+                keyword: $('#sKeyword').val() || undefined,
+                startTime: toISO($('#sStartTime').val()),
+                endTime: toISO($('#sEndTime').val())
+            };
+            // 移除 undefined 参数
+            Object.keys(params).forEach(k => params[k] === undefined && delete params[k]);
+
+            API.auditLog.list(params).then(json => {
+                debugger
+                if (json.code !== 200) { utils.toast(json.message || '查询失败', 'error'); return; }
+                renderTable(json.data.content);
+                renderPagination(json.data, currentPage);
+            }).catch((err) => {
+                debugger
+                console.error('[refreshList] error:', err, '| msg:', err.message);
+                utils.toast('加载失败: ' + (err.message || '未知错误'), 'error');
+            });
+        }
+
+        function toISO(val) {
+            return val ? val.replace('T', ' ') + ':00' : null;
+        }
+
+        // ===== 渲染表格 =====
+        function renderTable(list) {
+            if (!list || list.length === 0) {
+                $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                return;
+            }
+            const html = list.map(item => {
+                const typeTagClass = getTypeTagClass(item.operateType);
+                const resultClass = item.result === 'SUCCESS' ? 'tag-green' : 'tag-red';
+                const costClass = (item.costTime || 0) > 2000 ? 'cost-slow' : 'cost-normal';
+                const time = item.operateTime ? item.operateTime.replace('T', ' ').substring(0, 19) : '-';
+                const checked = selectedIds.has(item.id) ? 'checked' : '';
+                return `<tr data-id="${item.id}" class="${checked ? 'row-selected' : ''}">
+                    <td class="col-check"><input type="checkbox" class="row-check" value="${item.id}" ${checked}></td>
+                    <td class="col-time">${time}</td>
+                    <td><span class="tag ${typeTagClass}">${item.operateType || '-'}</span></td>
+                    <td>${item.module || '-'}</td>
+                    <td title="${escHtml(item.description || '')}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="desc-text" title="${escHtml(item.description || '')}">${escHtml(item.description || '-')}</span></td>
+                    <td>${item.userName || item.userCode || '-'}</td>
+                    <td>${item.clientIp || '-'}</td>
+                    <td><span class="tag ${resultClass}">${item.result || '-'}</span></td>
+                    <td class="${costClass}">${item.costTime != null ? item.costTime + 'ms' : '-'}</td>
+                    <td><button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button></td>
+                </tr>`;
+            }).join('');
+            $('#tableBody').html(html);
+
+            // 行选中样式
+            $('.row-check').on('change', function() {
+                const id = $(this).val();
+                if ($(this).prop('checked')) {
+                    selectedIds.add(Number(id));
+                    $(this).closest('tr').addClass('row-selected');
+                } else {
+                    selectedIds.delete(Number(id));
+                    $(this).closest('tr').removeClass('row-selected');
+                }
+                updateBatchBtn();
+            });
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function getTypeTagClass(type) {
+            const map = {
+                LOGIN: 'tag-blue', LOGOUT: 'tag-blue',
+                CREATE: 'tag-green', UPDATE: 'tag-orange',
+                DELETE: 'tag-red', IMPORT: 'tag-purple'
+            };
+            return map[type] || 'tag-gray';
+        }
+
+        // ===== 全选 =====
+        $('#checkAll').on('change', function() {
+            const checked = $(this).prop('checked');
+            $('.row-check').prop('checked', checked);
+            if (checked) {
+                $('.row-check').each(function() { selectedIds.add(Number($(this).val())); });
+                $('#tableBody tr').addClass('row-selected');
+            } else {
+                selectedIds.clear();
+                $('#tableBody tr').removeClass('row-selected');
+            }
+            updateBatchBtn();
+        });
+
+        function updateBatchBtn() {
+            const count = selectedIds.size;
+            $('#btnBatchDelete').prop('disabled', count === 0);
+            $('#selectedCount').text(count > 0 ? `（${count}条）` : '');
+        }
+
+        // ===== 分页 =====
+        function renderPagination(data, current) {
+            if (!data || data.totalPages <= 1) {
+                $('#pagination').html('');
+                return;
+            }
+            const total = data.totalPages, cur = current;
+            let html = '';
+            if (cur > 1) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${cur-1})">‹</a>`;
+            const range = getPageRange(cur, total);
+            if (range[0] > 1) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(1)">1</a>`;
+            if (range[0] > 2) html += '<span class="page-ellipsis">…</span>';
+            for (let i = range[0]; i <= range[1]; i++) {
+                html += `<a href="javascript:;" class="page-btn ${i===cur?'active':''}" onclick="refreshList(${i})">${i}</a>`;
+            }
+            if (range[1] < total - 1) html += '<span class="page-ellipsis">…</span>';
+            if (range[1] < total) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${total})">${total}</a>`;
+            if (cur < total) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${cur+1})">›</a>`;
+            html += `<span class="page-info">共 ${data.totalElements} 条</span>`;
+            $('#pagination').html(html);
+        }
+
+        function getPageRange(cur, total) {
+            let start = Math.max(1, cur - 2);
+            let end = Math.min(total, cur + 2);
+            if (end - start < 4) {
+                if (start === 1) end = Math.min(total, start + 4);
+                else start = Math.max(1, end - 4);
+            }
+            return [start, end];
+        }
+
+        // ===== 搜索 & 重置 =====
+        $('#btnSearch').on('click', () => refreshList(1));
+        $('#btnReset').on('click', function() {
+            $('.search-bar').find('input, select').val('');
+            refreshList(1);
+        });
+        $('#sKeyword').on('keyup', e => { if (e.key === 'Enter') refreshList(1); });
+
+        // ===== 批量删除 =====
+        $('#btnBatchDelete').on('click', async function() {
+            const ids = Array.from(selectedIds);
+            if (ids.length === 0) return;
+            const ok = await utils.showConfirm(
+                '确认批量删除',
+                `确定要删除选中的 ${ids.length} 条审计日志吗？此操作不可恢复。`,
+                '⚠️', true
+            );
+            if (!ok) return;
+            try {
+                const json = await API.auditLog.batchDelete(ids);
+                if (json.code === 200) {
+                    utils.toast(`已删除 ${ids.length} 条记录`);
+                    selectedIds.clear();
+                    updateBatchBtn();
+                    $('#checkAll').prop('checked', false);
+                    refreshList(currentPage);
+                } else {
+                    utils.toast(json.message || '删除失败', 'error');
+                }
+            } catch (e) { utils.toast('删除失败', 'error'); }
+        });
+
+        // ===== 导出 =====
+        $('#btnExport').on('click', async function() {
+            const params = {
+                userCode: $('#sUserCode').val() || undefined,
+                operateType: $('#sOperateType').val() || undefined,
+                module: $('#sModule').val() || undefined,
+                result: $('#sResult').val() || undefined,
+                keyword: $('#sKeyword').val() || undefined,
+                startTime: toISO($('#sStartTime').val()),
+                endTime: toISO($('#sEndTime').val())
+            };
+            Object.keys(params).forEach(k => params[k] === undefined && delete params[k]);
+
+            try {
+                const json = await API.auditLog.export(params);
+                if (json.code !== 200) { utils.toast(json.message || '导出失败', 'error'); return; }
+                const list = json.data || [];
+                if (list.length === 0) { utils.toast('没有数据可导出', 'warn'); return; }
+
+                const headers = ['时间', '类型', '模块', '描述', '用户', 'IP', '结果', '耗时(ms)'];
+                const rows = list.map(item => [
+                    (item.operateTime || '').replace('T', ' ').substring(0, 19),
+                    item.operateType || '',
+                    item.module || '',
+                    (item.description || '').replace(/,/g, '，'),
+                    item.userName || item.userCode || '',
+                    item.clientIp || '',
+                    item.result || '',
+                    item.costTime || ''
+                ]);
+                downloadCSV(headers, rows, '审计日志_' + new Date().toISOString().slice(0, 10) + '.csv');
+                utils.toast(`已导出 ${list.length} 条记录`);
+            } catch (e) { utils.toast('导出失败', 'error'); }
+        });
+
+        function downloadCSV(headers, rows, filename) {
+            const BOM = '\uFEFF';
+            const csv = BOM + [headers, ...rows].map(r => r.map(v => `"${(v+'').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 初始化
+        if (parent.setNav) parent.setNav('audit');
+        loadUserOptions();
+        refreshList(1);
+    });
+    </script>
+</body>
+</html>

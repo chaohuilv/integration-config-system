@@ -50,20 +50,17 @@ function request(url, options = {}) {
 
     return fetch(`${API_CONFIG.baseURL}${url}`, config)
         .then(response => {
-            // 未登录拦截（401 / 403）
-            if (response.status === 401 || response.status === 403) {
-                if (!url.includes('/auth/')) {
-                    console.warn('未登录或登录已过期，正在跳转登录页...');
-                    setToken(null); // 清除无效 token
-                    setTimeout(() => { window.top.location.href = '/login.html'; }, 100);
-                }
-            }
-
             return response.text().then(text => {
                 let data = {};
                 try {
                     data = text ? JSON.parse(text) : {};
                 } catch (e) {
+                    // 非 200 状态且 body 不是 JSON → 包装成错误
+                    if (!response.ok) {
+                        const err = new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                        err.code = response.status;
+                        throw err;
+                    }
                     data = { rawText: text };
                 }
 
@@ -77,7 +74,6 @@ function request(url, options = {}) {
                 if (data.code !== undefined && data.code !== 200) {
                     // 业务返回未登录码
                     if ((data.code === 401 || data.code === 403) && !url.includes('/auth/')) {
-                        console.warn('登录已过期，正在跳转登录页...');
                         setToken(null);
                         setTimeout(() => { window.top.location.href = '/login.html'; }, 100);
                     }
@@ -89,6 +85,9 @@ function request(url, options = {}) {
 
                 return data;
             });
+        }).catch(err => {
+            // fetch 本身失败（网络错误）或内层抛出的错误
+            throw err;
         });
 }
 
@@ -129,6 +128,9 @@ const API = {
             const query = new URLSearchParams(params).toString();
             return request(`/auth/users?${query}`);
         },
+
+        // 获取所有用户（下拉选择用）
+        listAll: () => request('/auth/users/all'),
 
         // 创建用户
         createUser: (data) => request('/auth/users', {
@@ -251,6 +253,27 @@ const API = {
 
         // 获取指定系统下的环境列表
         getBySystem: (systemName) => request(`/environment/by-system/${systemName}`)
+    },
+
+    // 审计日志
+    auditLog: {
+        // 分页查询
+        list: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/audit-log/list?${query}`);
+        },
+        // 批量删除
+        batchDelete: (ids) => request(`/audit-log/batch-delete`, {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        }),
+        // 导出
+        export: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/audit-log/export?${query}`);
+        },
+        // 详情
+        get: (id) => request(`/audit-log/${id}`)
     }
 };
 

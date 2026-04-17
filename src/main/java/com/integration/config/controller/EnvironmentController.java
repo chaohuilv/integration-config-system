@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.AuditLog;
 import com.integration.config.dto.EnvironmentDTO;
 import com.integration.config.service.EnvironmentService;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class EnvironmentController {
      * 创建环境配置
      */
     @PostMapping
+    @AuditLog(operateType = "CREATE", module = "ENVIRONMENT", description = "'创建环境: ' + #dto.systemName + '/' + #dto.envName", targetType = "ENVIRONMENT", recordParams = true)
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody EnvironmentDTO dto) {
         try {
             EnvironmentDTO result = environmentService.create(dto);
@@ -42,6 +44,7 @@ public class EnvironmentController {
      * 更新环境配置
      */
     @PutMapping("/{id}")
+    @AuditLog(operateType = "UPDATE", module = "ENVIRONMENT", description = "'更新环境: ' + #dto.systemName + '/' + #dto.envName", targetType = "ENVIRONMENT", targetId = "#id", recordParams = true)
     public ResponseEntity<Map<String, Object>> update(@PathVariable Long id, @Valid @RequestBody EnvironmentDTO dto) {
         try {
             EnvironmentDTO result = environmentService.update(id, dto);
@@ -57,6 +60,7 @@ public class EnvironmentController {
      * 删除环境配置
      */
     @DeleteMapping("/{id}")
+    @AuditLog(operateType = "DELETE", module = "ENVIRONMENT", description = "'删除环境ID: ' + #id", targetType = "ENVIRONMENT", targetId = "#id", recordParams = true)
     public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
         try {
             environmentService.delete(id);

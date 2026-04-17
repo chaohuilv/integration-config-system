@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.AuditLog;
 import com.integration.config.dto.*;
 import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.enums.Status;
@@ -28,6 +29,7 @@ public class ApiConfigController {
      * 创建接口配置
      */
     @PostMapping
+    @AuditLog(operateType = "CREATE", module = "API_CONFIG", description = "'创建接口: ' + #dto.code", targetType = "API", targetId = "#result.data.code", recordParams = true)
     public Result<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
         String userName = getUserName(request);
@@ -39,6 +41,7 @@ public class ApiConfigController {
      * 更新接口配置
      */
     @PutMapping("/{id}")
+    @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'更新接口: ' + #dto.code", targetType = "API", targetId = "#dto.code", recordParams = true)
     public Result<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
         String userName = getUserName(request);
@@ -50,6 +53,7 @@ public class ApiConfigController {
      * 删除接口配置
      */
     @DeleteMapping("/{id}")
+    @AuditLog(operateType = "DELETE", module = "API_CONFIG", description = "'删除接口ID: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
     public Result<Void> delete(@PathVariable Long id) {
         apiConfigService.delete(id);
         return Result.success("删除成功", null);
@@ -99,6 +103,7 @@ public class ApiConfigController {
      * 切换状态
      */
     @PostMapping("/{id}/toggle")
+    @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'切换接口状态: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
     public Result<Void> toggleStatus(@PathVariable Long id) {
         apiConfigService.toggleStatus(id);
         return Result.success("状态切换成功", null);
@@ -120,6 +125,7 @@ public class ApiConfigController {
      * 支持标准 curl 命令格式，自动提取 URL、方法、请求头、请求体
      */
     @PostMapping("/import/curl")
+    @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'Curl导入接口'", recordParams = true)
     public Result<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String curl = body.get("curl");
         if (curl == null || curl.trim().isEmpty()) {

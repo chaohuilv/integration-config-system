@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审计日志详情</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 详情页布局 */
+        .detail-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding: 0 28px 28px;
+        }
+
+        /* 通用行 */
+        .detail-row {
+            display: flex;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid #f8f8f8;
+            font-size: 13px;
+            align-items: flex-start;
+        }
+        .detail-row:last-child { border-bottom: none; }
+
+        .detail-label {
+            color: #999;
+            min-width: 72px;
+            flex-shrink: 0;
+            font-weight: 500;
+            padding-top: 1px;
+        }
+
+        .detail-value {
+            flex: 1;
+            font-size: 13px;
+            color: #444;
+            word-break: break-all;
+        }
+
+        /* 通用 code 块 */
+        .detail-code {
+            flex: 1;
+            background: #fafafa;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #555;
+            word-break: break-all;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+        }
+
+        /* 基本信息区块 - 双列网格 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0 24px;
+        }
+        .info-grid .detail-row {
+            padding: 8px 0;
+        }
+
+        /* 错误区块 */
+        .error-block {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #c53030;
+        }
+
+        /* JSON 区块 */
+        .json-section {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .json-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+        }
+        .json-section-header .tag { font-size: 12px; }
+
+        /* 统计条 */
+        .stat-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 140px;
+        }
+        .stat-icon { font-size: 22px; }
+        .stat-info { display: flex; flex-direction: column; }
+        .stat-info .stat-val { font-size: 16px; font-weight: 700; color: #1a1d23; line-height: 1.2; }
+        .stat-info .stat-key { font-size: 11px; color: #999; margin-top: 2px; }
+
+        /* 耗时颜色 */
+        .cost-fast { color: #52c41a; }
+        .cost-normal { color: #fa8c16; }
+        .cost-slow { color: #dc2626; }
+
+        /* 复制按钮 */
+        .copy-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #aaa;
+            font-size: 12px;
+            padding: 3px 9px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: system-ui, sans-serif;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .copy-btn.copied { background: rgba(76,175,80,0.25); border-color: rgba(76,175,80,0.5); color: #81c784; }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .info-grid { grid-template-columns: 1fr; }
+            .detail-scroll { padding: 0 16px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🛡️ 审计日志详情</h2>
+            <p class="view-sub">查看操作记录详细信息</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" id="btnBack">← 返回</button>
+        </div>
+    </div>
+
+    <div class="view-body" style="display:flex;flex-direction:column;overflow:hidden;">
+        <!-- 加载中 -->
+        <div class="detail-scroll" id="loading">
+            <div class="empty" style="padding:80px 0;">
+                <div class="empty-icon">⏳</div>
+                <div style="margin-top:8px;color:#999;">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 详情内容 -->
+        <div class="detail-scroll" id="detailContent" style="display:none;">
+
+            <!-- 统计条：操作类型 | 模块 | 结果 | 耗时 -->
+            <div class="stat-bar">
+                <div class="stat-item">
+                    <div class="stat-icon" id="iconType">📋</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fType"></div>
+                        <div class="stat-key">操作类型</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fModule"></div>
+                        <div class="stat-key">模块</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fResult"></div>
+                        <div class="stat-key">结果</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">⏱</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fCost"></div>
+                        <div class="stat-key">耗时</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基本信息 -->
+            <div class="json-section" style="margin-bottom:16px;">
+                <div class="json-section-header">📋 基本信息</div>
+                <div style="padding:4px 16px 12px;">
+                    <div class="info-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">操作时间</div>
+                            <div class="detail-value" id="fTime"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">操作用户</div>
+                            <div class="detail-value" id="fUser"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">客户端IP</div>
+                            <div class="detail-value" id="fIp"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">请求方法</div>
+                            <div class="detail-value" id="fMethod"></div>
+                        </div>
+                        <div class="detail-row" style="grid-column:1/-1;">
+                            <div class="detail-label">请求URI</div>
+                            <div class="detail-code" id="fUri"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">目标类型</div>
+                            <div class="detail-value" id="fTargetType"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">目标ID</div>
+                            <div class="detail-value" id="fTargetId"></div>
+                        </div>
+                        <div class="detail-row" style="grid-column:1/-1;">
+                            <div class="detail-label">操作描述</div>
+                            <div class="detail-code" id="fDesc"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 错误信息 -->
+            <div class="json-section" id="errorCard" style="display:none;margin-bottom:16px;">
+                <div class="json-section-header">⚠️ 错误信息</div>
+                <div style="padding:12px 16px;">
+                    <div class="error-block" id="fError"></div>
+                </div>
+            </div>
+
+            <!-- 请求参数 -->
+            <div class="json-section" id="reqCard" style="display:none;margin-bottom:16px;">
+                <div class="json-section-header">
+                    <span>📥 请求参数</span>
+                    <button class="copy-btn" onclick="copyText('fParams', this)">复制</button>
+                </div>
+                <div id="fParams"></div>
+            </div>
+
+            <!-- 响应数据 -->
+            <div class="json-section" id="respCard" style="display:none;">
+                <div class="json-section-header">
+                    <span>📤 响应数据</span>
+                    <button class="copy-btn" onclick="copyText('fNewData', this)">复制</button>
+                </div>
+                <div id="fNewData"></div>
+            </div>
+
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="detail-scroll" id="errorBox" style="display:none;padding:40px 28px;"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+    $(function() {
+        const params = new URLSearchParams(location.search);
+        const id = params.get('id');
+
+        if (!id) {
+            showError('缺少日志ID参数，请从列表页进入');
+            return;
+        }
+
+        $('#btnBack').on('click', () => history.back());
+
+        API.auditLog.get(id).then(json => {
+            if (json.code !== 200) {
+                showError(json.message || '加载详情失败');
+                return;
+            }
+            renderDetail(json.data);
+        }).catch(() => {
+            showError('网络错误，请检查后端服务');
+        });
+
+        // ===== 渲染详情 =====
+        function renderDetail(item) {
+            $('#loading').hide();
+            $('#detailContent').show();
+
+            const fmtTime = (t) => t ? t.replace('T', ' ').substring(0, 19) : '-';
+
+            const typeMap = {
+                LOGIN:    { cls: 'tag-blue',    label: '登录' },
+                LOGOUT:   { cls: 'tag-blue',    label: '登出' },
+                CREATE:   { cls: 'tag-green',   label: '新增' },
+                UPDATE:   { cls: 'tag-orange',  label: '更新' },
+                DELETE:   { cls: 'tag-red',     label: '删除' },
+                IMPORT:   { cls: 'tag-purple',  label: '导入' },
+                QUERY:    { cls: 'tag-gray',    label: '查询' }
+            };
+            const tInfo = typeMap[item.operateType] || { cls: 'tag-gray', label: item.operateType || '-' };
+
+            // 统计条
+            $('#iconType').text(item.operateType === 'DELETE' ? '🗑' : item.operateType === 'CREATE' ? '✨' : item.operateType === 'UPDATE' ? '✏️' : item.operateType === 'LOGIN' ? '🔑' : '📋');
+            $('#fType').html(`<span class="tag ${tInfo.cls}">${tInfo.label}</span>`);
+            $('#fModule').text(item.module || '-');
+            $('#fResult').html(`<span class="tag ${item.result === 'SUCCESS' ? 'tag-green' : 'tag-red'}">${item.result === 'SUCCESS' ? '成功' : '失败'}</span>`);
+
+            const cost = parseInt(item.costTime) || 0;
+            const costCls = cost < 500 ? 'cost-fast' : cost < 2000 ? 'cost-normal' : 'cost-slow';
+            const costLabel = cost < 500 ? '快速' : cost < 2000 ? '正常' : '较慢';
+            $('#fCost').html(`<span class="${costCls}">${item.costTime != null ? item.costTime + 'ms' : '-'}</span> <span style="font-size:11px;color:#999;font-weight:400;">(${costLabel})</span>`);
+
+            // 基本信息
+            $('#fTime').text(fmtTime(item.operateTime));
+            $('#fUser').text(`${item.userName || item.userCode || '-'} ${item.userCode && item.userName ? '(' + item.userCode + ')' : ''}`);
+            $('#fIp').text(item.clientIp || '-');
+            $('#fMethod').html(`<span class="method method-${(item.requestMethod || '').toLowerCase()}">${item.requestMethod || '-'}</span>`);
+            $('#fUri').text(item.requestUri || '-');
+            $('#fTargetType').text(item.targetType || '-');
+            $('#fTargetId').text(item.targetId || '-');
+            $('#fDesc').text(item.description || '-');
+
+            // 错误
+            if (item.errorMsg) {
+                $('#errorCard').show();
+                $('#fError').text(item.errorMsg);
+            }
+
+            // JSON 格式化
+            const fmt = (s) => {
+                if (!s) return null;
+                try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
+            };
+
+            // 解析 requestParams：支持新格式 {"query":{...},"body":"..."} 或旧格式纯文本
+            const paramsText = fmt(item.requestParams);
+            if (paramsText && paramsText !== 'null') {
+                $('#reqCard').show();
+                renderJsonBox('fParams', paramsText);
+            }
+
+            const newDataText = fmt(item.newData);
+            if (newDataText && newDataText !== 'null') {
+                $('#respCard').show();
+                renderJsonBox('fNewData', newDataText);
+            }
+        }
+
+        // ===== 渲染 JSON 代码块 =====
+        function renderJsonBox(id, text) {
+            const lines = text.split('\n');
+            let html = `<div class="response-box" style="margin:0;border-radius:0;">`;
+            lines.forEach((line, i) => {
+                // 简单语法高亮：key、string、number
+                let highlighted = line
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    // 字符串（双引号包裹的内容）
+                    .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (m, str) => {
+                        str = str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                        return `<span style="color:#ce9178">"${str}"</span>`;
+                    })
+                    // null / boolean
+                    .replace(/\b(true|false|null)\b/g, `<span style="color:#569cd6">$1</span>`)
+                    // 数字
+                    .replace(/\b(-?\d+\.?\d*)\b/g, `<span style="color:#b5cea8">$1</span>`);
+                html += `<div>${highlighted || '&nbsp;'}</div>`;
+            });
+            html += `</div>`;
+            $(`#${id}`).html(html);
+        }
+
+        // ===== 复制功能 =====
+        function copyText(id, btn) {
+            const text = $(`#${id}`).text();
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                $(btn).addClass('copied').text('已复制');
+                setTimeout(() => $(btn).removeClass('copied').text('复制'), 1500);
+            }).catch(() => {
+                // 降级
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                $(btn).addClass('copied').text('已复制');
+                setTimeout(() => $(btn).removeClass('copied').text('复制'), 1500);
+            });
+        }
+
+        // ===== 错误提示 =====
+        function showError(msg) {
+            $('#loading').hide();
+            $('#detailContent').hide();
+            $('#errorBox').html(`
+                <div style="text-align:center;padding:60px 20px;">
+                    <div style="font-size:48px;margin-bottom:16px;">❌</div>
+                    <div style="font-size:15px;color:#666;">${msg}</div>
+                    <div style="margin-top:20px;">
+                        <button class="btn btn-default" onclick="history.back()">← 返回列表</button>
+                    </div>
+                </div>
+            `).show();
+        }
+    });
+    </script>
+</body>
+</html>
