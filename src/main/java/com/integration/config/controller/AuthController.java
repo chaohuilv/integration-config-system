@@ -4,10 +4,10 @@ import com.integration.config.dto.CreateUserDTO;
 import com.integration.config.dto.LoginRequestDTO;
 import com.integration.config.dto.UserDTO;
 import com.integration.config.entity.config.User;
+import com.integration.config.service.TokenService;
 import com.integration.config.service.UserService;
 import com.integration.config.util.Result;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 认证控制器 - 登录/注销/用户管理
+ * 认证控制器 - 登录/注销/用户管理 (Bearer Token 模式)
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -27,9 +27,11 @@ import java.util.Map;
 public class AuthController {
 
     private final UserService userService;
+    private final TokenService tokenService;
 
     /**
-     * 用户登录（使用用户编码）
+     * 用户登录
+     * 返回 access_token，后续请求通过 Authorization: Bearer <token> 认证
      */
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody LoginRequestDTO dto, HttpServletRequest request) {
@@ -42,13 +44,14 @@ public class AuthController {
         String clientIp = getClientIp(request);
         userService.updateLoginInfo(user.getId(), clientIp);
 
-        // 存入Session
-        HttpSession session = request.getSession(true);
-        session.setAttribute("userId", user.getId());
-        session.setAttribute("userCode", user.getUserCode());
-        session.setAttribute("username", user.getUsername());
-        session.setAttribute("displayName", user.getDisplayName());
-        session.setMaxInactiveInterval(24 * 60 * 60); // 24小时
+        // 生成 access_token
+        String accessToken = tokenService.createToken(
+                user.getId(),
+                user.getUserCode(),
+                user.getUsername(),
+                user.getDisplayName(),
+                clientIp
+        );
 
         log.info("用户登录成功: {} ({}) from {}", user.getUserCode(), user.getUsername(), clientIp);
 
@@ -57,38 +60,40 @@ public class AuthController {
         data.put("userCode", user.getUserCode());
         data.put("username", user.getUsername());
         data.put("displayName", user.getDisplayName());
+        data.put("access_token", accessToken);  // 新增：返回 access_token
         return Result.success(data);
     }
 
     /**
      * 用户注销
+     * 从 Authorization header 提取 token 并撤销
      */
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            String userCode = (String) session.getAttribute("userCode");
-            log.info("用户注销: {}", userCode);
-            session.invalidate();
+        String token = extractBearerToken(request);
+        if (token != null) {
+            tokenService.revokeToken(token);
+            log.info("用户注销: token={}", token.substring(0, 8) + "...");
         }
         return Result.success();
     }
 
     /**
      * 获取当前登录用户信息
+     * 从 Request Attribute 读取（由 LoginFilter 设置）
      */
     @GetMapping("/current")
     public Result<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("userId") == null) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
             return Result.error("未登录");
         }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("id", session.getAttribute("userId"));
-        data.put("userCode", session.getAttribute("userCode"));
-        data.put("username", session.getAttribute("username"));
-        data.put("displayName", session.getAttribute("displayName"));
+        data.put("id", userId);
+        data.put("userCode", request.getAttribute("userCode"));
+        data.put("username", request.getAttribute("username"));
+        data.put("displayName", request.getAttribute("displayName"));
         return Result.success(data);
     }
 
@@ -97,17 +102,17 @@ public class AuthController {
      */
     @GetMapping("/check")
     public Result<Map<String, Object>> checkLogin(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("userId") == null) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
             return Result.error("未登录");
         }
 
         Map<String, Object> data = new HashMap<>();
         data.put("loggedIn", true);
-        data.put("id", session.getAttribute("userId"));
-        data.put("userCode", session.getAttribute("userCode"));
-        data.put("username", session.getAttribute("username"));
-        data.put("displayName", session.getAttribute("displayName"));
+        data.put("id", userId);
+        data.put("userCode", request.getAttribute("userCode"));
+        data.put("username", request.getAttribute("username"));
+        data.put("displayName", request.getAttribute("displayName"));
         return Result.success(data);
     }
 
@@ -118,7 +123,7 @@ public class AuthController {
      */
     @PostMapping("/users")
     public Result<UserDTO> createUser(@RequestBody CreateUserDTO dto, HttpServletRequest request) {
-        Long creatorId = getUserId(request);
+        Long creatorId = (Long) request.getAttribute("userId");
         if (creatorId == null) {
             return Result.error("未登录");
         }
@@ -157,7 +162,7 @@ public class AuthController {
      */
     @DeleteMapping("/users/{id}")
     public Result<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
-        Long currentUserId = getUserId(request);
+        Long currentUserId = (Long) request.getAttribute("userId");
         if (currentUserId != null && currentUserId.equals(id)) {
             return Result.error("不能删除当前登录用户");
         }
@@ -200,11 +205,6 @@ public class AuthController {
 
     // ==================== 辅助方法 ====================
 
-    private Long getUserId(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        return session != null ? (Long) session.getAttribute("userId") : null;
-    }
-
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
@@ -213,10 +213,20 @@ public class AuthController {
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
-        // 取第一个IP（如果有多级代理）
         if (ip != null && ip.contains(",")) {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * 从 Authorization header 提取 Bearer token
+     */
+    private String extractBearerToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7).trim();
+        }
+        return null;
     }
 }

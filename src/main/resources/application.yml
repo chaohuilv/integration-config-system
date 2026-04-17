@@ -25,21 +25,21 @@ spring:
     livereload:
       enabled: true
 
-  # ========== Config 数据库（接口配置） ==========
+  # ========== Config 数据库（接口配置）==========
   datasource-config:
     url: jdbc:h2:./data/integration_config;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # ========== Log 数据库（调用日志） ==========
+  # ========== Log 数据库（调用日志）==========
   datasource-log:
     url: jdbc:h2:./data/integration_log;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # ========== Token 数据库（Token缓存） ==========
+  # ========== Token 数据库（Token缓存）==========
   datasource-token:
     url: jdbc:h2:./data/integration_token;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
@@ -65,6 +65,23 @@ spring:
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
 
+  # ========== Redis 配置（Token 存储和业务缓存）==========
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 2
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  # 注意：已移除 Spring Session Redis 配置，改用 Bearer Token 认证模式
+  # Token 存储在 Redis database 2 中，前缀为 integration:token:
+
 # ===========================================
 # 自定义配置
 # ===========================================
@@ -78,6 +95,16 @@ integration:
   # 环境配置功能（自动使用各分组下已启用的环境）
   environment:
     enabled: true
+
+  # Token 配置
+  token:
+    expire-hours: 24  # Token 过期时间（小时）
+
+  # Redis 缓存配置参数
+  cache:
+    enabled: true
+    prefix: "integration:cache:"
+    ttl: 300
 
 logging:
   level:

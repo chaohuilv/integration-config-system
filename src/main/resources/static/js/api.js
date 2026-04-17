@@ -1,5 +1,5 @@
 /**
- * API 请求封装模块
+ * API 请求封装模块 - Bearer Token 认证模式
  * 统一管理所有后端接口请求
  */
 
@@ -9,14 +9,30 @@ const API_CONFIG = {
     timeout: 30000
 };
 
+// 存储 access_token
+const TOKEN_KEY = 'integration_access_token';
+
+// 获取存储的 token
+function getToken() {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+// 存储 token
+function setToken(token) {
+    if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+    } else {
+        localStorage.removeItem(TOKEN_KEY);
+    }
+}
+
 // 通用请求函数
 function request(url, options = {}) {
     const defaultOptions = {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+        }
     };
 
     const config = { ...defaultOptions, ...options };
@@ -26,8 +42,23 @@ function request(url, options = {}) {
         config.headers = { ...defaultOptions.headers, ...options.headers };
     }
 
+    // 添加 Authorization: Bearer <token> 头
+    const token = getToken();
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
     return fetch(`${API_CONFIG.baseURL}${url}`, config)
         .then(response => {
+            // 未登录拦截（401 / 403）
+            if (response.status === 401 || response.status === 403) {
+                if (!url.includes('/auth/')) {
+                    console.warn('未登录或登录已过期，正在跳转登录页...');
+                    setToken(null); // 清除无效 token
+                    setTimeout(() => { window.top.location.href = '/login.html'; }, 100);
+                }
+            }
+
             return response.text().then(text => {
                 let data = {};
                 try {
@@ -44,6 +75,12 @@ function request(url, options = {}) {
                 }
 
                 if (data.code !== undefined && data.code !== 200) {
+                    // 业务返回未登录码
+                    if ((data.code === 401 || data.code === 403) && !url.includes('/auth/')) {
+                        console.warn('登录已过期，正在跳转登录页...');
+                        setToken(null);
+                        setTimeout(() => { window.top.location.href = '/login.html'; }, 100);
+                    }
                     const error = new Error(data.message || '请求失败');
                     error.code = data.code;
                     error.data = data;
@@ -63,15 +100,29 @@ const API = {
         check: () => request('/auth/check'),
 
         // 登录
-        login: (data) => request('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        }),
+        login: async (data) => {
+            const result = await request('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            // 登录成功后保存 token
+            if (result.code === 200 && result.data && result.data.access_token) {
+                setToken(result.data.access_token);
+            }
+            return result;
+        },
 
         // 登出
-        logout: () => request('/auth/logout', {
-            method: 'POST'
-        }),
+        logout: async () => {
+            try {
+                await request('/auth/logout', {
+                    method: 'POST'
+                });
+            } finally {
+                // 无论后端是否成功，都清除本地 token
+                setToken(null);
+            }
+        },
 
         // 获取用户列表
         getUsers: (params = {}) => {

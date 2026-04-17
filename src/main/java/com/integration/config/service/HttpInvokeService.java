@@ -18,11 +18,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * HTTP 接口调用服务
@@ -39,11 +44,7 @@ public class HttpInvokeService {
     private final IntegrationConfig integrationConfig;
     private final TokenCacheManager tokenCacheManager;
     private final EnvironmentService environmentService;
-
-    /**
-     * 本地缓存（简单实现，生产环境建议使用 Redis）
-     */
-    private final Map<String, CacheEntry> localCache = new ConcurrentHashMap<>();
+    private final RedisCacheService redisCacheService;
 
     /**
      * 调用接口（通过编码）
@@ -71,13 +72,13 @@ public class HttpInvokeService {
             // 2. 检查缓存
             if (Boolean.TRUE.equals(config.getEnableCache())) {
                 String cacheKey = buildCacheKey(request);
-                CacheEntry cached = localCache.get(cacheKey);
-                if (cached != null && !cached.isExpired()) {
-                    log.info("[{}] 缓存命中: {}", traceId, cacheKey);
+                Object cachedData = redisCacheService.get(cacheKey);
+                if (cachedData != null) {
+                    log.info("[{}] Redis 缓存命中: {}", traceId, cacheKey);
                     return InvokeResponseDTO.builder()
                             .success(true)
                             .statusCode(200)
-                            .data(cached.getData())
+                            .data(cachedData)
                             .message("来自缓存")
                             .costTime(System.currentTimeMillis() - startTime)
                             .invokeTime(LocalDateTime.now())
@@ -121,10 +122,8 @@ public class HttpInvokeService {
             // 6. 写入缓存
             if (Boolean.TRUE.equals(config.getEnableCache()) && response.getSuccess()) {
                 String cacheKey = buildCacheKey(request);
-                localCache.put(cacheKey, new CacheEntry(
-                        response.getData(),
-                        config.getCacheTime() != null ? config.getCacheTime() : 300
-                ));
+                int ttl = config.getCacheTime() != null ? config.getCacheTime() : 300;
+                redisCacheService.put(cacheKey, response.getData(), ttl);
             }
 
         } catch (Exception e) {
@@ -583,14 +582,6 @@ public class HttpInvokeService {
     }
 
     /**
-     * 获取客户端 IP
-     */
-    private String getClientIp() {
-        // 简化实现，可通过 RequestContextHolder 获取
-        return "unknown";
-    }
-
-    /**
      * 应用环境配置替换 URL 域名
      * 根据接口的 groupName 查找该分组下已启用的环境配置，替换 URL 中的域名部分
      */
@@ -752,23 +743,71 @@ public class HttpInvokeService {
     }
 
     /**
-     * 缓存条目
+     * 获取真实客户端IP（支持代理/负载均衡）
      */
-    private static class CacheEntry {
-        private final Object data;
-        private final long expireTime;
+    private String getClientIp() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) {
+                return getLocalIp();
+            }
+            HttpServletRequest request = attrs.getRequest();
 
-        CacheEntry(Object data, int cacheSeconds) {
-            this.data = data;
-            this.expireTime = System.currentTimeMillis() + cacheSeconds * 1000L;
+            // 1. 优先从 Nginx 反向代理 Header 获取
+            String ip = request.getHeader("X-Real-IP");
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
+
+            // 2. 代理链（多级代理时取第一个）
+            ip = request.getHeader("X-Forwarded-For");
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // 多个IP时取第一个（格式: client, proxy1, proxy2）
+                int idx = ip.indexOf(',');
+                if (idx > 0) {
+                    return ip.substring(0, idx).trim();
+                }
+                return ip.trim();
+            }
+
+            // 3. 阿里云 SLB
+            ip = request.getHeader("Ali-Cdn-Real-IP");
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
+
+            // 4. 腾讯云 CLB
+            ip = request.getHeader("X-Custom-Real-IP");
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
+
+            // 5. 直接连接（REMOTE_ADDR）
+            ip = request.getRemoteAddr();
+            if (ip != null && !ip.isEmpty()) {
+                // 本地回环地址统一为 localhost
+                if (ip.equals("127.0.0.1") || ip.equals("0:0:0:0:0:0:0:1")) {
+                    return "localhost";
+                }
+                return ip;
+            }
+
+            return getLocalIp();
+        } catch (Exception e) {
+            log.warn("获取客户端IP异常: {}", e.getMessage());
+            return getLocalIp();
         }
+    }
 
-        boolean isExpired() {
-            return System.currentTimeMillis() > expireTime;
-        }
-
-        Object getData() {
-            return data;
+    /**
+     * 获取本机IP
+     */
+    private String getLocalIp() {
+        try {
+            InetAddress addr = InetAddress.getLocalHost();
+            return addr.getHostAddress();
+        } catch (UnknownHostException e) {
+            return "unknown";
         }
     }
 }

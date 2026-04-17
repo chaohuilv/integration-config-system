@@ -6,7 +6,6 @@ import com.integration.config.enums.Status;
 import com.integration.config.service.ApiConfigService;
 import com.integration.config.util.Result;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -119,12 +118,6 @@ public class ApiConfigController {
     /**
      * Curl 命令一键导入接口配置
      * 支持标准 curl 命令格式，自动提取 URL、方法、请求头、请求体
-     *
-     * 示例：
-     * curl -X POST 'https://api.example.com/users' \
-     *   -H 'Content-Type: application/json' \
-     *   -H 'Authorization: Bearer xxx' \
-     *   -d '{"name":"张三"}'
      */
     @PostMapping("/import/curl")
     public Result<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
@@ -144,14 +137,17 @@ public class ApiConfigController {
 
     // ==================== 辅助方法 ====================
 
+    /**
+     * 从 Request Attribute 获取用户ID（由 LoginFilter 设置）
+     */
     private Long getUserId(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        return session != null ? (Long) session.getAttribute("userId") : null;
+        return (Long) request.getAttribute("userId");
     }
 
+    /**
+     * 从 Request Attribute 获取用户名（由 LoginFilter 设置）
+     */
     private String getUserName(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        // 使用 username（用户名称）存储到业务表
-        return session != null ? (String) session.getAttribute("username") : null;
+        return (String) request.getAttribute("username");
     }
 }
