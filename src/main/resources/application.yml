@@ -75,6 +75,10 @@ integration:
   log-response: true
   max-retry: 3
 
+  # 环境配置功能（自动使用各分组下已启用的环境）
+  environment:
+    enabled: true
+
 logging:
   level:
     com.integration.config: INFO

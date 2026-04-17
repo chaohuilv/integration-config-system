@@ -44,6 +44,92 @@
             white-space: pre-wrap;
             word-break: break-all;
         }
+
+        /* 搜索区域 */
+        .search-bar {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+
+        .search-bar .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 160px;
+        }
+
+        .search-bar .form-group label {
+            font-size: 12px;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .search-bar .form-group input,
+        .search-bar .form-group select {
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .search-bar .form-group input:focus,
+        .search-bar .form-group select:focus {
+            border-color: #1890ff;
+        }
+
+        .search-bar .form-group input[type="date"] {
+            width: 140px;
+        }
+
+        .search-bar .btn-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search-bar .btn-search {
+            background: #1890ff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0 16px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .search-bar .btn-search:hover {
+            background: #40a9ff;
+        }
+
+        .search-bar .btn-reset {
+            background: #f5f5f5;
+            color: #666;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            padding: 0 12px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .search-bar .btn-reset:hover {
+            color: #1890ff;
+            border-color: #1890ff;
+        }
     </style>
 </head>
 <body>
@@ -54,6 +140,7 @@
         </div>
         <div class="view-actions">
             <button class="btn btn-default" id="btnRefresh">🔄 刷新</button>
+            <button class="btn btn-danger" id="btnBatchDelete" >🗑️ 批量删除</button>
         </div>
     </div>
 
@@ -64,11 +151,49 @@
             <div class="stat-card"><div class="stat-value" id="sFail">0</div><div class="stat-label">失败次数</div></div>
             <div class="stat-card"><div class="stat-value" id="sRate">0%</div><div class="stat-label">成功率</div></div>
         </div>
+
+        <!-- 搜索区域 -->
+        <div class="search-bar">
+            <div class="form-group">
+                <label>接口编码</label>
+                <input type="text" id="searchApiCode" placeholder="精确匹配">
+            </div>
+            <div class="form-group">
+                <label>请求 URL</label>
+                <input type="text" id="searchUrl" placeholder="模糊匹配">
+            </div>
+            <div class="form-group">
+                <label>请求体</label>
+                <input type="text" id="searchBody" placeholder="模糊匹配">
+            </div>
+            <div class="form-group">
+                <label>开始时间</label>
+                <input type="date" id="searchStartTime">
+            </div>
+            <div class="form-group">
+                <label>结束时间</label>
+                <input type="date" id="searchEndTime">
+            </div>
+            <div class="form-group">
+                <label>调用结果</label>
+                <select id="searchSuccess">
+                    <option value="">全部</option>
+                    <option value="true">成功</option>
+                    <option value="false">失败</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button class="btn-search" id="btnSearch">🔍 搜索</button>
+                <button class="btn-reset" id="btnReset">重置</button>
+            </div>
+        </div>
         <div class="table-wrap">
             <table class="table">
                 <thead>
                     <tr>
+                        <th style="width:30px;"><input type="checkbox" id="chkAll"></th>
                         <th>接口编码</th>
+                        <th>请求 URL</th>
                         <th>状态码</th>
                         <th>调用时间</th>
                         <th>耗时</th>
@@ -100,14 +225,30 @@
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('logs');
 
+        // 构建搜索参数
+        function buildSearchParams() {
+            const params = { page: currentPage, size: size };
+            const apiCode = $('#searchApiCode').val().trim();
+            const requestUrl = $('#searchUrl').val().trim();
+            const requestBody = $('#searchBody').val().trim();
+            const startTime = $('#searchStartTime').val();
+            const endTime = $('#searchEndTime').val();
+            const success = $('#searchSuccess').val();
+
+            if (apiCode) params.apiCode = apiCode;
+            if (requestUrl) params.requestUrl = requestUrl;
+            if (requestBody) params.requestBody = requestBody;
+            if (startTime) params.startTime = startTime + ' 00:00:00';
+            if (endTime) params.endTime = endTime + ' 23:59:59';
+            if (success !== '') params.success = success;
+            return params;
+        }
+
         // 加载日志列表
         function refresh(page) {
             if (page) currentPage = page;
 
-            API.invoke.getLogs({
-                page: currentPage,
-                size: size
-            })
+            API.invoke.getLogs(buildSearchParams())
             .then(json => {
                 render(json.data);
             })
@@ -126,7 +267,7 @@
             const logs = data.records;
             
             if (!logs || !logs.length) {
-                $('#logsBody').html('<tr><td colspan="6" class="empty"><div class="empty-icon">📭</div>暂无调用日志</td></tr>');
+                $('#logsBody').html('<tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>暂无调用日志</td></tr>');
                 $('#pagination').html('');
                 return;
             }
@@ -134,7 +275,9 @@
             // 渲染表格行
             const rowsHtml = logs.map(l => `
                 <tr class="log-row" data-id="${l.id}">
+                    <td><input type="checkbox" class="log-chk" value="${l.id}"></td>
                     <td><code>${utils.escapeHtml(l.apiCode || '-')}</code></td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;word-break:break-all;font-size:12px;" title="${utils.escapeHtml(l.requestUrl || '')}">${utils.escapeHtml(l.requestUrl || '-')}</td>
                     <td><span style="font-weight:600;color:${l.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${l.responseStatus || '-'}</span></td>
                     <td>${utils.formatDate(l.invokeTime)}</td>
                     <td>${l.costTime != null ? l.costTime + 'ms' : '-'}</td>
@@ -142,7 +285,7 @@
                     <td><button class="btn btn-sm btn-default btn-toggle-detail" data-id="${l.id}">详情</button></td>
                 </tr>
                 <tr class="log-detail-row" id="detail-${l.id}">
-                    <td colspan="6">
+                    <td colspan="8">
                         <div class="log-detail-content" id="detail-content-${l.id}">
                             <div style="text-align:center;padding:20px;color:#999;">加载中...</div>
                         </div>
@@ -226,6 +369,7 @@
                     const html = `
                         <table style="width:100%;">
                             <tr><td>接口编码</td><td><code>${utils.escapeHtml(d.apiCode || '-')}</code></td></tr>
+                            <tr><td>请求 URL</td><td><pre style="margin:0;white-space:pre-wrap;word-break:break-all;">${utils.escapeHtml(d.requestUrl || '-')}</pre></td></tr>
                             <tr><td>状态码</td><td style="font-weight:600;color:${d.responseStatus >= 400 ? '#ff4d4f' : '#52c41a'}">${d.responseStatus || '-'}</td></tr>
                             <tr><td>耗时</td><td>${d.costTime != null ? d.costTime + 'ms' : '-'}</td></tr>
                             <tr><td>调用时间</td><td>${utils.formatDate(d.invokeTime)}</td></tr>
@@ -249,8 +393,73 @@
             refresh(1);
         });
 
+        // 绑定搜索按钮
+        $('#btnSearch').on('click', function() {
+            currentPage = 1;
+            refresh();
+        });
+
+        // 绑定重置按钮
+        $('#btnReset').on('click', function() {
+            $('#searchApiCode').val('');
+            $('#searchUrl').val('');
+            $('#searchBody').val('');
+            $('#searchStartTime').val('');
+            $('#searchEndTime').val('');
+            $('#searchSuccess').val('');
+            currentPage = 1;
+            refresh();
+        });
+
+        // 回车触发表情单索
+        $('.search-bar input').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                currentPage = 1;
+                refresh();
+            }
+        });
+
         // 初始加载
         refresh();
+
+        // 全选 / 取消全选
+        $(document).on('change', '#chkAll', function() {
+            const checked = $(this).prop('checked');
+            $('.log-chk').prop('checked', checked);
+            updateBatchBtn();
+        });
+
+        // 单选变化
+        $(document).on('change', '.log-chk', function() {
+            const allChecked = $('.log-chk:not(:checked)').length === 0;
+            $('#chkAll').prop('checked', allChecked);
+            updateBatchBtn();
+        });
+
+        // 更新批量删除按钮显示状态
+        function updateBatchBtn() {
+            const count = $('.log-chk:checked').length;
+            if (count > 0) {
+                $('#btnBatchDelete').text('🗑️ 批量删除 (' + count + ')').show();
+            }
+        }
+
+        // 批量删除
+        $('#btnBatchDelete').on('click', async function() {
+            const ids = $('.log-chk:checked').map(function() { return $(this).val(); }).get();
+            if (!ids.length) return;
+
+            const ok = await utils.showConfirm('确认删除', '确定要删除选中的 ' + ids.length + ' 条日志吗？', '🗑️', true);
+            if (!ok) return;
+
+            try {
+                await API.invoke.deleteLogs(ids);
+                utils.toast('删除成功', 'success');
+                refresh(1);
+            } catch (err) {
+                utils.toast('删除失败: ' + err.message, 'error');
+            }
+        });
     });
     </script>
 </body>

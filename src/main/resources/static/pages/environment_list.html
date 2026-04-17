@@ -6,43 +6,6 @@
     <title>环境配置</title>
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components.css">
-    <style>
-        /* 环境配置页专属样式 */
-        .actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .actions button {
-            padding: 4px 10px;
-            font-size: 12px;
-            border-radius: 4px;
-            border: 1px solid #d9d9d9;
-            background: #fff;
-            cursor: pointer;
-            color: #333;
-        }
-
-        .actions button:hover {
-            border-color: #667eea;
-            color: #667eea;
-        }
-
-        .actions button.danger {
-            border-color: #ff4d4f;
-            color: #ff4d4f;
-        }
-
-        .actions button.danger:hover {
-            background: #fff1f0;
-        }
-
-        .hint {
-            font-size: 12px;
-            color: #999;
-            margin-top: 4px;
-        }
-    </style>
 </head>
 <body>
     <div class="view-header">
@@ -56,65 +19,24 @@
     </div>
 
     <div class="view-body">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>系统名称</th>
-                    <th>环境</th>
-                    <th>Base URL</th>
-                    <th>状态</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="envTable"></tbody>
-        </table>
-        <div id="empty" style="text-align:center;padding:40px;color:#999;display:none;">暂无数据</div>
-    </div>
-
-    <!-- 新建/编辑环境弹窗 -->
-    <div class="modal-overlay" id="envModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="modalTitle">新建环境</h3>
-                <button class="modal-close" id="btnCloseModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="envId">
-                <div class="form-group">
-                    <label>系统名称</label>
-                    <input type="text" id="systemName" placeholder="如：OA系统">
-                </div>
-                <div class="form-group">
-                    <label>环境</label>
-                    <select id="envName">
-                        <option value="DEV">DEV 开发环境</option>
-                        <option value="TEST">TEST 测试环境</option>
-                        <option value="PRE">PRE 预发布环境</option>
-                        <option value="PROD">PROD 生产环境</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Base URL</label>
-                    <input type="url" id="baseUrl" placeholder="https://oa-dev.company.com">
-                    <div class="hint">接口URL将以此为基础进行拼接</div>
-                </div>
-                <div class="form-group">
-                    <label>描述</label>
-                    <input type="text" id="description" placeholder="可选">
-                </div>
-                <div class="form-group">
-                    <label>状态</label>
-                    <select id="status">
-                        <option value="ACTIVE">启用</option>
-                        <option value="INACTIVE">禁用</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-default" id="btnCancelModal">取消</button>
-                <button class="btn btn-primary" id="btnSaveEnv">保存</button>
-            </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>系统名称</th>
+                        <th>环境</th>
+                        <th>Base URL</th>
+                        <th>描述</th>
+                        <th>状态</th>
+                        <th>域名替换</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="envTable"></tbody>
+            </table>
         </div>
+        <div class="pagination" id="pagination"></div>
+        <div id="empty" style="text-align:center;padding:40px;color:#999;display:none;">暂无数据</div>
     </div>
 
     <!-- 引入 jQuery -->
@@ -126,18 +48,23 @@
 
     <script>
     $(function() {
+        let currentPage = 1;
+        const size = 10;
+
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('environments');
 
         // 加载环境列表
         function load() {
             API.environment.list({
-                page: 1,
-                size: 100
+                page: currentPage,
+                size: size
             })
             .then(json => {
-                const data = json.data && json.data.content || [];
-                renderEnvList(data);
+                const data = json.data;
+                const list = data && data.content || [];
+                renderEnvList(list);
+                renderPagination(data && data.totalElements || 0, data && data.number + 1 || 1, data && data.size || size);
             })
             .catch(err => {
                 utils.toast('加载失败: ' + err.message, 'error');
@@ -148,127 +75,70 @@
         function renderEnvList(data) {
             const tbody = $('#envTable');
             const empty = $('#empty');
+            const tableWrap = $('.table-wrap');
 
             if (!data.length) {
                 tbody.html('');
+                //tableWrap.hide();
                 empty.show();
                 return;
             }
 
             empty.hide();
-
             const rowsHtml = data.map(e => `
                 <tr>
-                    <td>${utils.escapeHtml(e.systemName)}</td>
-                    <td>${utils.escapeHtml(e.envName)}</td>
-                    <td style="color:#666;word-break:break-all">${utils.escapeHtml(e.baseUrl)}</td>
+                    <td><strong>${utils.escapeHtml(e.systemName)}</strong></td>
+                    <td><span class="badge badge-${e.envName ? e.envName.toLowerCase() : 'dev'}">${utils.escapeHtml(e.envName)}</span></td>
+                    <td style="color:#666;word-break:break-all;font-size:13px;">${utils.escapeHtml(e.baseUrl)}</td>
+                    <td style="color:#999;font-size:13px;">${utils.escapeHtml(e.description || '-')}</td>
                     <td><span class="badge badge-${e.status === 'ACTIVE' ? 'active' : 'inactive'}">${e.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
+                    <td><span class="badge badge-${e.urlReplace !== false ? 'active' : 'inactive'}">${e.urlReplace !== false ? '启用' : '禁用'}</span></td>
                     <td class="actions">
-                        <button class="btn-edit" data-id="${e.id}">编辑</button>
-                        <button class="btn-delete danger" data-id="${e.id}">删除</button>
+                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('envForm', '${e.id}')">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteEnv('${e.id}')">删除</button>
                     </td>
                 </tr>
             `).join('');
 
             tbody.html(rowsHtml);
-
-            // 绑定编辑按钮事件
-            $('.btn-edit').on('click', function() {
-                const id = $(this).data('id');
-                editEnv(id);
-            });
-
-            // 绑定删除按钮事件
-            $('.btn-delete').on('click', function() {
-                const id = $(this).data('id');
-                deleteEnv(id);
-            });
         }
 
-        // 打开弹窗
-        function openModal(id) {
-            $('#envModal').addClass('show');
-            $('#modalTitle').text(id ? '编辑环境' : '新建环境');
-            
-            if (!id) {
-                $('#envId').val('');
-                $('#systemName').val('');
-                $('#baseUrl').val('');
-                $('#description').val('');
-                $('#envName').val('DEV');
-                $('#status').val('ACTIVE');
-            }
-        }
+        // 分页
+        function renderPagination(total, page, size) {
+            const totalPages = Math.ceil(total / size);
+            const el = $('#pagination');
 
-        // 关闭弹窗
-        function closeModal() {
-            $('#envModal').removeClass('show');
-        }
-
-        // 编辑环境
-        function editEnv(id) {
-            API.environment.get(id)
-                .then(json => {
-                    if (json.data) {
-                        const e = json.data;
-                        $('#envId').val(e.id);
-                        $('#systemName').val(e.systemName);
-                        $('#envName').val(e.envName);
-                        $('#baseUrl').val(e.baseUrl);
-                        $('#description').val(e.description || '');
-                        $('#status').val(e.status);
-                        openModal(id);
-                    }
-                })
-                .catch(err => {
-                    utils.toast('加载失败: ' + err.message, 'error');
-                });
-        }
-
-        // 保存环境
-        function saveEnv() {
-            const id = $('#envId').val();
-            const dto = {
-                systemName: $('#systemName').val().trim(),
-                envName: $('#envName').val(),
-                baseUrl: $('#baseUrl').val().trim(),
-                description: $('#description').val().trim(),
-                status: $('#status').val()
-            };
-
-            if (!dto.systemName || !dto.baseUrl) {
-                utils.toast('请填写必填项', 'error');
+            if (!totalPages) {
+                el.html('');
                 return;
             }
 
-            const request = id 
-                ? API.environment.update(id, dto)
-                : API.environment.create(dto);
+            let html = `<button ${page <= 1 ? 'disabled' : ''} onclick="goPage(${page - 1})">上一页</button>`;
 
-            request
-                .then(json => {
-                    utils.toast('保存成功', 'success');
-                    closeModal();
-                    load();
-                })
-                .catch(err => {
-                    utils.toast('保存失败: ' + err.message, 'error');
-                });
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                    html += `<button class="${i === page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+                } else if (i === page - 3 || i === page + 3) {
+                    html += `<button disabled>...</button>`;
+                }
+            }
+
+            html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="goPage(${page + 1})">下一页</button>`;
+            el.html(html);
+        }
+
+        function goPage(p) {
+            currentPage = p;
+            load();
         }
 
         // 删除环境
         async function deleteEnv(id) {
-            const ok = await utils.showConfirm(
-                '确认删除',
-                '确定要删除此环境配置吗？',
-                '🗑️',
-                true
-            );
-
+            const ok = await utils.showConfirm('确认删除', '确定要删除此环境配置吗？', '🗑️', true);
             if (!ok) return;
 
             API.environment.delete(id)
-                .then(json => {
+                .then(() => {
                     utils.toast('删除成功', 'success');
                     load();
                 })
@@ -277,19 +147,14 @@
                 });
         }
 
-        // 绑定事件
+        // 绑定新建按钮
         $('#btnAddEnv').on('click', function() {
-            openModal();
+            parent.loadPage('envForm');
         });
 
-        $('#btnCloseModal').on('click', closeModal);
-        $('#btnCancelModal').on('click', closeModal);
-        $('#btnSaveEnv').on('click', saveEnv);
-
-        // 点击遮罩关闭弹窗
-        $('#envModal').on('click', function(e) {
-            if (e.target === this) closeModal();
-        });
+        // 暴露给全局
+        window.goPage = goPage;
+        window.deleteEnv = deleteEnv;
 
         // 初始加载
         load();

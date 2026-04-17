@@ -55,4 +55,9 @@ public class InvokeResponseDTO {
      * 是否来自缓存
      */
     private Boolean fromCache;
+
+    /**
+     * 实际请求 URL（含域名替换后的完整地址）
+     */
+    private String requestUrl;
 }

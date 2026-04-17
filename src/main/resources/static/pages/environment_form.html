@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境配置 - 新建/编辑</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .env-form {
+            max-width: 720px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group .required {
+            color: #ff4d4f;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+            background: #fff;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🌐 <span id="pageTitle">新建环境</span></h2>
+            <p class="view-sub">配置系统环境信息</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" id="btnBack">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                返回列表
+            </button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="env-form">
+            <input type="hidden" id="envId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>系统名称 <span class="required">*</span></label>
+                    <input type="text" id="systemName" placeholder="如：OA系统、PMS系统">
+                    <div class="hint">对应接口配置的分组名称，需要完全匹配</div>
+                </div>
+                <div class="form-group">
+                    <label>环境 <span class="required">*</span></label>
+                    <select id="envName">
+                        <option value="DEV">DEV 开发环境</option>
+                        <option value="TEST">TEST 测试环境</option>
+                        <option value="PRE">PRE 预发布环境</option>
+                        <option value="PROD">PROD 生产环境</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label>Base URL <span class="required">*</span></label>
+                    <input type="url" id="baseUrl" placeholder="https://oa-dev.company.com">
+                    <div class="hint">接口URL的域名部分将以此为基础，path和参数会保留</div>
+                </div>
+                <div class="form-group full-width">
+                    <label>描述</label>
+                    <input type="text" id="description" placeholder="可选，用于说明此环境的用途">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="status">
+                        <option value="ACTIVE">启用</option>
+                        <option value="INACTIVE">禁用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>域名替换</label>
+                    <select id="urlReplace">
+                        <option value="true">启用</option>
+                        <option value="false">禁用</option>
+                    </select>
+                    <div class="hint">启用时，接口调用会自动用此环境的 Base URL 替换原始域名</div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" id="btnSaveEnv">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    保存
+                </button>
+                <button class="btn btn-default" id="btnCancel">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 jQuery -->
+    <script src="../js/vendor/jquery.min.js"></script>
+    <!-- 引入工具函数 -->
+    <script src="../js/utils.js"></script>
+    <!-- 引入 API 封装 -->
+    <script src="../js/api.js"></script>
+
+    <script>
+    $(function() {
+        // 通知主壳高亮侧边栏
+        if (parent.setNav) parent.setNav('environments');
+
+        // 从URL参数获取编辑ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('id');
+
+        // 初始化
+        if (editId) {
+            $('#pageTitle').text('编辑环境');
+            loadEnvData(editId);
+        } else {
+            $('#pageTitle').text('新建环境');
+            $('#envName').val('DEV');
+            $('#status').val('ACTIVE');
+            $('#urlReplace').val('true');
+        }
+
+        // 加载环境数据
+        function loadEnvData(id) {
+            API.environment.get(id)
+                .then(json => {
+                    if (json.data) {
+                        const e = json.data;
+                        $('#envId').val(e.id);
+                        $('#systemName').val(e.systemName);
+                        $('#envName').val(e.envName);
+                        $('#baseUrl').val(e.baseUrl);
+                        $('#description').val(e.description || '');
+                        $('#status').val(e.status);
+                        $('#urlReplace').val(e.urlReplace !== false ? 'true' : 'false');
+                    }
+                })
+                .catch(err => {
+                    utils.toast('加载失败: ' + err.message, 'error');
+                    setTimeout(() => {
+                        parent.loadPage('environments');
+                    }, 1500);
+                });
+        }
+
+        // 保存环境
+        function saveEnv() {
+            const id = $('#envId').val();
+            const dto = {
+                systemName: $('#systemName').val().trim(),
+                envName: $('#envName').val(),
+                baseUrl: $('#baseUrl').val().trim(),
+                description: $('#description').val().trim(),
+                status: $('#status').val(),
+                urlReplace: $('#urlReplace').val() === 'true'
+            };
+
+            if (!dto.systemName || !dto.baseUrl) {
+                utils.toast('请填写必填项', 'error');
+                return;
+            }
+
+            if (!dto.baseUrl.startsWith('http://') && !dto.baseUrl.startsWith('https://')) {
+                utils.toast('Base URL 必须以 http:// 或 https:// 开头', 'error');
+                return;
+            }
+
+            const request = id
+                ? API.environment.update(parseInt(id), dto)
+                : API.environment.create(dto);
+
+            request
+                .then(() => {
+                    utils.toast('保存成功', 'success');
+                    setTimeout(() => {
+                        parent.loadPage('environments');
+                    }, 500);
+                })
+                .catch(err => {
+                    utils.toast('保存失败: ' + err.message, 'error');
+                });
+        }
+
+        // 返回列表
+        function goBack() {
+            parent.loadPage('environments');
+        }
+
+        // 绑定事件
+        $('#btnBack').on('click', goBack);
+        $('#btnCancel').on('click', goBack);
+        $('#btnSaveEnv').on('click', saveEnv);
+
+        // 回车保存
+        $('input').on('keypress', function(e) {
+            if (e.which === 13) {
+                saveEnv();
+            }
+        });
+    });
+    </script>
+</body>
+</html>

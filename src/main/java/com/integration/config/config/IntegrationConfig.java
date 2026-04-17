@@ -36,4 +36,11 @@ public class IntegrationConfig {
      * 最大重试次数
      */
     private int maxRetry = 3;
+
+    // ========== 环境配置功能 ==========
+
+    /**
+     * 是否启用环境配置功能
+     */
+    private boolean environmentEnabled = true;
 }

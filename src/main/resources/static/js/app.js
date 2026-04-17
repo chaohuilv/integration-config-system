@@ -21,7 +21,8 @@ const App = (function() {
         userForm: 'pages/user_form.html',
         form: 'pages/api_form.html',
         detail: 'pages/api_detail.html',
-        environments: 'pages/environment_list.html'
+        environments: 'pages/environment_list.html',
+        envForm: 'pages/environment_form.html'
     };
 
     // ===== 初始化 =====

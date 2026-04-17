@@ -23,12 +23,16 @@ public interface InvokeLogRepository extends JpaRepository<InvokeLog, Long> {
            "AND (:startTime IS NULL OR l.invokeTime >= :startTime) " +
            "AND (:endTime IS NULL OR l.invokeTime <= :endTime) " +
            "AND (:success IS NULL OR l.success = :success) " +
+           "AND (:requestUrl IS NULL OR l.requestUrl LIKE %:requestUrl%) " +
+           "AND (:requestBody IS NULL OR l.requestBody LIKE %:requestBody%) " +
            "ORDER BY l.invokeTime DESC")
     Page<InvokeLog> findByConditions(
             @Param("apiCode") String apiCode,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime,
             @Param("success") Boolean success,
+            @Param("requestUrl") String requestUrl,
+            @Param("requestBody") String requestBody,
             Pageable pageable);
 
     List<InvokeLog> findTop10ByApiCodeOrderByInvokeTimeDesc(String apiCode);

@@ -28,16 +28,30 @@ function request(url, options = {}) {
 
     return fetch(`${API_CONFIG.baseURL}${url}`, config)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.code !== 200) {
-                throw new Error(data.message || 'Request failed');
-            }
-            return data;
+            return response.text().then(text => {
+                let data = {};
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    data = { rawText: text };
+                }
+
+                if (!response.ok) {
+                    const error = new Error(data.message || data.msg || `HTTP ${response.status}`);
+                    error.code = data.code || response.status;
+                    error.data = data;
+                    throw error;
+                }
+
+                if (data.code !== undefined && data.code !== 200) {
+                    const error = new Error(data.message || '请求失败');
+                    error.code = data.code;
+                    error.data = data;
+                    throw error;
+                }
+
+                return data;
+            });
         });
 }
 
@@ -144,22 +158,28 @@ const API = {
         },
 
         // 获取日志详情
-        getLogDetail: (id) => request(`/invoke/logs/detail/${id}`)
+        getLogDetail: (id) => request(`/invoke/logs/detail/${id}`),
+
+        // 批量删除日志
+        deleteLogs: (ids) => request(`/invoke/logs`, {
+            method: 'DELETE',
+            body: JSON.stringify(ids)
+        })
     },
 
     // 环境配置
     environment: {
-        // 获取环境列表
+        // 获取环境列表（分页）
         list: (params = {}) => {
             const query = new URLSearchParams(params).toString();
-            return request(`/environment/page?${query}`);
+            return request(`/environment/list?${query}`);
         },
 
         // 获取环境详情
         get: (id) => request(`/environment/${id}`),
 
         // 创建环境
-        create: (data) => request('/environment', {
+        create: (data) => request(`/environment`, {
             method: 'POST',
             body: JSON.stringify(data)
         }),
@@ -173,7 +193,13 @@ const API = {
         // 删除环境
         delete: (id) => request(`/environment/${id}`, {
             method: 'DELETE'
-        })
+        }),
+
+        // 获取所有启用的系统名称
+        getSystems: () => request(`/environment/systems`),
+
+        // 获取指定系统下的环境列表
+        getBySystem: (systemName) => request(`/environment/by-system/${systemName}`)
     }
 };
 

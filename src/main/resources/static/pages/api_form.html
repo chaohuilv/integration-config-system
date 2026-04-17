@@ -129,7 +129,10 @@
                 </div>
                 <div class="form-group">
                     <label>分组名称</label>
-                    <input type="text" name="groupName" placeholder="例如：用户服务">
+                    <select name="groupName" id="fGroupName" style="width:100%;">
+                        <option value="">— 请选择系统分组 —</option>
+                    </select>
+                    <div class="hint" id="groupNameHint">选择系统分组后，接口URL将自动替换为该环境的域名</div>
                 </div>
                 <div class="form-group">
                     <label>状态</label>
@@ -267,6 +270,32 @@
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('form');
 
+        // 加载系统名称到分组下拉
+        function loadSystemNames() {
+            API.environment.getSystems()
+                .then(function(json) {
+                    var systems = [];
+                    if (json && json.data && Array.isArray(json.data)) {
+                        systems = json.data;
+                    } else if (json && Array.isArray(json)) {
+                        systems = json;
+                    }
+                    var select = document.getElementById('fGroupName');
+                    var firstOpt = select.options[0];
+                    select.innerHTML = '';
+                    select.appendChild(firstOpt);
+                    for (var i = 0; i < systems.length; i++) {
+                        var opt = document.createElement('option');
+                        opt.value = systems[i];
+                        opt.textContent = systems[i];
+                        select.appendChild(opt);
+                    }
+                })
+                .catch(function(err) {
+                    console.error('加载系统名称失败:', err);
+                });
+        }
+
         // 切换认证类型显示/隐藏动态Token配置
         function toggleAuth() {
             const authType = $('#fAuthType').val();
@@ -279,6 +308,9 @@
 
         // 绑定认证类型切换事件
         $('#fAuthType').on('change', toggleAuth);
+
+        // 加载系统名称列表
+        loadSystemNames();
 
         // 编辑模式：加载数据并填充表单
         if (isEdit) {

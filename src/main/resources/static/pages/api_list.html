@@ -182,8 +182,11 @@
             parent.loadPage('debug');
         }
 
-        // 暴露给全局
+        // 暴露给全局 window
         window.refreshList = refreshList;
+        window.testApi = testApi;
+        window.deleteApi = deleteApi;
+        window.toggleStatus = toggleStatus;
 
         // 初始加载
         refreshList();

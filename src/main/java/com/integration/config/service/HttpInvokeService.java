@@ -3,6 +3,7 @@ package com.integration.config.service;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.integration.config.config.IntegrationConfig;
+import com.integration.config.dto.EnvironmentDTO;
 import com.integration.config.dto.InvokeRequestDTO;
 import com.integration.config.dto.InvokeResponseDTO;
 import com.integration.config.entity.config.ApiConfig;
@@ -37,6 +38,7 @@ public class HttpInvokeService {
     private final InvokeLogRepository invokeLogRepository;
     private final IntegrationConfig integrationConfig;
     private final TokenCacheManager tokenCacheManager;
+    private final EnvironmentService environmentService;
 
     /**
      * 本地缓存（简单实现，生产环境建议使用 Redis）
@@ -51,6 +53,7 @@ public class HttpInvokeService {
         long startTime = System.currentTimeMillis();
 
         InvokeResponseDTO response;
+        String requestUrl = null;  // 声明在外层，try 和 catch 都能访问
         InvokeLog logEntry = InvokeLog.builder()
                 .apiCode(request.getApiCode())
                 .clientIp(getClientIp())
@@ -93,12 +96,22 @@ public class HttpInvokeService {
                 }
             }
 
-            // 4. 执行调用
+            // 4. 应用环境配置替换
+            if (integrationConfig.isEnvironmentEnabled()) {
+                config = applyEnvironmentUrl(config);
+            }
+
+            // 5. 预先构建完整请求URL（声明在外层，catch 块也能访问）
+            requestUrl = buildUrl(config, request, dynamicToken, traceId);
+            logEntry.setRequestUrl(requestUrl);
+
+            // 6. 执行调用
             response = doInvoke(config, request, traceId, dynamicToken);
 
-            // 5. 记录日志
+            // 7. 记录日志
             logEntry.setSuccess(response.getSuccess());
             logEntry.setResponseStatus(response.getStatusCode());
+            logEntry.setRequestUrl(response.getRequestUrl()); // doInvoke 返回的 URL 覆盖（更准确）
             // HTML 响应直接存原始字符串，非 JSON 对象也直接存
             String respData = response.getData() != null ? response.getData().toString() : null;
             logEntry.setResponseData(truncate(respData, 10000));
@@ -128,6 +141,7 @@ public class HttpInvokeService {
             logEntry.setSuccess(false);
             logEntry.setErrorMessage(e.getMessage());
             logEntry.setCostTime(response.getCostTime());
+            logEntry.setRequestUrl(requestUrl); // URL 在 doInvoke 前已构建
         }
 
         // 7. 保存日志（非调试模式）
@@ -170,6 +184,15 @@ public class HttpInvokeService {
         try {
             ApiConfig tokenConfig = apiConfigService.getByCode(tokenApiCode);
 
+            // 应用环境配置替换
+            if (integrationConfig.isEnvironmentEnabled()) {
+                tokenConfig = applyEnvironmentUrl(tokenConfig);
+            }
+
+            // 预先构建Token请求URL用于日志
+            String tokenRequestUrl = buildUrl(tokenConfig, InvokeRequestDTO.builder().apiCode(tokenApiCode).build(), null, traceId);
+            tokenLog.setRequestUrl(tokenRequestUrl);
+
             // 构建Token请求（使用Token接口配置的参数）
             InvokeRequestDTO tokenRequest = InvokeRequestDTO.builder()
                     .apiCode(tokenApiCode)
@@ -182,6 +205,7 @@ public class HttpInvokeService {
             // 记录Token接口日志
             tokenLog.setSuccess(tokenResponse.getSuccess());
             tokenLog.setResponseStatus(tokenResponse.getStatusCode());
+            tokenLog.setRequestUrl(tokenResponse.getRequestUrl());
             String tokenRespData = tokenResponse.getData() != null ? tokenResponse.getData().toString() : null;
             tokenLog.setResponseData(truncate(tokenRespData, 5000));
             tokenLog.setErrorMessage(tokenResponse.getMessage());
@@ -228,15 +252,15 @@ public class HttpInvokeService {
     private InvokeResponseDTO doInvoke(ApiConfig config, InvokeRequestDTO request, String traceId, String dynamicToken) {
         long startTime = System.currentTimeMillis();
 
+        // 0. 构建 URL（用于日志记录，提前构建确保异常分支也能拿到）
+        String url = buildUrl(config, request, dynamicToken, traceId);
+
         try {
-            // 1. 构建请求头
+            // 2. 构建请求头
             HttpHeaders headers = buildHeaders(config, request, dynamicToken, traceId);
 
-            // 2. 构建请求体
+            // 3. 构建请求体
             Object body = buildBody(config, request, dynamicToken, traceId);
-
-            // 3. 构建 URL（处理参数替换，包括动态Token）
-            String url = buildUrl(config, request, dynamicToken, traceId);
 
             if (integrationConfig.isLogRequest()) {
                 log.info("[{}] 请求: {} {}", traceId, config.getMethod(), url);
@@ -288,12 +312,23 @@ public class HttpInvokeService {
                     .invokeTime(LocalDateTime.now())
                     .traceId(traceId)
                     .fromCache(false)
+                    .requestUrl(url)
                     .build();
 
         } catch (Exception e) {
             long costTime = System.currentTimeMillis() - startTime;
             log.error("[{}] 调用异常: {}", traceId, e.getMessage());
-            throw new RuntimeException("HTTP调用失败: " + e.getMessage(), e);
+            // 吞掉异常，始终返回带 URL 的响应对象
+            return InvokeResponseDTO.builder()
+                    .success(false)
+                    .statusCode(500)
+                    .message("调用失败: " + e.getMessage())
+                    .costTime(costTime)
+                    .invokeTime(LocalDateTime.now())
+                    .traceId(traceId)
+                    .fromCache(false)
+                    .requestUrl(url)
+                    .build();
         }
     }
 
@@ -553,6 +588,167 @@ public class HttpInvokeService {
     private String getClientIp() {
         // 简化实现，可通过 RequestContextHolder 获取
         return "unknown";
+    }
+
+    /**
+     * 应用环境配置替换 URL 域名
+     * 根据接口的 groupName 查找该分组下已启用的环境配置，替换 URL 中的域名部分
+     */
+    private ApiConfig applyEnvironmentUrl(ApiConfig config) {
+        String groupName = config.getGroupName();
+        if (groupName == null || groupName.isEmpty()) {
+            log.info("接口 {} 无分组，不应用环境配置", config.getCode());
+            return config;
+        }
+
+        log.info("查找环境配置: groupName={}, 查找系统中启用的环境...", groupName);
+        var envOpt = environmentService.getActiveEnvironment(groupName);
+        if (envOpt.isEmpty()) {
+            log.warn("分组 [{}] 无已启用的环境配置，使用原始URL: {}", groupName, config.getUrl());
+            return config;
+        }
+
+        EnvironmentDTO env = envOpt.get();
+
+        // 检查该环境是否启用了域名替换
+        if (Boolean.FALSE.equals(env.getUrlReplace())) {
+            log.info("分组 [{}] 的环境 [{}] 已禁用域名替换，使用原始URL", groupName, env.getEnvName());
+            return config;
+        }
+
+        String originalUrl = config.getUrl();
+        String baseUrl = env.getBaseUrl();
+
+        // 替换域名：提取 originalUrl 的 path 部分，与 baseUrl 拼接
+        String newUrl = replaceUrlDomain(originalUrl, baseUrl);
+        log.info("环境替换: 分组={}, 环境={}, {} -> {}", groupName, env.getEnvName(), originalUrl, newUrl);
+
+        // 返回新的 ApiConfig（克隆，避免修改原对象）
+        return ApiConfig.builder()
+                .id(config.getId())
+                .name(config.getName())
+                .code(config.getCode())
+                .description(config.getDescription())
+                .method(config.getMethod())
+                .url(newUrl)
+                .contentType(config.getContentType())
+                .headers(config.getHeaders())
+                .requestParams(config.getRequestParams())
+                .requestBody(config.getRequestBody())
+                .authType(config.getAuthType())
+                .authInfo(config.getAuthInfo())
+                .timeout(config.getTimeout())
+                .retryCount(config.getRetryCount())
+                .enableCache(config.getEnableCache())
+                .cacheTime(config.getCacheTime())
+                .status(config.getStatus())
+                .groupName(config.getGroupName())
+                .createdAt(config.getCreatedAt())
+                .updatedAt(config.getUpdatedAt())
+                .createdById(config.getCreatedById())
+                .createdByName(config.getCreatedByName())
+                .updatedById(config.getUpdatedById())
+                .updatedByName(config.getUpdatedByName())
+                .enableDynamicToken(config.getEnableDynamicToken())
+                .tokenApiCode(config.getTokenApiCode())
+                .tokenExtractPath(config.getTokenExtractPath())
+                .tokenPosition(config.getTokenPosition())
+                .tokenParamName(config.getTokenParamName())
+                .tokenPrefix(config.getTokenPrefix())
+                .tokenCacheTime(config.getTokenCacheTime())
+                .build();
+    }
+
+    /**
+     * 替换 URL 的域名部分
+     * 保留原始 URL 的 path、query、fragment，只替换 scheme://host:port 部分
+     */
+    private String replaceUrlDomain(String originalUrl, String newBaseUrl) {
+        if (originalUrl == null || newBaseUrl == null) {
+            return originalUrl;
+        }
+
+        // 确保baseUrl不带末尾斜杠
+        String base = newBaseUrl.endsWith("/") ? newBaseUrl.substring(0, newBaseUrl.length() - 1) : newBaseUrl;
+
+        try {
+            java.net.URL baseParsed = new java.net.URL(base);
+
+            String path;
+            String query;
+            String fragment;
+
+            // 判断 originalUrl 是绝对 URL 还是相对路径
+            if (originalUrl.matches("^https?://.*")) {
+                // 绝对URL：提取 path/query/fragment
+                java.net.URL original = new java.net.URL(originalUrl);
+                path = original.getPath();
+                query = original.getQuery();
+                fragment = original.getRef();
+            } else {
+                // 相对路径：以 / 开头（如 /api/oauth/token?key=val）
+                int queryIdx = originalUrl.indexOf('?');
+                int fragIdx = originalUrl.indexOf('#');
+                int splitIdx = -1;
+                if (queryIdx != -1) splitIdx = queryIdx;
+                if (fragIdx != -1 && (splitIdx == -1 || fragIdx < splitIdx)) splitIdx = fragIdx;
+
+                if (splitIdx != -1) {
+                    path = originalUrl.substring(0, splitIdx);
+                    String rest = originalUrl.substring(splitIdx); // 包含 ? 或 #
+                    if (rest.startsWith("?")) {
+                        query = rest.substring(1);
+                        fragment = null;
+                        int fragInQuery = query.indexOf('#');
+                        if (fragInQuery != -1) {
+                            fragment = query.substring(fragInQuery + 1);
+                            query = query.substring(0, fragInQuery);
+                        }
+                    } else {
+                        query = null;
+                        fragment = rest.substring(1);
+                    }
+                } else {
+                    path = originalUrl;
+                    query = null;
+                    fragment = null;
+                }
+            }
+
+            // 拼接：baseUrl + path + query + fragment
+            StringBuilder sb = new StringBuilder();
+            sb.append(baseParsed.getProtocol()).append("://")
+              .append(baseParsed.getHost());
+            if (baseParsed.getPort() != -1) {
+                sb.append(":").append(baseParsed.getPort());
+            }
+            // baseUrl 自身的 path 部分（如 https://example.com/api）
+            if (baseParsed.getPath() != null && !baseParsed.getPath().equals("/")) {
+                sb.append(baseParsed.getPath());
+            }
+            if (path != null && !path.isEmpty()) {
+                // 去重斜杠
+                if (!path.startsWith("/")) {
+                    sb.append("/");
+                }
+                sb.append(path);
+            }
+            if (query != null && !query.isEmpty()) {
+                sb.append("?").append(query);
+            }
+            if (fragment != null && !fragment.isEmpty()) {
+                sb.append("#").append(fragment);
+            }
+
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("URL 域名替换失败，尝试简单拼接: {}", e.getMessage());
+            // 降级：baseUrl + originalUrl（保证至少返回绝对URL）
+            if (originalUrl.startsWith("/")) {
+                return base + originalUrl;
+            }
+            return base + "/" + originalUrl;
+        }
     }
 
     /**

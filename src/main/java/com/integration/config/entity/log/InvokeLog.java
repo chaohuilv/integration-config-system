@@ -32,6 +32,10 @@ public class InvokeLog {
     @Column(name = "API_CODE", nullable = false, length = 50)
     private String apiCode;
 
+    /** 调用时的完整请求 URL（含域名替换后的最终地址） */
+    @Column(name = "REQUEST_URL", columnDefinition = "TEXT")
+    private String requestUrl;
+
     /** 调用时传入的URL参数，JSON格式 */
     @Column(name = "REQUEST_PARAMS", columnDefinition = "TEXT")
     private String requestParams;

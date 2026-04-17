@@ -61,7 +61,7 @@ public class InvokeController {
     }
 
     /**
-     * 查询调用日志
+     * 查询调用日志（支持接口编码、请求URL、请求体联合模糊查询）
      */
     @GetMapping("/logs")
     public Result<PageResult<InvokeLog>> getLogs(
@@ -69,10 +69,12 @@ public class InvokeController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
             @RequestParam(required = false) Boolean success,
+            @RequestParam(required = false) String requestUrl,
+            @RequestParam(required = false) String requestBody,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
         Page<InvokeLog> pageResult = invokeLogRepository.findByConditions(
-                apiCode, startTime, endTime, success, PageRequest.of(page - 1, size));
+                apiCode, startTime, endTime, success, requestUrl, requestBody, PageRequest.of(page - 1, size));
         
         // 获取统计数据
         Long successCount = invokeLogRepository.countAllSuccess();
@@ -98,6 +100,17 @@ public class InvokeController {
         return invokeLogRepository.findById(id)
                 .map(Result::success)
                 .orElse(Result.of(404, "日志不存在", null));
+    }
+
+    /**
+     * 批量删除日志
+     */
+    @DeleteMapping("/logs")
+    public Result<Void> deleteLogs(@RequestBody List<Long> ids) {
+        for (Long id : ids) {
+            invokeLogRepository.deleteById(id);
+        }
+        return Result.success(null);
     }
 
     /**
