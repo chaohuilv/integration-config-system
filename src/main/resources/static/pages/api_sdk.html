@@ -7,118 +7,72 @@
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components.css">
     <style>
-        /* SDK文档专属样式 */
-        .sdk-content {
-            max-width: 1000px;
-        }
-
+        .sdk-content { max-width: 1000px; }
         .sdk-content h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin: 24px 0 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #667eea;
+            font-size: 16px; font-weight: 600; color: #333;
+            margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #667eea;
         }
-
         .sdk-content h4 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            margin: 20px 0 10px;
+            font-size: 14px; font-weight: 600; color: #333; margin: 20px 0 10px;
         }
-
-        .sdk-content p {
-            color: #666;
-            margin-bottom: 12px;
-            line-height: 1.6;
-        }
-
-        /* SDK源码下载区 */
-        .sdk-source-downloads {
-            margin-bottom: 32px;
-        }
-
+        .sdk-content p { color: #666; margin-bottom: 12px; line-height: 1.6; }
+        .sdk-source-downloads { margin-bottom: 32px; }
         .download-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-top: 16px;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 16px; margin-top: 16px;
         }
-
         .download-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 20px;
-            background: white;
-            border: 1px solid #f0f0f0;
-            border-radius: 12px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.2s;
+            display: flex; align-items: center; gap: 16px;
+            padding: 20px; background: white; border: 1px solid #f0f0f0;
+            border-radius: 12px; text-decoration: none; color: inherit;
+            transition: all 0.2s; cursor: pointer;
         }
-
         .download-card:hover {
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            border-color: #667eea; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
             transform: translateY(-2px);
         }
-
         .dl-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            flex-shrink: 0;
+            width: 48px; height: 48px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0;
         }
-
         .java-color { background: #fff3e0; }
         .csharp-color { background: #e3f2fd; }
         .python-color { background: #e8f5e9; }
-
-        .dl-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .dl-name {
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-        }
-
-        .dl-files {
-            font-size: 12px;
-            color: #999;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
+        .dl-info { flex: 1; min-width: 0; }
+        .dl-name { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 4px; }
+        .dl-files { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .dl-btn {
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            flex-shrink: 0;
+            padding: 8px 16px; background: #667eea; color: white;
+            border-radius: 8px; font-size: 13px; font-weight: 500; flex-shrink: 0;
         }
+        .download-card:hover .dl-btn { background: #5568d3; }
 
-        .download-card:hover .dl-btn {
-            background: #5568d3;
+        /* 认证流程说明 */
+        .auth-flow {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border-radius: 12px; padding: 24px; margin: 20px 0;
         }
+        .auth-flow h4 { color: white; margin-top: 0; border: none; padding: 0; margin-bottom: 12px; }
+        .auth-flow p { color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+        .auth-flow code {
+            background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+        }
+        .auth-flow ol {
+            margin: 0; padding-left: 20px; color: rgba(255,255,255,0.9);
+        }
+        .auth-flow li { margin-bottom: 8px; line-height: 1.6; }
 
-        /* 响应式 */
+        .tip-box {
+            background: #f8f9fa; border-left: 4px solid #667eea;
+            padding: 12px 16px; border-radius: 0 8px 8px 0;
+            margin: 16px 0; font-size: 13px; color: #495057;
+        }
+        .tip-box strong { color: #667eea; }
+
         @media (max-width: 900px) {
-            .download-grid {
-                grid-template-columns: 1fr;
-            }
+            .download-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -141,7 +95,7 @@
                         <div class="dl-icon java-color">☕</div>
                         <div class="dl-info">
                             <div class="dl-name">Java SDK</div>
-                            <div class="dl-files">IntegrationClient.java · IntegrationException.java</div>
+                            <div class="dl-files">IntegrationClient.java · IntegrationException.java · AuthResult</div>
                         </div>
                         <div class="dl-btn">⬇ 下载</div>
                     </a>
@@ -149,7 +103,7 @@
                         <div class="dl-icon csharp-color">🔷</div>
                         <div class="dl-info">
                             <div class="dl-name">C# SDK</div>
-                            <div class="dl-files">IntegrationClient.cs · IntegrationException.cs</div>
+                            <div class="dl-files">IntegrationClient.cs · IntegrationException.cs · AuthResult</div>
                         </div>
                         <div class="dl-btn">⬇ 下载</div>
                     </a>
@@ -164,214 +118,132 @@
                 </div>
             </div>
 
-            <h3>1. Maven 依赖</h3>
-            <div class="response-box">&lt;dependency&gt;
-    &lt;groupId&gt;com.integration&lt;/groupId&gt;
-    &lt;artifactId&gt;integration-sdk&lt;/artifactId&gt;
-    &lt;version&gt;1.0.0&lt;/version&gt;
-&lt;/dependency&gt;</div>
+            <!-- 认证说明 -->
+            <h3>1. 认证机制</h3>
+            <div class="auth-flow">
+                <h4>🔐 SDK 认证流程</h4>
+                <ol>
+                    <li>调用 <code>client.login(userCode, password)</code> 登录，系统返回 <code>access_token</code></li>
+                    <li>SDK 自动将 <code>Authorization: Bearer &lt;token&gt;</code> 添加到所有后续请求头中</li>
+                    <li>Token 有效期约 7 天，过期后调用接口会抛出 <code>IntegrationException(认证失败)</code></li>
+                    <li>调用 <code>client.logout()</code> 可主动注销 Token</li>
+                </ol>
+            </div>
 
-            <h3>2. 快速开始</h3>
+            <h3>2. Java SDK</h3>
+            <h4>2.1 快速开始</h4>
             <div class="response-box">// 初始化客户端
 IntegrationClient client = new IntegrationClient("http://localhost:8080");
 
-// GET 请求（无参数）
-String result = client.invoke("user-list");
+// ① 登录认证（必须的第一步）
+AuthResult auth = client.login("admin", "123456");
+System.out.println("欢迎: " + auth.getDisplayName());
 
-// GET 请求（带 URL 参数）
+// ② 调用接口（无需手动传 Token，SDK 自动携带）
 String result = client.invoke("user-get", Map.of("id", 1));
 
-// POST 请求（带参数和请求体）
+// POST 请求
 String result = client.invoke("user-create",
     Map.of("deptId", 10),           // URL 参数
     "{\"name\":\"张三\",\"age\":25}"  // 请求体
 );
 
-// POST 请求（带自定义请求头）
+// 带自定义请求头（可覆盖默认认证头）
 Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
 headers.put("X-Request-Id", "12345");
-headers.put("X-Client-Version", "1.0.0");
 String result = client.invoke("user-create",
-    Map.of(),                        // URL 参数
-    "{\"name\":\"张三\"}",            // 请求体
-    headers                          // 自定义请求头
+    Map.of(), "{\"name\":\"张三\"}", headers
 );
 
-// 异步调用
-CompletableFuture&lt;String&gt; future = client.invokeAsync("user-list", null, null, null);
-String result = future.get();</div>
+// ③ 退出登录
+client.logout();</div>
 
-            <h3>3. 完整示例</h3>
+            <h4>2.2 完整示例</h4>
             <div class="response-box">import com.integration.sdk.IntegrationClient;
+import com.integration.sdk.IntegrationClient.AuthResult;
 import java.util.Map;
-import java.util.HashMap;
 
 public class Example {
     public static void main(String[] args) {
         IntegrationClient client = new IntegrationClient("http://localhost:8080");
         try {
-            // 示例1：简单 GET 请求
+            // 登录
+            AuthResult auth = client.login("admin", "123456");
+            System.out.println("登录成功: " + auth.getDisplayName() + " ("
+                + auth.getUserCode() + ")");
+
+            // 查询用户
             String userJson = client.invoke("user-get", Map.of("id", 1001));
             System.out.println("用户信息: " + userJson);
 
-            // 示例2：POST 请求，带自定义请求头
-            Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
-            headers.put("X-Request-Id", "req-" + System.currentTimeMillis());
-            headers.put("Accept-Language", "zh-CN");
-            
+            // 创建用户
             String newUserJson = client.invoke("user-create",
                 Map.of("deptId", 10),
-                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}",
-                headers
-            );
+                "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}");
             System.out.println("创建结果: " + newUserJson);
 
-            // 示例3：覆盖配置中的认证头（调试用）
-            Map&lt;String, String&gt; authHeaders = new HashMap&lt;&gt;();
-            authHeaders.put("Authorization", "Bearer test-token-123");
-            String result = client.invoke("api-test", Map.of(), null, authHeaders);
-            
+            // 异步调用
+            CompletableFuture&lt;String&gt; future = client.invokeAsync(
+                "user-list", null, null, null);
+            String asyncResult = future.get();
+            System.out.println("异步结果: " + asyncResult);
+
+            // 退出
+            client.logout();
+
         } catch (IntegrationException e) {
             System.err.println("调用失败: " + e.getMessage());
         }
     }
 }</div>
 
-            <h3>4. Header 传参示例</h3>
-            <p style="color:#666;margin-bottom:12px;">当目标接口需要通过请求头传递认证信息（如 API Key、Token）时，按以下步骤配置：</p>
-            
-            <h4>步骤一：在接口配置中设置认证方式</h4>
-            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;">
-                <p style="margin:0 0 12px;color:#495057;font-weight:500;">📝 接口配置页面填写示例：</p>
-                <table style="width:100%;font-size:13px;border-collapse:collapse;">
-                    <tr><td style="padding:6px 12px;color:#666;width:120px;">认证类型</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">API_KEY</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">认证位置</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">HEADER</code>（请求头）</td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">认证参数名</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">X-API-Key</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">认证值</td><td style="padding:6px 12px;"><code style="background:#fff3e0;padding:2px 6px;border-radius:4px;">your-secret-api-key-here</code></td></tr>
-                </table>
-                <p style="margin:12px 0 0;color:#868e96;font-size:12px;">💡 系统会自动在请求头中添加：<code>X-API-Key: your-secret-api-key-here</code></p>
-            </div>
+            <h4>2.3 AuthResult 认证结果</h4>
+            <div class="response-box">// login() 返回 AuthResult 对象
+AuthResult auth = client.login("admin", "123456");
+auth.getAccessToken();   // Token 字符串（内部自动使用，无需手动处理）
+auth.getUserId();        // 用户ID
+auth.getUserCode();      // 用户编码
+auth.getUsername();      // 用户名
+auth.getDisplayName();   // 显示名称
 
-            <h4>步骤二：常见的 Header 认证方式</h4>
-            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
-                <p style="margin:0 0 8px;font-weight:500;color:#495057;">🔹 API Key 认证</p>
-                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: API_KEY
-认证位置: HEADER
-认证参数名: X-API-Key
-认证值: sk-xxxxxxxxxxxxxx
+// 检查登录状态
+client.isLoggedIn();     // true/false
 
-→ 请求头: X-API-Key: sk-xxxxxxxxxxxxxx</pre>
+// 检查 Token 是否有效（调用 /api/auth/current 验证）
+client.getCurrentUser(); // 返回 Map&lt;String, Object&gt;
 
-                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Bearer Token 认证（OAuth 2.0）</p>
-                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BEARER
-认证位置: HEADER
-认证参数名: Authorization
-认证值: Bearer eyJhbGciOiJIUzI1NiIs...
+</div>
 
-→ 请求头: Authorization: Bearer eyJhbGciOiJIUzI1NiIs...</pre>
-
-                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Basic Auth 认证</p>
-                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BASIC
-认证位置: HEADER
-认证参数名: Authorization
-认证值: Basic base64(username:password)
-
-→ 请求头: Authorization: Basic dXNlcjpwYXNz</pre>
-
-                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 自定义 Header（多个请求头）</p>
-                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">在"请求头"字段中填写（每行一个）：
-Content-Type: application/json
-X-Request-Id: {traceId}
-X-Client-Version: 1.0.0
-
-→ 请求时会自动携带以上请求头</pre>
-            </div>
-
-            <h4>步骤三：动态 Token 认证（自动获取Token）</h4>
-            <div class="response-box" style="background:#fff3e0;border:1px solid #ffe0b2;padding:16px;border-radius:8px;font-size:13px;">
-                <p style="margin:0 0 12px;color:#e65100;font-weight:500;">⚡ 适用场景：Token 有过期时间，需要定期刷新</p>
-                <table style="width:100%;border-collapse:collapse;">
-                    <tr><td style="padding:6px 12px;color:#666;width:140px;">认证类型</td><td style="padding:6px 12px;"><code style="background:#fff8e1;padding:2px 6px;border-radius:4px;">DYNAMIC</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token接口编码</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">auth-token-get</code>（系统中已配置的获取Token接口）</td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token提取路径</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">$.data.accessToken</code>（从Token接口响应中提取）</td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token参数位置</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">HEADER</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token请求头参数名</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">Authorization</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token前缀</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">Bearer</code></td></tr>
-                    <tr><td style="padding:6px 12px;color:#666;">Token缓存时间</td><td style="padding:6px 12px;"><code style="background:#e3f2fd;padding:2px 6px;border-radius:4px;">3600</code> 秒（1小时）</td></tr>
-                </table>
-                <p style="margin:12px 0 0;color:#868e96;font-size:12px;">💡 系统会自动调用 auth-token-get 接口获取Token，缓存后用于后续请求</p>
-            </div>
-
-            <h3>5. SDK 方法</h3>
-            <table class="table" style="max-width:800px;">
-                <thead><tr><th>方法</th><th>说明</th></tr></thead>
-                <tbody>
-                    <tr><td><code>invoke(apiCode)</code></td><td>GET 请求，无参数</td></tr>
-                    <tr><td><code>invoke(apiCode, params)</code></td><td>GET/POST 请求，带 URL 参数</td></tr>
-                    <tr><td><code>invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
-                    <tr><td><code>invoke(apiCode, params, body, headers)</code></td><td>完整调用，带自定义请求头（会与配置合并，动态值优先）</td></tr>
-                    <tr><td><code>invokeAsync(...)</code></td><td>异步调用，返回 CompletableFuture</td></tr>
-                    <tr><td><code>batchInvoke(items)</code></td><td>批量调用</td></tr>
-                </tbody>
-            </table>
-
-            <h3>6. Headers 参数说明</h3>
-            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
-                <p style="margin:0 0 12px;color:#495057;font-weight:500;">📋 headers 参数优先级规则：</p>
-                <table style="width:100%;border-collapse:collapse;">
-                    <tr><td style="padding:8px 12px;color:#666;width:140px;">配置表请求头</td><td style="padding:8px 12px;">接口配置中"请求头"字段的内容</td></tr>
-                    <tr><td style="padding:8px 12px;color:#666;">认证请求头</td><td style="padding:8px 12px;">根据认证类型自动添加（Bearer / Basic / API Key）</td></tr>
-                    <tr><td style="padding:8px 12px;color:#666;font-weight:600;">动态请求头</td><td style="padding:8px 12px;font-weight:600;">SDK 调用时传入的 headers 参数，<span style="color:#e65100;">优先级最高，会覆盖同名配置</span></td></tr>
-                </table>
-                <pre style="margin:12px 0 0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">// 示例：动态覆盖认证头（用于调试或切换账号）
-Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
-headers.put("Authorization", "Bearer another-token-xxx");
-client.invoke("user-get", Map.of("id", 1), null, headers);
-// 此时使用的是 another-token-xxx，而非配置表中的 Token</pre>
-            </div>
-
-            <h3>7. C# (.NET) SDK</h3>
-            <div class="sdk-section">
-                <h4>7.1 安装</h4>
-                <div class="response-box"># via NuGet Package Manager
+            <h3>3. C# (.NET) SDK</h3>
+            <h4>3.1 安装</h4>
+            <div class="response-box"># via NuGet Package Manager
 Install-Package IntegrationSDK
 
 # via .NET CLI
 dotnet add package IntegrationSDK</div>
 
-                <h4>7.2 快速开始</h4>
-                <div class="response-box">// 初始化客户端
+            <h4>3.2 快速开始</h4>
+            <div class="response-box">// 初始化客户端
 var client = new IntegrationClient("http://localhost:8080");
 
-// GET 请求（无参数）
-string result = client.Invoke("user-list");
+// ① 登录认证
+var auth = client.Login("admin", "123456");
+Console.WriteLine($"欢迎: {auth.DisplayName}");
 
-// GET 请求（带 URL 参数）
-string result = client.Invoke("user-get", new Dictionary&lt;string, object&gt;
-{
-    { "id", 1001 }
-});
+// ② 调用接口
+string result = client.Invoke("user-get",
+    new Dictionary&lt;string, object&gt; { { "id", 1001 } });
 
-// POST 请求（带请求体）
+// POST 请求
 string result = client.Invoke("user-create",
-    new Dictionary&lt;string, object&gt; { { "deptId", 10 } },   // URL 参数
-    "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}" // JSON 请求体
-);
+    new Dictionary&lt;string, object&gt; { { "deptId", 10 } },
+    "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}");
 
-// 带自定义请求头
-var headers = new Dictionary&lt;string, string&gt;
-{
-    { "X-Request-Id", "req-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() },
-    { "Accept-Language", "zh-CN" }
-};
-string result = client.Invoke("user-create",
-    new Dictionary&lt;string, object&gt;(),
-    "{\"name\":\"张三\"}",
-    headers
-);</div>
+// ③ 退出登录
+client.Logout();</div>
 
-                <h4>7.3 完整示例</h4>
-                <div class="response-box">using IntegrationSDK;
+            <h4>3.3 完整示例</h4>
+            <div class="response-box">using IntegrationSDK;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -381,33 +253,29 @@ public class Example
     public static async Task Main(string[] args)
     {
         var client = new IntegrationClient("http://localhost:8080");
-
         try
         {
-            // 示例1：简单 GET 请求
+            // 登录
+            var auth = client.Login("admin", "123456");
+            Console.WriteLine($"登录成功: {auth.DisplayName}");
+
+            // 查询
             string userJson = client.Invoke("user-get",
                 new Dictionary&lt;string, object&gt; { { "id", 1001 } });
             Console.WriteLine("用户信息: " + userJson);
 
-            // 示例2：POST 请求
+            // 创建
             string newUserJson = client.Invoke("user-create",
                 new Dictionary&lt;string, object&gt; { { "deptId", 10 } },
                 "{\"username\":\"zhangsan\",\"email\":\"zhangsan@example.com\"}");
             Console.WriteLine("创建结果: " + newUserJson);
 
-            // 示例3：自定义请求头覆盖认证
-            var authHeaders = new Dictionary&lt;string, string&gt;
-            {
-                { "Authorization", "Bearer test-token-123" }
-            };
-            string result = client.Invoke("api-test",
-                new Dictionary&lt;string, object&gt;(),
-                null,
-                authHeaders);
-
-            // 示例4：异步调用
+            // 异步调用
             string asyncResult = await client.InvokeAsync("user-list");
             Console.WriteLine("异步结果: " + asyncResult);
+
+            // 退出
+            client.Logout();
         }
         catch (IntegrationException ex)
         {
@@ -416,95 +284,68 @@ public class Example
     }
 }</div>
 
-                <h4>7.4 Header 认证示例</h4>
-                <div class="response-box">// API Key 认证
-var headers = new Dictionary&lt;string, string&gt;
-{
-    { "X-API-Key", "sk-xxxxxxxxxxxxxx" }
-};
-string result = client.Invoke("api-test", null, null, headers);
+            <h4>3.4 AuthResult 认证结果</h4>
+            <div class="response-box">// Login() 返回 AuthResult 对象
+var auth = client.Login("admin", "123456");
+auth.AccessToken;    // Token 字符串
+auth.UserId;         // 用户ID
+auth.UserCode;       // 用户编码
+auth.Username;       // 用户名
+auth.DisplayName;    // 显示名称
 
-// Bearer Token 认证
-var authHeaders = new Dictionary&lt;string, string&gt;
-{
-    { "Authorization", "Bearer eyJhbGciOiJIUzI1NiIs..." }
-};
-string result = client.Invoke("api-test", null, null, authHeaders);
+// 检查登录状态
+client.IsLoggedIn;       // true/false
+client.CheckLogin();     // 调用 /api/auth/current 验证 Token
 
-// Basic Auth 认证
-var basicHeaders = new Dictionary&lt;string, string&gt;
-{
-    { "Authorization", "Basic " + Convert.ToBase64String(
-        System.Text.Encoding.UTF8.GetBytes("username:password")) }
-};</div>
+</div>
 
-                <h4>7.5 方法参考</h4>
-                <table class="table">
-                    <thead><tr><th>方法</th><th>说明</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>Invoke(apiCode)</code></td><td>GET 请求，无参数</td></tr>
-                        <tr><td><code>Invoke(apiCode, params)</code></td><td>GET 请求，带 URL 参数</td></tr>
-                        <tr><td><code>Invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
-                        <tr><td><code>Invoke(apiCode, params, body, headers)</code></td><td>完整调用，带自定义请求头</td></tr>
-                        <tr><td><code>InvokeAsync(apiCode, ...)</code></td><td>异步调用，返回 Task&lt;string&gt;</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h3>8. Python SDK</h3>
-            <div class="sdk-section">
-                <h4>8.1 安装</h4>
-                <div class="response-box"># via pip
+            <h3>4. Python SDK</h3>
+            <h4>4.1 安装</h4>
+            <div class="response-box"># via pip
 pip install integration-sdk
 
 # via poetry
 poetry add integration-sdk</div>
 
-                <h4>8.2 快速开始</h4>
-                <div class="response-box">from integration_sdk import IntegrationClient
+            <h4>4.2 快速开始</h4>
+            <div class="response-box">from integration_sdk import IntegrationClient
 
 # 初始化客户端
 client = IntegrationClient("http://localhost:8080")
 
-# GET 请求（无参数）
-result = client.invoke("user-list")
+# ① 登录认证
+auth = client.login("admin", "123456")
+print(f"欢迎: {auth['display_name']}")
 
-# GET 请求（带 URL 参数）
+# ② 调用接口
 result = client.invoke("user-get", params={"id": 1001})
 
-# POST 请求（带请求体）
+# POST 请求
 result = client.invoke(
     "user-create",
-    params={"deptId": 10},                                    # URL 参数
-    body={"username": "zhangsan", "email": "zhangsan@example.com"}  # JSON 请求体
+    params={"deptId": 10},
+    body={"username": "zhangsan", "email": "zhangsan@example.com"}
 )
 
-# 带自定义请求头
-headers = {
-    "X-Request-Id": f"req-{int(time.time() * 1000)}",
-    "Accept-Language": "zh-CN"
-}
-result = client.invoke(
-    "user-create",
-    params={},
-    body={"name": "张三"},
-    headers=headers
-)</div>
+# ③ 退出登录
+client.logout()</div>
 
-                <h4>8.3 完整示例</h4>
-                <div class="response-box">from integration_sdk import IntegrationClient
+            <h4>4.3 完整示例</h4>
+            <div class="response-box">from integration_sdk import IntegrationClient
 from integration_sdk.exceptions import IntegrationException
-import json
 
 def main():
     client = IntegrationClient("http://localhost:8080")
-
     try:
-        # 示例1：简单 GET 请求
+        # 登录
+        auth = client.login("admin", "123456")
+        print(f"登录成功: {auth['display_name']} ({auth['user_code']})")
+
+        # 查询
         user_json = client.invoke("user-get", params={"id": 1001})
         print(f"用户信息: {user_json}")
 
-        # 示例2：POST 请求
+        # 创建
         new_user_json = client.invoke(
             "user-create",
             params={"deptId": 10},
@@ -512,115 +353,203 @@ def main():
         )
         print(f"创建结果: {new_user_json}")
 
-        # 示例3：自定义请求头覆盖认证
-        auth_headers = {
-            "Authorization": "Bearer test-token-123"
-        }
-        result = client.invoke(
-            "api-test",
-            params={},
-            body=None,
-            headers=auth_headers
-        )
-        print(f"调试结果: {result}")
+        # 异步调用
+        future = client.invoke_async("user-list")
+        async_result = future.result()
+        print(f"异步结果: {async_result}")
 
-        # 示例4：同步调用（同步模式，同上）
-        result = client.invoke("user-list")
-
-        # 示例5：批量调用
+        # 批量调用
         results = client.batch_invoke([
-            ("user-get", {"id": 1001}),
-            ("user-get", {"id": 1002}),
+            ("user-get", {"id": 1001}, None, None),
+            ("user-get", {"id": 1002}, None, None),
         ])
         for item in results:
             print(item)
+
+        # 退出
+        client.logout()
 
     except IntegrationException as e:
         print(f"调用失败: {e.message}", file=sys.stderr)
 
 if __name__ == "__main__":
     import sys
-    import time
     main()</div>
 
-                <h4>8.4 Header 认证示例</h4>
-                <div class="response-box"># API Key 认证
-headers = {
-    "X-API-Key": "sk-xxxxxxxxxxxxxx"
-}
-result = client.invoke("api-test", headers=headers)
+            <h4>4.4 认证结果字典</h4>
+            <div class="response-box"># login() 返回字典
+auth = client.login("admin", "123456")
+auth["access_token"]  # Token 字符串
+auth["id"]            # 用户ID
+auth["user_code"]     # 用户编码
+auth["username"]      # 用户名
+auth["display_name"]  # 显示名称
 
-# Bearer Token 认证
-headers = {
-    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
-}
-result = client.invoke("api-test", headers=headers)
+# 检查登录状态
+client.is_logged_in       # True/False
+client.check_login()       # 调用 /api/auth/current 验证 Token
 
-# Basic Auth 认证
-import base64
-credentials = base64.b64encode(b"username:password").decode("utf-8")
-headers = {
-    "Authorization": f"Basic {credentials}"
-}
-result = client.invoke("api-test", headers=headers)
+</div>
 
-# 多个自定义 Header
-headers = {
-    "Content-Type": "application/json",
-    "X-Request-Id": "req-12345",
-    "X-Client-Version": "1.0.0"
-}
-result = client.invoke("api-test", headers=headers)</div>
+            <h3>5. SDK 方法参考</h3>
+            <table class="table" style="max-width:800px;">
+                <thead><tr><th style="width:45%;">方法</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td><code>login(userCode, password)</code></td><td><strong>登录认证</strong>，获取 Token（必须）</td></tr>
+                    <tr><td><code>logout()</code></td><td>退出登录，注销 Token</td></tr>
+                    <tr><td><code>isLoggedIn / is_logged_in</code></td><td>检查是否已登录</td></tr>
+                    <tr><td><code>getCurrentUser() / check_login()</code></td><td>验证 Token 有效性，获取当前用户信息</td></tr>
+                    <tr><td><code>invoke(apiCode)</code></td><td>GET 请求，无参数（需先登录）</td></tr>
+                    <tr><td><code>invoke(apiCode, params)</code></td><td>GET/POST 请求，带 URL 参数</td></tr>
+                    <tr><td><code>invoke(apiCode, params, body)</code></td><td>POST/PUT 请求，带参数和请求体</td></tr>
+                    <tr><td><code>invoke(apiCode, params, body, headers)</code></td><td>完整调用，带自定义请求头</td></tr>
+                    <tr><td><code>invokeAsync(...) / invoke_async(...)</code></td><td>异步调用，返回 Future</td></tr>
+                    <tr><td><code>batchInvoke(items) / batch_invoke(items)</code></td><td>批量调用，顺序执行</td></tr>
+                </tbody>
+            </table>
 
-                <h4>8.5 方法参考</h4>
-                <table class="table">
-                    <thead><tr><th>方法</th><th>说明</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>invoke(api_code)</code></td><td>GET 请求，无参数</td></tr>
-                        <tr><td><code>invoke(api_code, params={...})</code></td><td>GET 请求，带 URL 参数</td></tr>
-                        <tr><td><code>invoke(api_code, params={...}, body={...})</code></td><td>POST 请求，带参数和请求体</td></tr>
-                        <tr><td><code>invoke(api_code, params={...}, body={...}, headers={...})</code></td><td>完整调用，带自定义请求头</td></tr>
-                        <tr><td><code>batch_invoke(items)</code></td><td>批量调用，items 为 (api_code, params) 元组列表</td></tr>
-                    </tbody>
-                </table>
+            <h3>6. 请求头与认证</h3>
+            <div class="tip-box">
+                <strong>✅ 自动认证：</strong>调用 <code>login()</code> 后，SDK 会自动在所有 <code>invoke()</code> 请求中添加
+                <code>Authorization: Bearer &lt;token&gt;</code>，无需手动处理。
             </div>
+
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 12px;color:#495057;font-weight:500;">📋 请求头优先级规则：</p>
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:8px 12px;color:#666;width:160px;"><strong>SDK 自动添加</strong></td><td style="padding:8px 12px;"><code>Authorization: Bearer &lt;token&gt;</code>（登录后自动携带）</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;"><strong>默认请求头</strong></td><td style="padding:8px 12px;"><code>Content-Type: application/json</code> / <code>Accept: application/json</code></td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;font-weight:600;"><strong>用户自定义 headers</strong></td><td style="padding:8px 12px;font-weight:600;color:#e65100;">最高优先级，可覆盖默认/认证请求头</td></tr>
+                </table>
+                <pre style="margin:12px 0 0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;">// 示例：调试时用自定义 Token 覆盖认证头
+Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();
+headers.put("Authorization", "Bearer debug-token-xxx");
+client.invoke("user-get", Map.of("id", 1), null, headers);
+// 此时使用 debug-token-xxx，而非 login() 获取的 Token</pre>
+            </div>
+
+            <h3>7. 后端接口认证配置（可选）</h3>
+            <p style="color:#666;margin-bottom:12px;">
+                如果目标接口还需要额外的认证（如第三方 API Key、Bearer Token 等），可以在接口配置页面中设置。
+                这与 SDK 自身登录认证是<strong>独立的两个层次</strong>。
+            </p>
+
+            <h4>常见的 Header 认证方式</h4>
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 8px;font-weight:500;color:#495057;">🔹 API Key 认证</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: API_KEY | 认证位置: HEADER | 认证参数名: X-API-Key
+认证值: sk-xxxxxxxxxxxxxx
+→ 请求头: X-API-Key: sk-xxxxxxxxxxxxxx</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Bearer Token 认证（OAuth 2.0）</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BEARER | 认证位置: HEADER | 认证参数名: Authorization
+认证值: Bearer eyJhbGciOiJIUzI1NiIs...
+→ 请求头: Authorization: Bearer eyJhbGciOiJIUzI1NiIs...</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 Basic Auth 认证</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: BASIC | 认证位置: HEADER | 认证参数名: Authorization
+认证值: Basic base64(username:password)
+→ 请求头: Authorization: Basic dXNlcjpwYXNz</pre>
+
+                <p style="margin:16px 0 8px;font-weight:500;color:#495057;">🔹 动态 Token 认证（自动刷新）</p>
+                <pre style="margin:0;background:#282c34;color:#abb2bf;padding:12px;border-radius:6px;overflow-x:auto;">认证类型: DYNAMIC
+Token接口编码: auth-token-get（系统中已配置的获取Token接口）
+Token提取路径: $.data.accessToken（从Token接口响应中提取）
+Token参数位置: HEADER | Token请求头参数名: Authorization | Token前缀: Bearer
+Token缓存时间: 3600 秒（1小时）
+→ 系统自动调用 auth-token-get → 提取 Token → 缓存 → 附加到请求头</pre>
+            </div>
+
+            <h3>8. 异常处理</h3>
+            <div class="response-box">// Java
+try {
+    client.login("admin", "wrong-password");
+} catch (IntegrationException e) {
+    System.err.println("登录失败: " + e.getMessage());
+}
+
+// 业务错误（HTTP 200 但 code != 200）
+try {
+    client.invoke("user-create", Map.of(), "{\"name\":\"张三\"}");
+} catch (IntegrationException e) {
+    System.err.println("业务错误: " + e.getMessage());
+    // 例如: "业务错误: 用户编码已存在"
+}
+
+// Token 过期（401）
+try {
+    client.invoke("user-list");
+} catch (IntegrationException e) {
+    if (e.getMessage().contains("401") || e.getMessage().contains("认证失败")) {
+        // 重新登录
+        client.login("admin", "123456");
+    }
+}
+
+// C#
+try {
+    client.Login("admin", "wrong-password");
+} catch (IntegrationException ex) {
+    Console.WriteLine("登录失败: " + ex.Message);
+}
+
+// Python
+try:
+    client.login("admin", "wrong-password")
+except IntegrationException as e:
+    print(f"登录失败: {e.message}")</div>
+
+            <h3>9. 批量调用</h3>
+            <div class="response-box">// Java
+List&lt;Object[]&gt; items = List.of(
+    new Object[]{"user-get",    Map.of("id", 1001), null,       null},
+    new Object[]{"user-get",    Map.of("id", 1002), null,       null},
+    new Object[]{"user-create", Map.of(),           "{\"name\":\"李四\"}", null}
+);
+List&lt;String&gt; results = client.batchInvoke(items);
+
+// C#
+var items = new List&lt;(string, Dictionary&lt;string,object&gt;, string, Dictionary&lt;string,string&gt;)&gt; {
+    ("user-get",    new(){{"id", 1001}}, null, null),
+    ("user-get",    new(){{"id", 1002}}, null, null),
+    ("user-create", new(){}, "{\"name\":\"李四\"}", null),
+};
+var results = client.BatchInvoke(items);
+
+// Python
+results = client.batch_invoke([
+    ("user-get",    {"id": 1001}, None, None),
+    ("user-get",    {"id": 1002}, None, None),
+    ("user-create", {}, "{\"name\":\"李四\"}", None),
+])</div>
 
         </div>
     </div>
 
-    <!-- 引入 jQuery -->
     <script src="../js/vendor/jquery.min.js"></script>
-
     <script>
     $(function() {
-        // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('sdk');
 
-        // 为所有响应框添加复制按钮
+        // 复制按钮
         $('.response-box').each(function() {
             const box = $(this);
             const btn = $('<button class="copy-btn">📋 复制</button>');
-            
             btn.on('click', function(e) {
                 e.stopPropagation();
-                
-                const text = box.text().replace(/^\s*复制\s*/, '').trim();
-                
+                const text = box.clone()
+                    .find('.copy-btn, .dl-btn').remove().end()
+                    .text().replace(/\n{3,}/g, '\n\n').trim();
                 navigator.clipboard.writeText(text)
                     .then(() => {
                         btn.text('✅ 已复制').addClass('copied');
-                        setTimeout(() => {
-                            btn.text('📋 复制').removeClass('copied');
-                        }, 1500);
+                        setTimeout(() => btn.text('📋 复制').removeClass('copied'), 1500);
                     })
                     .catch(() => {
                         btn.text('❌ 失败');
-                        setTimeout(() => {
-                            btn.text('📋 复制');
-                        }, 1500);
+                        setTimeout(() => btn.text('📋 复制'), 1500);
                     });
             });
-            
             box.append(btn);
         });
     });
