@@ -52,26 +52,6 @@
         .row-check { cursor: pointer; }
 
 
-
-        /* 已选计数 */
-        /* 耗时 */
-        .cost-slow { color: #dc2626; }
-        .cost-normal { color: #64748b; }
-
-        /* 详情代码块 */
-        .detail-code {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 300px;
-            overflow: auto;
-            color: #334155;
-        }
     </style>
 </head>
 <body>
@@ -166,7 +146,7 @@
     <script>
     $(function() {
         let currentPage = 1;
-        const size = 20;
+        const size = 10;
         let selectedIds = new Set();
         let permissions = []; // 当前用户的权限列表
 
@@ -237,12 +217,23 @@
             Object.keys(params).forEach(k => params[k] === undefined && delete params[k]);
 
             API.auditLog.list(params).then(json => {
-                debugger
                 if (json.code !== 200) { utils.toast(json.message || '查询失败', 'error'); return; }
-                renderTable(json.data.content);
-                renderPagination(json.data, currentPage);
+                
+                const pageData = json.data;
+                if (!pageData) {
+                    console.error('[refreshList] pageData is null');
+                    $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                    $('#pagination').html('');
+                    return;
+                }
+                
+                // 兼容 Spring Data Page 和 MyBatis-Plus Page 格式
+                const list = pageData.content || pageData.records || [];
+                const totalPages = pageData.totalElements || pageData.total || 0;
+
+                renderTable(list);
+                renderPagination(parseInt(totalPages));
             }).catch((err) => {
-                debugger
                 console.error('[refreshList] error:', err, '| msg:', err.message);
                 utils.toast('加载失败: ' + (err.message || '未知错误'), 'error');
             });
@@ -258,26 +249,32 @@
                 $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
                 return;
             }
-            const html = list.map(item => {
-                const typeTagClass = getTypeTagClass(item.operateType);
-                const resultClass = item.result === 'SUCCESS' ? 'tag-green' : 'tag-red';
-                const costClass = (item.costTime || 0) > 2000 ? 'cost-slow' : 'cost-normal';
-                const time = item.operateTime ? item.operateTime.replace('T', ' ').substring(0, 19) : '-';
-                const checked = selectedIds.has(item.id) ? 'checked' : '';
-                return `<tr data-id="${item.id}" class="${checked ? 'row-selected' : ''}">
-                    <td class="col-check"><input type="checkbox" class="row-check" value="${item.id}" ${checked}></td>
-                    <td class="col-time">${time}</td>
-                    <td><span class="tag ${typeTagClass}">${item.operateType || '-'}</span></td>
-                    <td>${item.module || '-'}</td>
-                    <td title="${escHtml(item.description || '')}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="desc-text" title="${escHtml(item.description || '')}">${escHtml(item.description || '-')}</span></td>
-                    <td>${item.userName || item.userCode || '-'}</td>
-                    <td>${item.clientIp || '-'}</td>
-                    <td><span class="tag ${resultClass}">${item.result || '-'}</span></td>
-                    <td class="${costClass}">${item.costTime != null ? item.costTime + 'ms' : '-'}</td>
-                    <td>${hasPermission('audit-log:detail') ? `<button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button>` : '-'}</td>
-                </tr>`;
-            }).join('');
-            $('#tableBody').html(html);
+            
+            try {
+                const html = list.map(item => {
+                    const typeTagClass = getTypeTagClass(item.operateType);
+                    const resultClass = item.result === 'SUCCESS' ? 'tag-green' : 'tag-red';
+                    const costClass = (item.costTime || 0) > 2000 ? 'cost-slow' : 'cost-normal';
+                    const time = item.operateTime ? item.operateTime.replace('T', ' ').substring(0, 19) : '-';
+                    const checked = selectedIds.has(item.id) ? 'checked' : '';
+                    return `<tr data-id="${item.id}" class="${checked ? 'row-selected' : ''}">
+                        <td class="col-check"><input type="checkbox" class="row-check" value="${item.id}" ${checked}></td>
+                        <td class="col-time">${time}</td>
+                        <td><span class="tag ${typeTagClass}">${item.operateType || '-'}</span></td>
+                        <td>${item.module || '-'}</td>
+                        <td title="${escHtml(item.description || '')}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="desc-text" title="${escHtml(item.description || '')}">${escHtml(item.description || '-')}</span></td>
+                        <td>${item.userName || item.userCode || '-'}</td>
+                        <td>${item.clientIp || '-'}</td>
+                        <td><span class="tag ${resultClass}">${item.result || '-'}</span></td>
+                        <td class="${costClass}">${item.costTime != null ? item.costTime + 'ms' : '-'}</td>
+                        <td>${hasPermission('audit-log:detail') ? `<button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button>` : '-'}</td>
+                    </tr>`;
+                }).join('');
+                $('#tableBody').html(html);
+            } catch (e) {
+                console.error('[renderTable] error:', e);
+                $('#tableBody').html('<tr><td colspan="10" class="empty">渲染错误: ' + e.message + '</td></tr>');
+            }
 
             // 行选中样式
             $('.row-check').on('change', function() {
@@ -327,36 +324,37 @@
         }
 
         // ===== 分页 =====
-        function renderPagination(data, current) {
-            if (!data || data.totalPages <= 1) {
+        function renderPagination(total) {
+            const totalPages = Math.ceil(total / size);
+
+            if (!totalPages) {
                 $('#pagination').html('');
                 return;
             }
-            const total = data.totalPages, cur = current;
-            let html = '';
-            if (cur > 1) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${cur-1})">‹</a>`;
-            const range = getPageRange(cur, total);
-            if (range[0] > 1) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(1)">1</a>`;
-            if (range[0] > 2) html += '<span class="page-ellipsis">…</span>';
-            for (let i = range[0]; i <= range[1]; i++) {
-                html += `<a href="javascript:;" class="page-btn ${i===cur?'active':''}" onclick="refreshList(${i})">${i}</a>`;
+
+            let html = `<button ${currentPage <= 1 ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage - 1}">上一页</button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary active ' : 'btn-default'} btn-page" data-page="${i}">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<button disabled class="btn btn-sm btn-default">...</button>`;
+                }
             }
-            if (range[1] < total - 1) html += '<span class="page-ellipsis">…</span>';
-            if (range[1] < total) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${total})">${total}</a>`;
-            if (cur < total) html += `<a href="javascript:;" class="page-btn" onclick="refreshList(${cur+1})">›</a>`;
-            html += `<span class="page-info">共 ${data.totalElements} 条</span>`;
+
+            html += `<button ${currentPage >= totalPages ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage + 1}">下一页</button>`;
+
             $('#pagination').html(html);
+
+            // 绑定分页按钮事件
+            $('.btn-page').on('click', function() {
+                const page = parseInt($(this).data('page'));
+                if (page >= 1 && page <= totalPages) {
+                    refreshList(page);
+                }
+            });
         }
 
-        function getPageRange(cur, total) {
-            let start = Math.max(1, cur - 2);
-            let end = Math.min(total, cur + 2);
-            if (end - start < 4) {
-                if (start === 1) end = Math.min(total, start + 4);
-                else start = Math.max(1, end - 4);
-            }
-            return [start, end];
-        }
 
         // ===== 搜索 & 重置 =====
         $('#btnSearch').on('click', () => refreshList(1));
