@@ -284,9 +284,9 @@ public class RoleService {
         // 检查接口是否配置了角色限制
         List<Long> apiRoleIds = apiRoleRepository.findRoleIdsByApiId(apiId);
         
-        // 如果接口没有配置任何角色，则所有人都可以访问（开放接口）
+        // 如果接口没有配置任何角色，则所有人都不可以访问（开放接口）
         if (apiRoleIds.isEmpty()) {
-            return true;
+            return false;
         }
 
         // 检查用户是否有接口所需的任一角色

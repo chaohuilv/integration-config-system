@@ -44,7 +44,7 @@ public class InvokeController {
         // 权限检查
         Long userId = (Long) httpRequest.getAttribute("userId");
         if (!checkApiAccess(userId, request.getApiCode())) {
-            return Result.of(403, "无权限访问该接口: " + request.getApiCode(), null);
+            return Result.of(405, "无权限访问该接口: " + request.getApiCode(), null);
         }
 
         InvokeResponseDTO response = httpInvokeService.invoke(request);
@@ -66,7 +66,7 @@ public class InvokeController {
         // 权限检查
         Long userId = (Long) httpRequest.getAttribute("userId");
         if (!checkApiAccess(userId, apiCode)) {
-            return Result.of(403, "无权限访问该接口: " + apiCode, null);
+            return Result.of(405, "无权限访问该接口: " + apiCode, null);
         }
 
         InvokeRequestDTO request = InvokeRequestDTO.builder()
