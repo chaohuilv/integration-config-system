@@ -76,6 +76,24 @@
             padding-top: 20px;
             border-top: 1px solid #f0f0f0;
         }
+
+        .role-hint {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f8f9ff;
+            border: 1px solid #e6edff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .role-hint a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .role-hint a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -130,6 +148,10 @@
                 </div>
             </div>
 
+            <div class="role-hint">
+                💡 角色分配请在 <a href="javascript:goToRoles()">角色权限管理</a> 中进行，点击角色详情页为用户分配角色。
+            </div>
+
             <div class="form-actions">
                 <button class="btn btn-primary" id="btnSaveUser">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -152,104 +174,111 @@
         // 从 URL 参数获取用户 ID（编辑模式）
         const urlParams = new URLSearchParams(window.location.search);
         const editId = urlParams.get('id');
-        let isEdit = false;
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('users');
 
         // 编辑模式：加载用户数据
-        async function loadUser(id) {
-            try {
-                // 通过用户列表接口拿到全部用户，从中找到目标用户
-                const json = await API.auth.getUsers({ page: 1, size: 999 });
-                const users = json.data.content || [];
-                const user = users.find(u => String(u.id) === String(id));
-
-                if (!user) {
-                    utils.toast('用户不存在', 'error');
-                    goBack();
-                    return;
-                }
-
-                isEdit = true;
-                $('#pageTitle').text('编辑用户');
-                $('#userId').val(user.id);
-                $('#formUserCode').val(user.userCode).prop('disabled', true);
-                $('#formUsername').val(user.username || '');
-                $('#formPassword').val('');
-                $('#pwdHint').text('(留空则不修改)');
-                $('#formDisplayName').val(user.displayName || '');
-                $('#formEmail').val(user.email || '');
-                $('#formPhone').val(user.phone || '');
-                $('#formStatus').val(user.status || 'ACTIVE');
-            } catch (err) {
-                utils.toast('加载用户数据失败: ' + err.message, 'error');
-            }
-        }
-
-        // 保存用户
-        async function saveUser() {
-            const id = $('#userId').val();
-            const userCode = $('#formUserCode').val().trim();
-            const username = $('#formUsername').val().trim();
-            const password = $('#formPassword').val();
-            const displayName = $('#formDisplayName').val().trim();
-            const email = $('#formEmail').val().trim();
-            const phone = $('#formPhone').val().trim();
-            const status = $('#formStatus').val();
-
-            if (!userCode) {
-                utils.toast('请输入用户编码', 'error');
-                return;
-            }
-
-            if (!username) {
-                utils.toast('请输入用户名称', 'error');
-                return;
-            }
-
-            if (!id && !password) {
-                utils.toast('新建用户必须设置密码', 'error');
-                return;
-            }
-
-            const data = { userCode, username, displayName, email, phone, status };
-            if (password) data.password = password;
-
-            try {
-                if (id) {
-                    await API.auth.updateUser(id, data);
-                    utils.toast('用户信息已更新', 'success');
-                } else {
-                    await API.auth.createUser(data);
-                    utils.toast('用户创建成功', 'success');
-                }
-                // 保存成功后跳回列表
-                setTimeout(() => goBack(), 500);
-            } catch (err) {
-                utils.toast('操作失败: ' + err.message, 'error');
-            }
-        }
-
-        // 返回列表
-        function goBack() {
-            if (parent.loadPage) {
-                parent.loadPage('users');
-            } else {
-                window.location.href = 'user_list.html';
-            }
+        if (editId) {
+            loadUser(editId);
         }
 
         // 绑定事件
         $('#btnBack').on('click', goBack);
         $('#btnCancel').on('click', goBack);
         $('#btnSaveUser').on('click', saveUser);
-
-        // 初始化
-        if (editId) {
-            loadUser(editId);
-        }
     });
+
+    // 编辑模式：加载用户数据
+    async function loadUser(id) {
+        try {
+            // 通过用户列表接口拿到全部用户，从中找到目标用户
+            const json = await API.auth.getUsers({ page: 1, size: 999 });
+            const users = json.data.content || [];
+            const user = users.find(u => String(u.id) === String(id));
+
+            if (!user) {
+                utils.toast('用户不存在', 'error');
+                goBack();
+                return;
+            }
+
+            $('#pageTitle').text('编辑用户');
+            $('#userId').val(user.id);
+            $('#formUserCode').val(user.userCode).prop('disabled', true);
+            $('#formUsername').val(user.username || '');
+            $('#formPassword').val('');
+            $('#pwdHint').text('(留空则不修改)');
+            $('#formDisplayName').val(user.displayName || '');
+            $('#formEmail').val(user.email || '');
+            $('#formPhone').val(user.phone || '');
+            $('#formStatus').val(user.status || 'ACTIVE');
+        } catch (err) {
+            utils.toast('加载用户数据失败: ' + err.message, 'error');
+        }
+    }
+
+    // 保存用户
+    async function saveUser() {
+        const id = $('#userId').val();
+        const userCode = $('#formUserCode').val().trim();
+        const username = $('#formUsername').val().trim();
+        const password = $('#formPassword').val();
+        const displayName = $('#formDisplayName').val().trim();
+        const email = $('#formEmail').val().trim();
+        const phone = $('#formPhone').val().trim();
+        const status = $('#formStatus').val();
+
+        if (!userCode) {
+            utils.toast('请输入用户编码', 'error');
+            return;
+        }
+
+        if (!username) {
+            utils.toast('请输入用户名称', 'error');
+            return;
+        }
+
+        if (!id && !password) {
+            utils.toast('新建用户必须设置密码', 'error');
+            return;
+        }
+
+        const data = { userCode, username, displayName, email, phone, status };
+        if (password) data.password = password;
+
+        try {
+            if (id) {
+                await API.auth.updateUser(id, data);
+                utils.toast('用户信息已更新', 'success');
+            } else {
+                await API.auth.createUser(data);
+                utils.toast('用户创建成功', 'success');
+            }
+            // 保存成功后跳回列表
+            setTimeout(() => goBack(), 500);
+        } catch (err) {
+            utils.toast('操作失败: ' + err.message, 'error');
+        }
+    }
+
+    // 返回列表
+    function goBack() {
+        if (parent.loadPage) {
+            parent.loadPage('users');
+        } else {
+            window.location.href = 'user_list.html';
+        }
+    }
+
+    // 跳转到角色管理
+    function goToRoles() {
+        if (parent.loadPage) {
+            parent.loadPage('roles');
+        } else {
+            window.location.href = 'role_list.html';
+        }
+    }
     </script>
 </body>
 </html>

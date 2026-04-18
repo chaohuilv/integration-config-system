@@ -1,5 +1,7 @@
 package com.integration.config.entity.config;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -73,6 +75,7 @@ public class User {
 
     /** 创建人ID */
     @Column(name = "CREATED_BY")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long createdBy;
 
     @PrePersist

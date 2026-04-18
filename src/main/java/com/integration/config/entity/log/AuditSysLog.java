@@ -1,5 +1,7 @@
 package com.integration.config.entity.log;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

@@ -9,27 +9,14 @@ const App = (function() {
     let currentUser = null;
     let currentVersion = null;
     let versionCheckInterval = null;
-
-    // 页面映射
-    const PAGE_MAP = {
-        list: 'pages/api_list.html',
-        import: 'pages/api_import.html',
-        debug: 'pages/api_debug.html',
-        logs: 'pages/api_logs.html',
-        sdk: 'pages/api_sdk.html',
-        users: 'pages/user_list.html',
-        userForm: 'pages/user_form.html',
-        form: 'pages/api_form.html',
-        detail: 'pages/api_detail.html',
-        environments: 'pages/environment_list.html',
-        envForm: 'pages/environment_form.html',
-        'audit-logs': 'pages/audit_log_list.html',
-        'audit-logs-detail': 'pages/audit_log_detail.html'
-    };
+    let userPermissions = [];  // 用户权限列表
+    let userMenus = [];        // 用户菜单列表
+    let pageMap = {};          // 页面映射（从后端加载）
 
     // ===== 初始化 =====
     async function init() {
         await checkLogin();
+        await loadUserPermissions();
         loadSidebar();
         startVersionCheck();
     }
@@ -52,6 +39,63 @@ const App = (function() {
         }
     }
 
+    // ===== 加载用户权限 =====
+    async function loadUserPermissions() {
+        try {
+            const [permRes, menuRes] = await Promise.all([
+                API.auth.getPermissions(),
+                API.auth.getMenus()
+            ]);
+            
+            if (permRes.code === 200) {
+                userPermissions = permRes.data || [];
+            }
+            
+            if (menuRes.code === 200) {
+                // 后端返回的数据结构: { menus: [...], pageMap: {...} }
+                // menus: 用户可访问的列表页菜单（用于侧边栏显示）
+                // pageMap: 所有页面路由映射（包括列表页和表单页）
+                const data = menuRes.data;
+                if (data.menus) {
+                    userMenus = data.menus;
+                }
+                if (data.pageMap) {
+                    pageMap = data.pageMap;
+                    console.log('[App] pageMap loaded from backend:', pageMap);
+                }
+            }
+        } catch (e) {
+            console.error('加载用户权限失败:', e);
+        }
+    }
+
+    // ===== 检查权限 =====
+    function hasPermission(permissionCode) {
+        // 管理员拥有所有权限
+        if (currentUser && currentUser.isAdmin) {
+            return true;
+        }
+        return userPermissions.includes(permissionCode);
+    }
+
+    // ===== 检查菜单访问权限 =====
+    function hasMenuAccess(menuCode) {
+        // 管理员可访问所有菜单
+        if (currentUser && currentUser.isAdmin) {
+            return true;
+        }
+        // 检查是否在用户菜单列表中
+        return userMenus.some(m => m.code === menuCode);
+    }
+
+    // ===== 检查页面是否为表单页（不需要检查菜单权限）=====
+    function isFormPage(page) {
+        // 表单页在 pageMap 中但不在 userMenus 列表中
+        // 这些页面从列表页调用，不需要单独检查菜单权限
+        if (!pageMap[page]) return false;
+        return !userMenus.some(m => m.code === page);
+    }
+
     // ===== 侧边栏加载 =====
     function loadSidebar() {
         fetch('_sidebar.html')
@@ -62,6 +106,7 @@ const App = (function() {
                     container.innerHTML = html;
                     updateNav('list');
                     fillSidebarUser();
+                    applyMenuPermissions();
                 }
             })
             .catch(() => {
@@ -70,6 +115,51 @@ const App = (function() {
                     container.innerHTML = `<iframe src="_sidebar.html" style="width:220px;height:100%;border:none;" frameborder="0"></iframe>`;
                 }
             });
+    }
+
+    // ===== 应用菜单权限（隐藏无权限的菜单项）=====
+    function applyMenuPermissions() {
+        console.log('[App] applyMenuPermissions called, userMenus=', userMenus);
+        
+        if (currentUser && currentUser.isAdmin) {
+            console.log('[App] 当前用户是管理员，显示所有菜单');
+            return; // 管理员显示所有菜单
+        }
+        
+        // 获取用户可访问的菜单code列表
+        const allowedCodes = userMenus.map(m => m.code);
+        console.log('[App] 用户可访问的菜单code:', allowedCodes);
+        
+        // 遍历所有菜单项，隐藏无权限的
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const id = item.id;
+            if (id && id.startsWith('nav-')) {
+                // nav-item 的 ID 格式为 'nav-xxx'，对应的 menu code 就是 'xxx'（或 'audit-logs' 特殊情况）
+                // 但 sidebar 中 nav-audit 对应 audit-logs
+                let menuCode = id.substring(4); // 移除 'nav-' 前缀
+                
+                // 特殊映射：nav-audit -> audit-logs
+                if (menuCode === 'audit') {
+                    menuCode = 'audit-logs';
+                }
+                
+                const hasAccess = allowedCodes.includes(menuCode);
+                console.log('[App] 菜单项', id, '-> menuCode:', menuCode, 'hasAccess:', hasAccess);
+                
+                if (!hasAccess) {
+                    item.style.display = 'none';
+                }
+            }
+        });
+        
+        // 隐藏没有可见子菜单的一级菜单分组
+        document.querySelectorAll('.nav-section').forEach(section => {
+            const visibleItems = section.querySelectorAll('.nav-item:not([style*="display: none"])');
+            if (visibleItems.length === 0) {
+                section.style.display = 'none';
+                console.log('[App] 隐藏一级菜单:', section.querySelector('.nav-section-title span')?.textContent);
+            }
+        });
     }
 
     // ===== 填充侧边栏用户信息 =====
@@ -83,12 +173,19 @@ const App = (function() {
 
         if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
         if (nameEl) nameEl.textContent = name;
-        if (roleEl) roleEl.textContent = currentUser.role === 'ADMIN' ? '管理员' : '普通用户';
+        if (roleEl) roleEl.textContent = currentUser.isAdmin ? '管理员' : '普通用户';
     }
 
     // ===== 页面路由 =====
     function loadPage(page, params) {
-        const pagePath = PAGE_MAP[page] || PAGE_MAP.list;
+        // 表单页（FORM类型）不需要检查菜单权限，从列表页调用
+        // 列表页（LIST类型）需要检查菜单权限
+        if (!isFormPage(page) && !hasMenuAccess(page)) {
+            utils.toast('无访问权限', 'error');
+            return;
+        }
+
+        const pagePath = pageMap[page] || 'pages/api_list.html';
         let src = pagePath;
 
         // 添加参数
@@ -116,27 +213,15 @@ const App = (function() {
     // ===== 更新导航高亮 =====
     function updateNav(page) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        const el = document.getElementById('nav-' + page);
+        // 特殊处理：audit-logs 页面高亮 nav-audit
+        const navId = page === 'audit-logs' ? 'nav-audit' : 'nav-' + page;
+        const el = document.getElementById(navId);
         if (el) el.classList.add('active');
     }
 
     // ===== 版本检测 =====
     async function checkVersion() {
         // TODO: 实现版本检测逻辑
-        // try {
-        //     const res = await fetch(`${API_CONFIG.baseURL}/version`);
-        //     const json = await res.json();
-        //     if (json.code === 200 && json.data && json.data.version) {
-        //         const newVersion = json.data.version;
-        //         if (currentVersion === null) {
-        //             currentVersion = newVersion;
-        //         } else if (newVersion !== currentVersion) {
-        //             showUpdateToast();
-        //         }
-        //     }
-        // } catch (e) {
-        //     console.warn('版本检测失败:', e);
-        // }
     }
 
     function showUpdateToast() {
@@ -216,7 +301,11 @@ const App = (function() {
         doLogout,
         toggleUserMenu,
         closeUpdateToast,
-        getCurrentUser: () => currentUser
+        getCurrentUser: () => currentUser,
+        hasPermission,
+        hasMenuAccess,
+        getUserPermissions: () => userPermissions,
+        getUserMenus: () => userMenus
     };
 })();
 
@@ -227,4 +316,6 @@ if (typeof window !== 'undefined') {
     window.doLogout = App.doLogout;
     window.toggleUserMenu = App.toggleUserMenu;
     window.closeUpdateToast = App.closeUpdateToast;
+    window.hasPermission = App.hasPermission;
+    window.hasMenuAccess = App.hasMenuAccess;
 }

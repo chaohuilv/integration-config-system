@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色管理</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 角色信息区 */
+        .role-info-section {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .role-info-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .role-info-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .system-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #e6f0ff;
+            color: #1890ff;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+        }
+        .form-group .required { color: #ff4d4f; }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+        }
+        .form-group input:disabled,
+        .form-group select:disabled {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+        .form-group textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        /* 标签页 */
+        .detail-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 16px;
+        }
+        .detail-tab {
+            padding: 12px 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .detail-tab:hover { color: #667eea; }
+        .detail-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 搜索和添加区 */
+        .search-add-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+        .search-add-section .search-box {
+            flex: 1;
+            position: relative;
+        }
+        .search-add-section .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .search-add-section .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .search-add-section .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+        .search-add-section .dropdown-wrapper {
+            flex: 2;
+            position: relative;
+        }
+        .search-add-section .dropdown-btn {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+        }
+        .search-add-section .dropdown-btn:hover {
+            border-color: #667eea;
+        }
+        .search-add-section .dropdown-btn .placeholder { color: #999; }
+        .search-add-section .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+        }
+        .search-add-section .dropdown-menu.show { display: block; }
+        .search-add-section .dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .search-add-section .dropdown-item:hover { background: #f5f5f5; }
+        .search-add-section .dropdown-item.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 列表项 */
+        .assign-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .assign-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .assign-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.1);
+        }
+        .assign-item .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .assign-item .method-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 12px;
+            min-width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .method-badge.GET { background: #e6f7e6; color: #52c41a; }
+        .method-badge.POST { background: #e6f0ff; color: #1890ff; }
+        .method-badge.PUT { background: #fff7e6; color: #fa8c16; }
+        .method-badge.DELETE { background: #fff2f0; color: #ff4d4f; }
+        .assign-item .info { flex: 1; min-width: 0; }
+        .assign-item .name {
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .assign-item .sub {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+        .assign-item .status-tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 12px;
+        }
+        .status-tag.ACTIVE { background: #e6f7e6; color: #52c41a; }
+        .status-tag.INACTIVE { background: #fff2f0; color: #ff4d4f; }
+        .assign-item .remove-btn {
+            padding: 4px 12px;
+            border: 1px solid #ff4d4f;
+            border-radius: 4px;
+            background: white;
+            color: #ff4d4f;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .assign-item .remove-btn:hover {
+            background: #ff4d4f;
+            color: white;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+
+        /* 操作按钮 */
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        /* 模块网格 - 一行4列 */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 1400px) {
+            .module-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 1000px) {
+            .module-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .module-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* 单个模块卡片 */
+        .module-card {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .module-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .module-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        /* 权限项列表 */
+        .permission-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .permission-check-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .permission-check-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        .permission-check-item.checked {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+        .permission-check-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+            accent-color: #667eea;
+        }
+        .permission-check-item .perm-name {
+            flex: 1;
+            font-size: 13px;
+            color: #333;
+        }
+        .permission-check-item .perm-code {
+            font-size: 11px;
+            color: #999;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">🔑 新建角色</h2>
+            <p class="view-sub">配置角色信息、用户和接口权限</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" onclick="goBack()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                返回列表
+            </button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 角色信息区 -->
+        <div class="role-info-section">
+            <div class="role-info-header">
+                <h3>📝 角色信息 <span id="systemBadge" class="system-badge" style="display:none">系统角色</span></h3>
+            </div>
+            <input type="hidden" id="roleId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>角色编码 <span class="required">*</span></label>
+                    <input type="text" id="formCode" placeholder="如：MANAGER">
+                </div>
+                <div class="form-group">
+                    <label>角色名称 <span class="required">*</span></label>
+                    <input type="text" id="formName" placeholder="如：部门经理">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="formStatus">
+                        <option value="ACTIVE">启用</option>
+                        <option value="INACTIVE">禁用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>排序号</label>
+                    <input type="number" id="formSortOrder" value="0">
+                </div>
+                <div class="form-group full-width">
+                    <label>描述</label>
+                    <textarea id="formDescription" placeholder="角色描述..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户和接口分配（编辑模式才显示） -->
+        <div id="assignSection" style="display:none;">
+            <!-- 标签页 -->
+            <div class="detail-tabs">
+                <button class="detail-tab active" data-tab="users">👤 用户分配 <span id="userCount">(0)</span></button>
+                <button class="detail-tab" data-tab="menus">📋 菜单配置</button>
+                <button class="detail-tab" data-tab="permissions">🔐 按钮权限</button>
+                <button class="detail-tab" data-tab="apis">🔌 接口权限 <span id="apiCount">(0)</span></button>
+            </div>
+
+            <!-- 用户分配 -->
+            <div class="tab-content active" id="tab-users">
+                <div class="search-add-section">
+                    <div class="dropdown-wrapper">
+                        <button class="dropdown-btn" id="userDropdownBtn" onclick="toggleUserDropdown()">
+                            <span class="placeholder">选择要添加的用户...</span>
+                        </button>
+                        <div class="dropdown-menu" id="userDropdownMenu">
+                            <div class="dropdown-item" style="padding: 8px 12px;">
+                                <input type="text" id="userSearch" placeholder="搜索用户..." style="width:100%;padding:6px 10px;border:1px solid #e0e0e0;border-radius:4px;" oninput="filterUserDropdown()">
+                            </div>
+                            <div id="userDropdownList"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="btnAddUser" onclick="addSelectedUser()">添加用户</button>
+                </div>
+                <div class="assign-list" id="userList"></div>
+            </div>
+
+            <!-- 菜单配置 -->
+            <div class="tab-content" id="tab-menus">
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #666; font-size: 13px;">
+                        <span id="menuCount">已选择 0 个菜单</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-default" onclick="selectAllMenus(true)">全选</button>
+                        <button class="btn btn-sm btn-default" onclick="selectAllMenus(false)">取消全选</button>
+                        <button class="btn btn-primary" onclick="saveMenuPermissions()">保存菜单配置</button>
+                    </div>
+                </div>
+                <div class="permission-grid" id="menuGrid"></div>
+            </div>
+
+            <!-- 按钮权限 -->
+            <div class="tab-content" id="tab-permissions">
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #666; font-size: 13px;">
+                        <span id="permCount">已选择 0 个权限</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-default" onclick="selectAllPermissions(true)">全选</button>
+                        <button class="btn btn-sm btn-default" onclick="selectAllPermissions(false)">取消全选</button>
+                        <button class="btn btn-primary" onclick="saveButtonPermissions()">保存权限配置</button>
+                    </div>
+                </div>
+                <div class="permission-grid" id="permissionGrid"></div>
+            </div>
+
+            <!-- 接口权限 -->
+            <div class="tab-content" id="tab-apis">
+                <div class="search-add-section">
+                    <div class="dropdown-wrapper">
+                        <button class="dropdown-btn" id="apiDropdownBtn" onclick="toggleApiDropdown()">
+                            <span class="placeholder">选择要授权的接口...</span>
+                        </button>
+                        <div class="dropdown-menu" id="apiDropdownMenu">
+                            <div class="dropdown-item" style="padding: 8px 12px;">
+                                <input type="text" id="apiSearch" placeholder="搜索接口..." style="width:100%;padding:6px 10px;border:1px solid #e0e0e0;border-radius:4px;" oninput="filterApiDropdown()">
+                            </div>
+                            <div id="apiDropdownList"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="btnAddApi" onclick="addSelectedApi()">授权接口</button>
+                </div>
+                <div class="assign-list" id="apiList"></div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-bar">
+            <button class="btn btn-primary" onclick="saveRole()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                保存
+            </button>
+            <button class="btn btn-default" onclick="goBack()">取消</button>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+
+    <script>
+    let isEdit = false;
+    let roleId = null;
+    let allUsers = [];
+    let allApis = [];
+    let allMenus = [];
+    let allPermissions = [];
+    let assignedUserIds = [];
+    let assignedApiIds = [];
+    let assignedMenuIds = [];
+    let assignedPermissionIds = [];
+    let selectedUserId = null;
+    let selectedApiId = null;
+
+    $(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        roleId = urlParams.get('id');
+        
+        if (parent.setNav) parent.setNav('roles');
+
+        if (roleId) {
+            isEdit = true;
+            $('#pageTitle').text('🔑 编辑角色');
+            $('#assignSection').show();
+            loadRole(roleId);
+            loadAllUsers();
+            loadAllApis();
+            loadAllMenus();
+            loadAllPermissions();
+        }
+
+        // 标签页切换
+        $('.detail-tab').on('click', function() {
+            const tab = $(this).data('tab');
+            $('.detail-tab').removeClass('active');
+            $(this).addClass('active');
+            $('.tab-content').removeClass('active');
+            $('#tab-' + tab).addClass('active');
+            
+            // 切换到菜单/权限 tab 时加载数据
+            if (tab === 'menus' && allMenus.length === 0) {
+                loadAllMenus();
+            }
+            if (tab === 'permissions' && allPermissions.length === 0) {
+                loadAllPermissions();
+            }
+        });
+
+        // 点击外部关闭下拉菜单
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#userDropdownBtn, #userDropdownMenu').length) {
+                $('#userDropdownMenu').removeClass('show');
+            }
+            if (!$(e.target).closest('#apiDropdownBtn, #apiDropdownMenu').length) {
+                $('#apiDropdownMenu').removeClass('show');
+            }
+        });
+    });
+
+    async function loadRole(id) {
+        try {
+            const res = await API.roles.get(id);
+            const role = res.data;
+            
+            $('#formCode').val(role.code).prop('disabled', true);
+            $('#formName').val(role.name);
+            $('#formStatus').val(role.status);
+            $('#formSortOrder').val(role.sortOrder || 0);
+            $('#formDescription').val(role.description || '');
+            
+            if (role.isSystem) {
+                $('#systemBadge').show();
+            }
+
+            // 加载已分配的用户和接口
+            await loadAssignedUsers();
+            await loadAssignedApis();
+        } catch (err) {
+            utils.toast('加载角色失败: ' + err.message, 'error');
+        }
+    }
+
+    async function loadAllUsers() {
+        try {
+            const res = await API.auth.listAll();
+            allUsers = res.data || [];
+            renderUserDropdown();
+        } catch (err) {
+            console.error('加载用户列表失败:', err);
+        }
+    }
+
+    async function loadAllApis() {
+        try {
+            const res = await API.config.list({ page: 1, size: 999 });
+            allApis = res.data?.records || [];
+            renderApiDropdown();
+        } catch (err) {
+            console.error('加载接口列表失败:', err);
+        }
+    }
+
+    async function loadAllMenus() {
+        try {
+            const res = await API.system.getMenus();
+            allMenus = res.data || [];
+            
+            // 加载已分配的菜单
+            if (roleId) {
+                const menuRes = await API.roles.getMenuIds(roleId);
+                assignedMenuIds = menuRes.data || [];
+            }
+            
+            renderMenuGrid();
+        } catch (err) {
+            console.error('加载菜单列表失败:', err);
+        }
+    }
+
+    async function loadAllPermissions() {
+        try {
+            const res = await API.system.getPermissions();
+            allPermissions = res.data || [];
+            
+            // 加载已分配的权限
+            if (roleId) {
+                const permRes = await API.roles.getPermissionIds(roleId);
+                assignedPermissionIds = permRes.data || [];
+            }
+            
+            renderPermissionGrid();
+        } catch (err) {
+            console.error('加载权限列表失败:', err);
+        }
+    }
+
+    async function loadAssignedUsers() {
+        try {
+            const res = await API.roles.getRoleUserIds(roleId);
+            assignedUserIds = res.data || [];
+            renderUserList();
+            renderUserDropdown();
+            $('#userCount').text('(' + assignedUserIds.length + ')');
+        } catch (err) {
+            console.error('加载用户角色失败:', err);
+        }
+    }
+
+    async function loadAssignedApis() {
+        try {
+            const res = await API.roles.getRoleApiIds(roleId);
+            assignedApiIds = res.data || [];
+            renderApiList();
+            renderApiDropdown();
+            $('#apiCount').text('(' + assignedApiIds.length + ')');
+        } catch (err) {
+            console.error('加载接口角色失败:', err);
+        }
+    }
+
+    // ===== 用户下拉菜单 =====
+    function toggleUserDropdown() {
+        $('#userDropdownMenu').toggleClass('show');
+        if ($('#userDropdownMenu').hasClass('show')) {
+            $('#userSearch').focus();
+        }
+    }
+
+    function renderUserDropdown(filter) {
+        const filterLower = (filter || '').toLowerCase();
+        const list = $('#userDropdownList');
+        list.empty();
+        
+        // 统一转字符串比较
+        let availableUsers = allUsers.filter(u => !assignedUserIds.some(id => String(id) === String(u.id)));
+        if (filter) {
+            availableUsers = availableUsers.filter(u => 
+                (u.username || '').toLowerCase().includes(filterLower) ||
+                (u.userCode || '').toLowerCase().includes(filterLower)
+            );
+        }
+
+        if (availableUsers.length === 0) {
+            list.html('<div class="dropdown-item disabled">无可用用户</div>');
+            return;
+        }
+
+        availableUsers.forEach(user => {
+            const selected = String(selectedUserId) === String(user.id) ? 'background:#f0f5ff;' : '';
+            list.append(`
+                <div class="dropdown-item" style="${selected}" onclick="selectUser('${user.id}')">
+                    <strong>${user.username || user.userCode}</strong>
+                    <span style="color:#999;margin-left:8px;">${user.userCode}</span>
+                </div>
+            `);
+        });
+    }
+
+    function filterUserDropdown() {
+        const filter = $('#userSearch').val();
+        renderUserDropdown(filter);
+    }
+
+    function selectUser(id) {
+        selectedUserId = id;
+        const user = allUsers.find(u => String(u.id) === String(id));
+        if (user) {
+            $('#userDropdownBtn').html(`<strong>${user.username || user.userCode}</strong> <span style="color:#999;margin-left:8px;">${user.userCode}</span>`);
+        }
+        $('#userDropdownMenu').removeClass('show');
+    }
+
+    async function addSelectedUser() {
+        if (!selectedUserId) {
+            utils.toast('请选择用户', 'error');
+            return;
+        }
+
+        try {
+            const newUserIds = [...assignedUserIds, selectedUserId];
+            await API.roles.setRoleUsers(roleId, newUserIds);
+            utils.toast('用户已添加', 'success');
+            selectedUserId = null;
+            $('#userDropdownBtn').html('<span class="placeholder">选择要添加的用户...</span>');
+            await loadAssignedUsers();
+        } catch (err) {
+            utils.toast('添加失败: ' + err.message, 'error');
+        }
+    }
+
+    function renderUserList() {
+        const container = $('#userList');
+        
+        if (assignedUserIds.length === 0) {
+            container.html('<div class="empty-state"><div class="empty-state-icon">👤</div>暂无关联用户</div>');
+            return;
+        }
+
+        let html = '';
+        assignedUserIds.forEach(userId => {
+            const user = allUsers.find(u => String(u.id) === String(userId));
+            if (user) {
+                const initials = (user.username || user.userCode || '?').charAt(0).toUpperCase();
+                html += `
+                    <div class="assign-item">
+                        <div class="avatar">${initials}</div>
+                        <div class="info">
+                            <div class="name">${user.username || user.userCode}</div>
+                            <div class="sub">${user.userCode}</div>
+                        </div>
+                        <span class="status-tag ${user.status || 'ACTIVE'}">${user.status === 'INACTIVE' ? '禁用' : '启用'}</span>
+                        <button class="remove-btn" onclick="removeUser('${userId}')">移除</button>
+                    </div>
+                `;
+            }
+        });
+        container.html(html);
+    }
+
+    async function removeUser(userId) {
+        const confirmed = await utils.showConfirm('移除用户', '确定要移除该用户吗？', '👤', false);
+        if (!confirmed) return;
+
+        try {
+            const newUserIds = assignedUserIds.filter(id => String(id) !== String(userId));
+            await API.roles.setRoleUsers(roleId, newUserIds);
+            utils.toast('用户已移除', 'success');
+            await loadAssignedUsers();
+        } catch (err) {
+            utils.toast('移除失败: ' + err.message, 'error');
+        }
+    }
+
+    // ===== 接口下拉菜单 =====
+    function toggleApiDropdown() {
+        $('#apiDropdownMenu').toggleClass('show');
+        if ($('#apiDropdownMenu').hasClass('show')) {
+            $('#apiSearch').focus();
+        }
+    }
+
+    function renderApiDropdown(filter) {
+        const filterLower = (filter || '').toLowerCase();
+        const list = $('#apiDropdownList');
+        list.empty();
+        // 统一转字符串比较
+        let availableApis = allApis.filter(a => !assignedApiIds.some(id => String(id) === String(a.id)));
+        if (filter) {
+            availableApis = availableApis.filter(a => 
+                (a.name || '').toLowerCase().includes(filterLower) ||
+                (a.code || '').toLowerCase().includes(filterLower)
+            );
+        }
+
+        if (availableApis.length === 0) {
+            list.html('<div class="dropdown-item disabled">无可用接口</div>');
+            return;
+        }
+
+        let html = '';
+        availableApis.forEach(api => {
+            const selected = String(selectedApiId) === String(api.id) ? 'background:#f0f5ff;' : '';
+            html += `
+                <div class="dropdown-item" style="${selected}" onclick="selectApi('${api.id}')">
+                    <span class="method-badge ${api.method}" style="display:inline-block;width:50px;text-align:center;">${api.method}</span>
+                    <strong>${api.name}</strong>
+                    <span style="color:#999;margin-left:8px;font-size:12px;">${api.code}</span>
+                </div>
+            `;
+        });
+        list.html(html);
+    }
+
+    function filterApiDropdown() {
+        const filter = $('#apiSearch').val();
+        renderApiDropdown(filter);
+    }
+
+    function selectApi(id) {
+        selectedApiId = id;
+        const api = allApis.find(a => String(a.id) === String(id));
+        if (api) {
+            $('#apiDropdownBtn').html(`<span class="method-badge ${api.method}" style="display:inline-block;width:50px;text-align:center;">${api.method}</span> <strong>${api.name}</strong>`);
+        }
+        $('#apiDropdownMenu').removeClass('show');
+    }
+
+    async function addSelectedApi() {
+        if (!selectedApiId) {
+            utils.toast('请选择接口', 'error');
+            return;
+        }
+
+        try {
+            const newApiIds = [...assignedApiIds, selectedApiId];
+            await API.roles.setRoleApis(roleId, newApiIds);
+            utils.toast('接口已授权', 'success');
+            selectedApiId = null;
+            $('#apiDropdownBtn').html('<span class="placeholder">选择要授权的接口...</span>');
+            await loadAssignedApis();
+        } catch (err) {
+            utils.toast('授权失败: ' + err.message, 'error');
+        }
+    }
+
+    function renderApiList() {
+        const container = $('#apiList');
+        
+        if (assignedApiIds.length === 0) {
+            container.html('<div class="empty-state"><div class="empty-state-icon">🔌</div>暂无授权接口</div>');
+            return;
+        }
+
+        let html = '';
+        assignedApiIds.forEach(apiId => {
+            const api = allApis.find(a => String(a.id) === String(apiId));
+            if (api) {
+                html += `
+                    <div class="assign-item">
+                        <span class="method-badge ${api.method}">${api.method}</span>
+                        <div class="info">
+                            <div class="name">${api.name}</div>
+                            <div class="sub">${api.code}</div>
+                        </div>
+                        <span class="status-tag ${api.status || 'ACTIVE'}">${api.status === 'INACTIVE' ? '禁用' : '启用'}</span>
+                        <button class="remove-btn" onclick="removeApi('${apiId}')">移除</button>
+                    </div>
+                `;
+            }
+        });
+        container.html(html);
+    }
+
+    async function removeApi(apiId) {
+        const confirmed = await utils.showConfirm('取消授权', '确定要取消该接口的授权吗？', '🔌', false);
+        if (!confirmed) return;
+
+        try {
+            const newApiIds = assignedApiIds.filter(id => String(id) !== String(apiId));
+            await API.roles.setRoleApis(roleId, newApiIds);
+            utils.toast('授权已取消', 'success');
+            await loadAssignedApis();
+        } catch (err) {
+            utils.toast('取消失败: ' + err.message, 'error');
+        }
+    }
+
+    // ===== 保存角色 =====
+    async function saveRole() {
+        const code = $('#formCode').val().trim().toUpperCase();
+        const name = $('#formName').val().trim();
+        const status = $('#formStatus').val();
+        const sortOrder = parseInt($('#formSortOrder').val()) || 0;
+        const description = $('#formDescription').val().trim();
+
+        if (!code) {
+            utils.toast('请输入角色编码', 'error');
+            return;
+        }
+        if (!name) {
+            utils.toast('请输入角色名称', 'error');
+            return;
+        }
+
+        const data = { code, name, status, sortOrder, description };
+
+        try {
+            if (isEdit) {
+                await API.roles.update(roleId, data);
+                utils.toast('角色已更新', 'success');
+            } else {
+                await API.roles.create(data);
+                utils.toast('角色已创建', 'success');
+            }
+            setTimeout(() => goBack(), 500);
+        } catch (err) {
+            utils.toast('保存失败: ' + err.message, 'error');
+        }
+    }
+
+    // ===== 菜单配置 =====
+    function renderMenuGrid() {
+        const container = $('#menuGrid');
+        container.empty();
+        
+        // 按分组渲染
+        const sections = {};
+        allMenus.forEach(menu => {
+            const section = menu.section || '其他';
+            if (!sections[section]) sections[section] = [];
+            sections[section].push(menu);
+        });
+        
+        // 创建模块网格容器
+        const moduleGrid = $('<div class="module-grid"></div>');
+        
+        Object.keys(sections).forEach(section => {
+            const sectionMenus = sections[section];
+            const allChecked = sectionMenus.every(m => assignedMenuIds.some(id => String(id) === String(m.id)));
+            const someChecked = sectionMenus.some(m => assignedMenuIds.some(id => String(id) === String(m.id)));
+            
+            const card = $(`
+                <div class="module-card">
+                    <div class="module-card-header">
+                        <span class="module-card-title">${section}</span>
+                        <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                            <input type="checkbox" ${allChecked ? 'checked' : ''} 
+                                   onchange="toggleSectionMenus('${section}', this.checked)">
+                            全选
+                        </label>
+                    </div>
+                    <div class="permission-list" id="menu-list-${section.replace(/\s/g, '-')}"></div>
+                </div>
+            `);
+            
+            moduleGrid.append(card);
+            
+            const listContainer = card.find('.permission-list');
+            sectionMenus.forEach(menu => {
+                const checked = assignedMenuIds.some(id => String(id) === String(menu.id));
+                listContainer.append(`
+                    <label class="permission-check-item ${checked ? 'checked' : ''}" onclick="toggleMenu('${menu.id}')">
+                        <input type="checkbox" ${checked ? 'checked' : ''}>
+                        <span class="perm-name">${menu.icon || '📄'} ${menu.name}</span>
+                        <span class="perm-code">${menu.code}</span>
+                    </label>
+                `);
+            });
+        });
+        
+        container.append(moduleGrid);
+        updateMenuCount();
+    }
+
+    function toggleMenu(menuId) {
+        const idStr = String(menuId);
+        const idx = assignedMenuIds.findIndex(id => String(id) === idStr);
+        if (idx >= 0) {
+            assignedMenuIds.splice(idx, 1);
+        } else {
+            assignedMenuIds.push(menuId);
+        }
+        renderMenuGrid();
+    }
+
+    function toggleSectionMenus(section, checked) {
+        const sectionMenus = allMenus.filter(m => (m.section || '其他') === section);
+        sectionMenus.forEach(menu => {
+            const idStr = String(menu.id);
+            const idx = assignedMenuIds.findIndex(id => String(id) === idStr);
+            if (checked && idx < 0) {
+                assignedMenuIds.push(menu.id);
+            } else if (!checked && idx >= 0) {
+                assignedMenuIds.splice(idx, 1);
+            }
+        });
+        renderMenuGrid();
+    }
+
+    function selectAllMenus(checked) {
+        if (checked) {
+            assignedMenuIds = allMenus.map(m => m.id);
+        } else {
+            assignedMenuIds = [];
+        }
+        renderMenuGrid();
+    }
+
+    function updateMenuCount() {
+        $('#menuCount').text(`已选择 ${assignedMenuIds.length} 个菜单`);
+    }
+
+    async function saveMenuPermissions() {
+        try {
+            await API.roles.setMenus(roleId, assignedMenuIds);
+            utils.toast('菜单配置已保存', 'success');
+        } catch (err) {
+            utils.toast('保存失败: ' + err.message, 'error');
+        }
+    }
+
+    // ===== 按钮权限配置 =====
+    function renderPermissionGrid() {
+        const container = $('#permissionGrid');
+        container.empty();
+        
+        // 按模块分组
+        const modules = {};
+        allPermissions.forEach(perm => {
+            const module = perm.module || perm.code.split(':')[0];
+            if (!modules[module]) modules[module] = [];
+            modules[module].push(perm);
+        });
+        
+        const moduleNames = {
+            'api': '接口配置',
+            'env': '环境配置',
+            'user': '用户管理',
+            'role': '角色管理',
+            'log': '日志管理',
+            'system': '系统管理'
+        };
+        
+        // 创建模块网格容器
+        const moduleGrid = $('<div class="module-grid"></div>');
+        
+        Object.keys(modules).forEach(module => {
+            const modulePerms = modules[module];
+            const allChecked = modulePerms.every(p => assignedPermissionIds.some(id => String(id) === String(p.id)));
+            
+            const card = $(`
+                <div class="module-card">
+                    <div class="module-card-header">
+                        <span class="module-card-title">${moduleNames[module] || module}</span>
+                        <label style="font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                            <input type="checkbox" ${allChecked ? 'checked' : ''} 
+                                   onchange="toggleSectionPermissions('${module}', this.checked)">
+                            全选
+                        </label>
+                    </div>
+                    <div class="permission-list"></div>
+                </div>
+            `);
+            
+            const listContainer = card.find('.permission-list');
+            modulePerms.forEach(perm => {
+                const checked = assignedPermissionIds.some(id => String(id) === String(perm.id));
+                listContainer.append(`
+                    <label class="permission-check-item ${checked ? 'checked' : ''}" onclick="togglePermission('${perm.id}')">
+                        <input type="checkbox" ${checked ? 'checked' : ''}>
+                        <span class="perm-name">${perm.name}</span>
+                        <span class="perm-code">${perm.code}</span>
+                    </label>
+                `);
+            });
+            
+            moduleGrid.append(card);
+        });
+        
+        container.append(moduleGrid);
+        updatePermCount();
+    }
+
+    function togglePermission(permId) {
+        const idStr = String(permId);
+        const idx = assignedPermissionIds.findIndex(id => String(id) === idStr);
+        if (idx >= 0) {
+            assignedPermissionIds.splice(idx, 1);
+        } else {
+            assignedPermissionIds.push(permId);
+        }
+        renderPermissionGrid();
+    }
+
+    function toggleSectionPermissions(module, checked) {
+        const modulePerms = allPermissions.filter(p => (p.module || p.code.split(':')[0]) === module);
+        modulePerms.forEach(perm => {
+            const idStr = String(perm.id);
+            const idx = assignedPermissionIds.findIndex(id => String(id) === idStr);
+            if (checked && idx < 0) {
+                assignedPermissionIds.push(perm.id);
+            } else if (!checked && idx >= 0) {
+                assignedPermissionIds.splice(idx, 1);
+            }
+        });
+        renderPermissionGrid();
+    }
+
+    function selectAllPermissions(checked) {
+        if (checked) {
+            assignedPermissionIds = allPermissions.map(p => p.id);
+        } else {
+            assignedPermissionIds = [];
+        }
+        renderPermissionGrid();
+    }
+
+    function updatePermCount() {
+        $('#permCount').text(`已选择 ${assignedPermissionIds.length} 个权限`);
+    }
+
+    async function saveButtonPermissions() {
+        try {
+            await API.roles.setPermissions(roleId, assignedPermissionIds);
+            utils.toast('权限配置已保存', 'success');
+        } catch (err) {
+            utils.toast('保存失败: ' + err.message, 'error');
+        }
+    }
+
+    function goBack() {
+        if (parent.loadPage) {
+            parent.loadPage('roles');
+        } else {
+            window.location.href = 'role_list.html';
+        }
+    }
+    </script>
+</body>
+</html>

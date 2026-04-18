@@ -82,7 +82,7 @@
         </div>
         <div class="view-actions">
             <button class="btn btn-primary btn-export" id="btnExport">📥 导出</button>
-            <button class="btn btn-danger btn-delete-batch" id="btnBatchDelete" disabled>🗑️ 批量删除<span class="selected-count" id="selectedCount"></span></button>
+            <button class="btn btn-danger btn-delete-batch" id="btnBatchDelete" data-permission="audit-log:delete" disabled style="display:none;">🗑️ 批量删除<span class="selected-count" id="selectedCount"></span></button>
         </div>
     </div>
 
@@ -168,6 +168,45 @@
         let currentPage = 1;
         const size = 20;
         let selectedIds = new Set();
+        let permissions = []; // 当前用户的权限列表
+
+        // 加载权限
+        loadPermissions();
+
+        // 加载用户权限
+        async function loadPermissions() {
+            try {
+                const res = await API.auth.getPermissions();
+                if (res.code === 200) {
+                    permissions = res.data || [];
+                    applyPermissions();
+                }
+            } catch (e) {
+                console.error('加载权限失败:', e);
+            }
+        }
+
+        // 应用权限控制
+        function applyPermissions() {
+            if (hasPermission('audit-log:delete')) {
+                $('#btnBatchDelete').show();
+            }
+        }
+
+        // 检查权限
+        function hasPermission(code) {
+            try {
+                if (parent.App && parent.App.getCurrentUser) {
+                    const user = parent.App.getCurrentUser();
+                    if (user && user.isAdmin) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('[audit_log_list] 检查管理员状态失败:', e);
+            }
+            return permissions.includes(code);
+        }
 
         // ===== 加载操作用户列表 =====
         function loadUserOptions() {
@@ -235,7 +274,7 @@
                     <td>${item.clientIp || '-'}</td>
                     <td><span class="tag ${resultClass}">${item.result || '-'}</span></td>
                     <td class="${costClass}">${item.costTime != null ? item.costTime + 'ms' : '-'}</td>
-                    <td><button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button></td>
+                    <td>${hasPermission('audit-log:detail') ? `<button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button>` : '-'}</td>
                 </tr>`;
             }).join('');
             $('#tableBody').html(html);

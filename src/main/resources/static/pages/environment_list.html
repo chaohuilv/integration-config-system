@@ -14,7 +14,7 @@
             <p class="view-sub">管理不同系统的环境配置和 Base URL</p>
         </div>
         <div class="view-actions">
-            <button class="btn btn-primary" id="btnAddEnv">+ 新建环境</button>
+            <button class="btn btn-primary" id="btn-add" onclick="parent.loadPage('envForm')">+ 新建环境</button>
         </div>
     </div>
 
@@ -50,9 +50,47 @@
     $(function() {
         let currentPage = 1;
         const size = 10;
+        let permissions = [];
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('environments');
+
+        // 加载权限
+        loadPermissions();
+
+        async function loadPermissions() {
+            try {
+                const res = await API.auth.getPermissions();
+                if (res.code === 200) {
+                    permissions = res.data || [];
+                    applyPermissions();
+                }
+            } catch (e) {
+                console.error('加载权限失败:', e);
+            }
+            // 加载环境列表
+            load();
+        }
+
+        function applyPermissions() {
+            if (!hasPermission('env:add')) {
+                $('#btn-add').hide();
+            }
+        }
+
+        function hasPermission(code) {
+            try {
+                if (parent.App && parent.App.getCurrentUser) {
+                    const user = parent.App.getCurrentUser();
+                    if (user && user.isAdmin) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('[env_list] 检查管理员状态失败:', e);
+            }
+            return permissions.includes(code);
+        }
 
         // 加载环境列表
         function load() {
@@ -79,7 +117,6 @@
 
             if (!data.length) {
                 tbody.html('');
-                //tableWrap.hide();
                 empty.show();
                 return;
             }
@@ -94,8 +131,8 @@
                     <td><span class="badge badge-${e.status === 'ACTIVE' ? 'active' : 'inactive'}">${e.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
                     <td><span class="badge badge-${e.urlReplace !== false ? 'active' : 'inactive'}">${e.urlReplace !== false ? '启用' : '禁用'}</span></td>
                     <td class="actions">
-                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('envForm', '${e.id}')">编辑</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteEnv('${e.id}')">删除</button>
+                        ${hasPermission('env:edit') ? `<button class="btn btn-sm btn-default" id="btn-edit" onclick="parent.loadPage('envForm', '${e.id}')">编辑</button>` : ''}
+                        ${hasPermission('env:delete') ? `<button class="btn btn-sm btn-danger" id="btn-delete" onclick="deleteEnv('${e.id}')">删除</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -147,17 +184,9 @@
                 });
         }
 
-        // 绑定新建按钮
-        $('#btnAddEnv').on('click', function() {
-            parent.loadPage('envForm');
-        });
-
         // 暴露给全局
         window.goPage = goPage;
         window.deleteEnv = deleteEnv;
-
-        // 初始加载
-        load();
     });
     </script>
 </body>

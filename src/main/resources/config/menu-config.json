@@ -1,0 +1,142 @@
+{
+  "menus": [
+    {
+      "code": "list",
+      "name": "接口配置",
+      "icon": "📋",
+      "path": "list",
+      "pageFile": "pages/api_list.html",
+      "section": "集成管理",
+      "sortOrder": 1,
+      "pageType": "LIST"
+    },
+    {
+      "code": "form",
+      "name": "接口表单",
+      "icon": "📝",
+      "path": "form",
+      "pageFile": "pages/api_form.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "detail",
+      "name": "接口详情",
+      "icon": "📄",
+      "path": "detail",
+      "pageFile": "pages/api_detail.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "import",
+      "name": "Curl导入",
+      "icon": "📥",
+      "path": "import",
+      "pageFile": "pages/api_import.html",
+      "section": "集成管理",
+      "sortOrder": 2,
+      "pageType": "LIST"
+    },
+    {
+      "code": "debug",
+      "name": "接口调试",
+      "icon": "🧪",
+      "path": "debug",
+      "pageFile": "pages/api_debug.html",
+      "section": "集成管理",
+      "sortOrder": 3,
+      "pageType": "LIST"
+    },
+    {
+      "code": "logs",
+      "name": "调用日志",
+      "icon": "📊",
+      "path": "logs",
+      "pageFile": "pages/api_logs.html",
+      "section": "集成管理",
+      "sortOrder": 4,
+      "pageType": "LIST"
+    },
+    {
+      "code": "environments",
+      "name": "环境配置",
+      "icon": "🌐",
+      "path": "environments",
+      "pageFile": "pages/environment_list.html",
+      "section": "集成管理",
+      "sortOrder": 5,
+      "pageType": "LIST"
+    },
+    {
+      "code": "envForm",
+      "name": "环境表单",
+      "icon": "📝",
+      "path": "envForm",
+      "pageFile": "pages/environment_form.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "users",
+      "name": "用户管理",
+      "icon": "👤",
+      "path": "users",
+      "pageFile": "pages/user_list.html",
+      "section": "系统管理",
+      "sortOrder": 10,
+      "pageType": "LIST"
+    },
+    {
+      "code": "userForm",
+      "name": "用户表单",
+      "icon": "📝",
+      "path": "userForm",
+      "pageFile": "pages/user_form.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "roles",
+      "name": "角色权限",
+      "icon": "🔑",
+      "path": "roles",
+      "pageFile": "pages/role_list.html",
+      "section": "系统管理",
+      "sortOrder": 11,
+      "pageType": "LIST"
+    },
+    {
+      "code": "roleEdit",
+      "name": "角色编辑",
+      "icon": "📝",
+      "path": "roleEdit",
+      "pageFile": "pages/role_edit.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "audit-logs",
+      "name": "审计日志",
+      "icon": "🛡️",
+      "path": "audit-logs",
+      "pageFile": "pages/audit_log_list.html",
+      "section": "系统管理",
+      "sortOrder": 12,
+      "pageType": "LIST"
+    },
+    {
+      "code": "audit-logs-detail",
+      "name": "审计日志详情",
+      "icon": "📄",
+      "path": "audit-logs-detail",
+      "pageFile": "pages/audit_log_detail.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "sdk",
+      "name": "SDK文档",
+      "icon": "💻",
+      "path": "sdk",
+      "pageFile": "pages/api_sdk.html",
+      "section": "开发文档",
+      "sortOrder": 20,
+      "pageType": "LIST"
+    }
+  ]
+}

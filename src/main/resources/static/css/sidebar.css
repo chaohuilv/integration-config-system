@@ -44,10 +44,13 @@
 }
 
 .nav-section {
-    margin-bottom: 24px;
+    margin-bottom: 8px;
 }
 
 .nav-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 10px;
     font-weight: 600;
     color: rgba(255,255,255,0.3);
@@ -55,6 +58,31 @@
     letter-spacing: 1px;
     padding: 0 8px;
     margin-bottom: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.nav-section-title:hover {
+    color: rgba(255,255,255,0.5);
+}
+
+.nav-section-title .toggle-icon {
+    font-size: 10px;
+    transition: transform 0.3s;
+}
+
+.nav-section.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.nav-section.collapsed .nav-items {
+    display: none;
+}
+
+.nav-items {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
 }
 
 .nav-item {

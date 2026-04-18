@@ -5,53 +5,73 @@
         <p>统一接口配置系统</p>
     </div>
     <nav class="sidebar-nav">
-        <div class="nav-section">
-            <div class="nav-section-title">集成管理</div>
-            <div class="nav-item active" id="nav-list" onclick="parent.loadPage('list')">
-                <span class="nav-icon">📋</span>
-                <span>接口配置</span>
-                <span class="nav-arrow">›</span>
+        <div class="nav-section" data-section="integration">
+            <div class="nav-section-title" onclick="toggleSection('integration')">
+                <span>集成管理</span>
+                <span class="toggle-icon">▼</span>
             </div>
-            <div class="nav-item" id="nav-import" onclick="parent.loadPage('import')">
-                <span class="nav-icon">📥</span>
-                <span>Curl导入</span>
-                <span class="nav-arrow">›</span>
-            </div>
-            <div class="nav-item" id="nav-debug" onclick="parent.loadPage('debug')">
-                <span class="nav-icon">🧪</span>
-                <span>接口调试</span>
-                <span class="nav-arrow">›</span>
-            </div>
-            <div class="nav-item" id="nav-logs" onclick="parent.loadPage('logs')">
-                <span class="nav-icon">📊</span>
-                <span>调用日志</span>
-                <span class="nav-arrow">›</span>
-            </div>
-            <div class="nav-item" id="nav-environments" onclick="parent.loadPage('environments')">
-                <span class="nav-icon">🌐</span>
-                <span>环境配置</span>
-                <span class="nav-arrow">›</span>
-            </div>
-        </div>
-        <div class="nav-section">
-            <div class="nav-section-title">系统管理</div>
-            <div class="nav-item" id="nav-users" onclick="parent.loadPage('users')">
-                <span class="nav-icon">👤</span>
-                <span>用户管理</span>
-                <span class="nav-arrow">›</span>
-            </div>
-            <div class="nav-item" id="nav-audit" onclick="parent.loadPage('audit-logs')">
-                <span class="nav-icon">🛡️</span>
-                <span>审计日志</span>
-                <span class="nav-arrow">›</span>
+            <div class="nav-items">
+                <div class="nav-item active" id="nav-list" onclick="parent.loadPage('list')">
+                    <span class="nav-icon">📋</span>
+                    <span>接口配置</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-import" onclick="parent.loadPage('import')">
+                    <span class="nav-icon">📥</span>
+                    <span>Curl导入</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-debug" onclick="parent.loadPage('debug')">
+                    <span class="nav-icon">🧪</span>
+                    <span>接口调试</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-logs" onclick="parent.loadPage('logs')">
+                    <span class="nav-icon">📊</span>
+                    <span>调用日志</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-environments" onclick="parent.loadPage('environments')">
+                    <span class="nav-icon">🌐</span>
+                    <span>环境配置</span>
+                    <span class="nav-arrow">›</span>
+                </div>
             </div>
         </div>
-        <div class="nav-section">
-            <div class="nav-section-title">开发文档</div>
-            <div class="nav-item" id="nav-sdk" onclick="parent.loadPage('sdk')">
-                <span class="nav-icon">💻</span>
-                <span>SDK文档</span>
-                <span class="nav-arrow">›</span>
+        <div class="nav-section" data-section="system">
+            <div class="nav-section-title" onclick="toggleSection('system')">
+                <span>系统管理</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="nav-items">
+                <div class="nav-item" id="nav-users" onclick="parent.loadPage('users')">
+                    <span class="nav-icon">👤</span>
+                    <span>用户管理</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-roles" onclick="parent.loadPage('roles')">
+                    <span class="nav-icon">🔑</span>
+                    <span>角色权限</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+                <div class="nav-item" id="nav-audit" onclick="parent.loadPage('audit-logs')">
+                    <span class="nav-icon">🛡️</span>
+                    <span>审计日志</span>
+                    <span class="nav-arrow">›</span>
+                </div>
+            </div>
+        </div>
+        <div class="nav-section" data-section="dev">
+            <div class="nav-section-title" onclick="toggleSection('dev')">
+                <span>开发文档</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="nav-items">
+                <div class="nav-item" id="nav-sdk" onclick="parent.loadPage('sdk')">
+                    <span class="nav-icon">💻</span>
+                    <span>SDK文档</span>
+                    <span class="nav-arrow">›</span>
+                </div>
             </div>
         </div>
     </nav>
@@ -79,3 +99,30 @@
     </div>
     <div class="sidebar-footer">v1.0 · 集成配置系统</div>
 </aside>
+
+<script>
+// 菜单折叠/展开
+function toggleSection(sectionName) {
+    const section = document.querySelector(`.nav-section[data-section="${sectionName}"]`);
+    if (section) {
+        section.classList.toggle('collapsed');
+        // 保存状态到 localStorage
+        const collapsed = section.classList.contains('collapsed');
+        localStorage.setItem(`nav-section-${sectionName}-collapsed`, collapsed);
+    }
+}
+
+// 恢复菜单折叠状态
+function restoreSectionStates() {
+    document.querySelectorAll('.nav-section').forEach(section => {
+        const sectionName = section.dataset.section;
+        const collapsed = localStorage.getItem(`nav-section-${sectionName}-collapsed`);
+        if (collapsed === 'true') {
+            section.classList.add('collapsed');
+        }
+    });
+}
+
+// 页面加载时恢复状态
+document.addEventListener('DOMContentLoaded', restoreSectionStates);
+</script>

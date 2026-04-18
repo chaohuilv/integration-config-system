@@ -35,7 +35,7 @@
             <p class="view-sub">管理系统用户账号、权限和状态</p>
         </div>
         <div class="view-actions">
-            <button class="btn btn-primary" onclick="parent.loadPage('userForm')">
+            <button class="btn btn-primary" id="btn-add" onclick="parent.loadPage('userForm')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 新建用户
             </button>
@@ -84,12 +84,16 @@
     $(function() {
         let currentPage = 1;
         const pageSize = 10;
+        let permissions = [];
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('users');
 
         // 延迟清空搜索框，防止浏览器自动填充缓存
         setTimeout(() => { $('#searchInput').val(''); }, 50);
+
+        // 加载权限
+        loadPermissions();
 
         // 加载用户列表
         function loadUsers(page) {
@@ -103,6 +107,40 @@
             })
             .then(json => renderUsers(json.data))
             .catch(err => utils.toast('加载失败: ' + err.message, 'error'));
+        }
+
+        async function loadPermissions() {
+            try {
+                const res = await API.auth.getPermissions();
+                if (res.code === 200) {
+                    permissions = res.data || [];
+                    applyPermissions();
+                }
+            } catch (e) {
+                console.error('加载权限失败:', e);
+            }
+            // 加载用户列表
+            loadUsers();
+        }
+
+        function applyPermissions() {
+            if (!hasPermission('user:add')) {
+                $('#btn-add').hide();
+            }
+        }
+
+        function hasPermission(code) {
+            try {
+                if (parent.App && parent.App.getCurrentUser) {
+                    const user = parent.App.getCurrentUser();
+                    if (user && user.isAdmin) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('[user_list] 检查管理员状态失败:', e);
+            }
+            return permissions.includes(code);
         }
 
         // 渲染用户列表
@@ -128,8 +166,8 @@
                     <td><span class="status-badge status-${u.status}">${u.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
                     <td>${utils.escapeHtml(u.lastLoginTime || '-')}</td>
                     <td class="action-btns">
-                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('userForm', '${u.id}')">编辑</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}', '${utils.escapeHtml(u.userCode)}')">删除</button>
+                        ${hasPermission('user:edit') ? `<button class="btn btn-sm btn-default" id="btn-edit" onclick="parent.loadPage('userForm', '${u.id}')">编辑</button>` : ''}
+                        ${hasPermission('user:delete') ? `<button class="btn btn-sm btn-danger" id="btn-delete" onclick="deleteUser('${u.id}', '${utils.escapeHtml(u.userCode)}')">删除</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -187,9 +225,6 @@
         // 暴露给全局
         window.loadUsers = loadUsers;
         window.deleteUser = deleteUser;
-
-        // 初始加载
-        loadUsers();
     });
     </script>
 </body>

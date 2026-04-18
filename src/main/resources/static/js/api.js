@@ -147,7 +147,13 @@ const API = {
         // 删除用户
         deleteUser: (id) => request(`/auth/users/${id}`, {
             method: 'DELETE'
-        })
+        }),
+
+        // 获取当前用户的菜单
+        getMenus: () => request('/auth/menus'),
+
+        // 获取当前用户的权限
+        getPermissions: () => request('/auth/permissions')
     },
 
     // 接口配置
@@ -274,6 +280,115 @@ const API = {
         },
         // 详情
         get: (id) => request(`/audit-log/${id}`)
+    },
+
+    // 角色权限管理
+    roles: {
+        // 获取所有角色
+        list: () => request('/roles'),
+
+        // 获取启用的角色（下拉选择用）
+        listActive: () => request('/roles/active'),
+
+        // 获取单个角色
+        get: (id) => request(`/roles/${id}`),
+
+        // 创建角色
+        create: (data) => request('/roles', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+        // 更新角色
+        update: (id, data) => request(`/roles/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
+        // 删除角色
+        delete: (id) => request(`/roles/${id}`, {
+            method: 'DELETE'
+        }),
+
+        // 获取用户的角色ID列表
+        getUserRoleIds: (userId) => request(`/roles/user/${userId}/ids`),
+
+        // 获取角色下的用户ID列表
+        getRoleUserIds: (roleId) => request(`/roles/${roleId}/users/ids`),
+
+        // 设置角色的用户列表
+        setRoleUsers: (roleId, userIds) => request(`/roles/${roleId}/users`, {
+            method: 'POST',
+            body: JSON.stringify({ userIds })
+        }),
+
+        // 设置用户的角色
+        setUserRoles: (userId, roleIds) => request(`/roles/user/${userId}`, {
+            method: 'POST',
+            body: JSON.stringify({ roleIds })
+        }),
+
+        // 获取接口的角色ID列表
+        getApiRoleIds: (apiId) => request(`/roles/api/${apiId}/ids`),
+
+        // 获取角色的接口ID列表
+        getRoleApiIds: (roleId) => request(`/roles/${roleId}/apis/ids`),
+
+        // 设置角色的接口列表
+        setRoleApis: (roleId, apiIds) => request(`/roles/${roleId}/apis`, {
+            method: 'POST',
+            body: JSON.stringify({ apiIds })
+        }),
+
+        // 设置接口的角色
+        setApiRoles: (apiId, roleIds) => request(`/roles/api/${apiId}`, {
+            method: 'POST',
+            body: JSON.stringify({ roleIds })
+        }),
+
+        // 获取当前用户可访问的接口ID列表
+        getAccessibleApis: () => request('/roles/accessible-apis'),
+
+        // 获取角色的菜单ID列表
+        getMenuIds: (roleId) => request(`/roles/${roleId}/menus`),
+
+        // 设置角色的菜单
+        setMenus: (roleId, menuIds) => request(`/roles/${roleId}/menus`, {
+            method: 'POST',
+            body: JSON.stringify({ menuIds })
+        }),
+
+        // 获取角色的权限ID列表
+        getPermissionIds: (roleId) => request(`/roles/${roleId}/permissions`),
+
+        // 设置角色的权限
+        setPermissions: (roleId, permissionIds) => request(`/roles/${roleId}/permissions`, {
+            method: 'POST',
+            body: JSON.stringify({ permissionIds })
+        }),
+
+        // 给 ADMIN 角色分配所有权限
+        assignAllPermissionsToAdmin: () => request('/roles/admin/assign-all-permissions', {
+            method: 'POST'
+        })
+    },
+
+    // 系统配置
+    system: {
+        // 获取所有菜单
+        getMenus: () => request('/system/menus'),
+
+        // 获取启用的菜单
+        getActiveMenus: () => request('/system/menus/active'),
+
+        // 按分组获取菜单
+        getMenusGrouped: () => request('/system/menus/grouped'),
+
+        // 获取所有权限
+        getPermissions: () => request('/system/permissions'),
+
+        // 获取按钮权限
+        getButtonPermissions: () => request('/system/permissions/buttons')
     }
 };
 

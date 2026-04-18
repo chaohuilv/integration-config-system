@@ -4,7 +4,10 @@ import com.integration.config.annotation.AuditLog;
 import com.integration.config.dto.CreateUserDTO;
 import com.integration.config.dto.LoginRequestDTO;
 import com.integration.config.dto.UserDTO;
+import com.integration.config.entity.config.Menu;
 import com.integration.config.entity.config.User;
+import com.integration.config.service.MenuService;
+import com.integration.config.service.RoleService;
 import com.integration.config.service.TokenService;
 import com.integration.config.service.UserService;
 import com.integration.config.util.Result;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 认证控制器 - 登录/注销/用户管理 (Bearer Token 模式)
@@ -29,6 +33,8 @@ public class AuthController {
 
     private final UserService userService;
     private final TokenService tokenService;
+    private final RoleService roleService;
+    private final MenuService menuService;
 
     /**
      * 用户登录
@@ -116,7 +122,79 @@ public class AuthController {
         data.put("userCode", request.getAttribute("userCode"));
         data.put("username", request.getAttribute("username"));
         data.put("displayName", request.getAttribute("displayName"));
+        
+        // 添加角色信息
+        boolean isAdmin = roleService.isAdmin(userId);
+        data.put("isAdmin", isAdmin);
+        
         return Result.success(data);
+    }
+
+    /**
+     * 获取当前用户的菜单和页面路由映射
+     * 
+     * 返回数据结构：
+     * - menus: 用户可访问的列表页菜单（用于侧边栏显示）
+     * - allMenus: 所有菜单（包括列表页和表单页，用于前端路由映射）
+     */
+    @GetMapping("/menus")
+    public Result<Map<String, Object>> getUserMenus(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            return Result.error("未登录");
+        }
+
+        List<Menu> listMenus;
+        
+        // 管理员返回所有列表页菜单
+        if (roleService.isAdmin(userId)) {
+            log.info("[AuthController] 用户 {} 是管理员，返回所有菜单", userId);
+            listMenus = menuService.getListMenus().stream()
+                    .filter(m -> "ACTIVE".equals(m.getStatus()))
+                    .collect(Collectors.toList());
+        } else {
+            // 非管理员根据角色获取菜单（只获取列表页）
+            List<Long> roleIds = roleService.getUserRoleIds(userId);
+            log.info("[AuthController] 用户 {} 的角色ID列表: {}", userId, roleIds);
+            
+            listMenus = menuService.getUserMenus(roleIds).stream()
+                    .filter(m -> "LIST".equals(m.getPageType()) || m.getPageType() == null)
+                    .collect(Collectors.toList());
+            log.info("[AuthController] 用户 {} 可访问的菜单: {}", userId, 
+                    listMenus.stream().map(Menu::getCode).toList());
+        }
+        
+        // 获取所有菜单（包括列表页和表单页），用于前端路由映射
+        List<Menu> allMenus = menuService.getAllMenusForPageMap();
+        
+        // 构建页面映射
+        Map<String, String> pageMap = new HashMap<>();
+        for (Menu menu : allMenus) {
+            if (menu.getPath() != null && menu.getPageFile() != null) {
+                pageMap.put(menu.getPath(), menu.getPageFile());
+            }
+        }
+        
+        // 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("menus", listMenus);       // 用户可访问的列表页菜单
+        result.put("pageMap", pageMap);       // 所有页面路由映射
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取当前用户的权限编码列表
+     */
+    @GetMapping("/permissions")
+    public Result<List<String>> getUserPermissions(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            return Result.error("未登录");
+        }
+
+        List<String> permissions = roleService.getUserPermissionCodes(userId);
+        return Result.success(permissions);
     }
 
     // ==================== 用户管理接口 ====================

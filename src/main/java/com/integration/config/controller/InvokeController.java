@@ -3,11 +3,16 @@ package com.integration.config.controller;
 import com.integration.config.dto.InvokeRequestDTO;
 import com.integration.config.dto.InvokeResponseDTO;
 import com.integration.config.dto.PageResult;
+import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.entity.log.InvokeLog;
+import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.service.HttpInvokeService;
+import com.integration.config.service.RoleService;
 import com.integration.config.util.Result;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,16 +28,25 @@ import java.util.List;
 @RequestMapping("/api/invoke")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Slf4j
 public class InvokeController {
 
     private final HttpInvokeService httpInvokeService;
     private final InvokeLogRepository invokeLogRepository;
+    private final RoleService roleService;
+    private final ApiConfigRepository apiConfigRepository;
 
     /**
      * 调用接口
      */
     @PostMapping
-    public Result<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request) {
+    public Result<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request, HttpServletRequest httpRequest) {
+        // 权限检查
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        if (!checkApiAccess(userId, request.getApiCode())) {
+            return Result.of(403, "无权限访问该接口: " + request.getApiCode(), null);
+        }
+
         InvokeResponseDTO response = httpInvokeService.invoke(request);
         return Result.of(
                 response.getSuccess() ? 200 : 500,
@@ -47,7 +61,14 @@ public class InvokeController {
     @GetMapping("/{apiCode}")
     public Result<InvokeResponseDTO> invokeGet(
             @PathVariable String apiCode,
-            @RequestParam(required = false) String params) {
+            @RequestParam(required = false) String params,
+            HttpServletRequest httpRequest) {
+        // 权限检查
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        if (!checkApiAccess(userId, apiCode)) {
+            return Result.of(403, "无权限访问该接口: " + apiCode, null);
+        }
+
         InvokeRequestDTO request = InvokeRequestDTO.builder()
                 .apiCode(apiCode)
                 .debug(true) // GET 请求默认调试模式
@@ -58,6 +79,31 @@ public class InvokeController {
                 response.getMessage(),
                 response
         );
+    }
+
+    /**
+     * 检查用户是否有权限访问接口
+     */
+    private boolean checkApiAccess(Long userId, String apiCode) {
+        // 获取接口配置
+        ApiConfig apiConfig = apiConfigRepository.findByCode(apiCode).orElse(null);
+        if (apiConfig == null) {
+            log.warn("[InvokeController] 接口不存在: {}", apiCode);
+            return false;
+        }
+
+        // 检查接口状态
+        if (!"ACTIVE".equals(apiConfig.getStatus().name())) {
+            log.warn("[InvokeController] 接口已禁用: {}", apiCode);
+            return false;
+        }
+
+        // 权限检查
+        boolean hasAccess = roleService.hasApiAccess(userId, apiConfig.getId());
+        if (!hasAccess) {
+            log.warn("[InvokeController] 用户 {} 无权限访问接口 {}", userId, apiCode);
+        }
+        return hasAccess;
     }
 
     /**

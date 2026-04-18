@@ -14,7 +14,7 @@
             <p class="view-sub">管理所有接口配置，支持 CRUD 和在线调试</p>
         </div>
         <div class="view-actions">
-            <button class="btn btn-primary" onclick="parent.loadPage('form')">+ 新建接口</button>
+            <button class="btn btn-primary" id="btn-add" onclick="parent.loadPage('form')">+ 新建接口</button>
         </div>
     </div>
 
@@ -65,9 +65,13 @@
     $(function() {
         let currentPage = 1;
         const size = 10;
+        let permissions = []; // 当前用户的权限列表
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('list');
+
+        // 加载权限
+        loadPermissions();
 
         // 搜索按钮点击
         $('#btnSearch').on('click', () => refreshList(1));
@@ -79,6 +83,50 @@
 
         // 状态筛选变化
         $('#sStatus').on('change', () => refreshList(1));
+
+        // 加载用户权限
+        async function loadPermissions() {
+            try {
+                const res = await API.auth.getPermissions();
+                console.log('[api_list] 权限接口返回:', res);
+                if (res.code === 200) {
+                    permissions = res.data || [];
+                    console.log('[api_list] 权限列表:', permissions);
+                    console.log('[api_list] parent.App:', parent.App);
+                    console.log('[api_list] parent.App.getCurrentUser:', parent.App ? parent.App.getCurrentUser : 'undefined');
+                    if (parent.App && parent.App.getCurrentUser) {
+                        console.log('[api_list] 当前用户:', parent.App.getCurrentUser());
+                    }
+                    applyPermissions();
+                }
+            } catch (e) {
+                console.error('加载权限失败:', e);
+            }
+        }
+
+        // 应用权限控制
+        function applyPermissions() {
+            // 检查新增权限
+            if (!hasPermission('api:add')) {
+                $('#btn-add').hide();
+            }
+        }
+
+        // 检查权限
+        function hasPermission(code) {
+            // 如果是管理员（从 parent 获取），直接返回 true
+            try {
+                if (parent.App && parent.App.getCurrentUser) {
+                    const user = parent.App.getCurrentUser();
+                    if (user && user.isAdmin) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('[api_list] 检查管理员状态失败:', e);
+            }
+            return permissions.includes(code);
+        }
 
         function refreshList(page) {
             if (page) currentPage = page;
@@ -119,11 +167,11 @@
                     <td style="color:#666;font-size:13px;">${utils.escapeHtml(a.createdByName || '-')}</td>
                     <td><span class="badge badge-${(a.status || 'ACTIVE').toLowerCase()}">${a.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
                     <td class="actions">
-                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>
-                        <button class="btn btn-sm btn-success" onclick="testApi('${a.code}')">测试</button>
-                        <button class="btn btn-sm btn-default" onclick="parent.loadPage('form', '${a.id}')">编辑</button>
-                        <button class="btn btn-sm btn-default" onclick="toggleStatus('${a.id}')">${a.status === 'ACTIVE' ? '禁用' : '启用'}</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteApi('${a.id}')">删除</button>
+                        ${hasPermission('api:detail') ? `<button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>` : ''}
+                        ${hasPermission('api:invoke') ? `<button class="btn btn-sm btn-success" onclick="testApi('${a.code}')">测试</button>` : ''}
+                        ${hasPermission('api:edit') ? `<button class="btn btn-sm btn-default" id="btn-edit" onclick="parent.loadPage('form', '${a.id}')">编辑</button>` : ''}
+                        ${hasPermission('api:edit') ? `<button class="btn btn-sm btn-default" onclick="toggleStatus('${a.id}')">${a.status === 'ACTIVE' ? '禁用' : '启用'}</button>` : ''}
+                        ${hasPermission('api:delete') ? `<button class="btn btn-sm btn-danger" id="btn-delete" onclick="deleteApi('${a.id}')">删除</button>` : ''}
                     </td>
                 </tr>
             `).join('');

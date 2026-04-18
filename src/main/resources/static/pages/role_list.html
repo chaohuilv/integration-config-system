@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色权限管理</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-ACTIVE { background: #e6f7e6; color: #52c41a; }
+        .status-INACTIVE { background: #fff2f0; color: #ff4d4f; }
+        .system-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            background: #e6f0ff;
+            color: #1890ff;
+            margin-left: 8px;
+        }
+        .role-card {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .role-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+        .role-info { flex: 1; }
+        .role-name { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px; }
+        .role-code { font-size: 13px; color: #999; font-family: monospace; }
+        .role-desc { font-size: 13px; color: #666; margin-top: 8px; }
+        .role-stats { display: flex; gap: 16px; margin-top: 10px; }
+        .role-stat { font-size: 12px; color: #888; }
+        .role-stat strong { color: #667eea; font-weight: 600; }
+        .role-actions { display: flex; gap: 8px; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🔑 角色权限管理</h2>
+            <p class="view-sub">管理系统角色，点击角色进入详情页配置用户和接口权限</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" id="btn-add" onclick="goToForm()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建角色
+            </button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div id="roleList"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+
+    <script>
+    let allRoles = [];
+    let permissions = [];
+
+    $(function() {
+        if (parent.setNav) parent.setNav('roles');
+        loadPermissions();
+        loadRoles();
+    });
+
+    async function loadPermissions() {
+        try {
+            const res = await API.auth.getPermissions();
+            if (res.code === 200) {
+                permissions = res.data || [];
+                applyPermissions();
+            }
+        } catch (e) {
+            console.error('加载权限失败:', e);
+        }
+    }
+
+    function applyPermissions() {
+        if (!hasPermission('role:add')) {
+            $('#btn-add').hide();
+        }
+    }
+
+    function hasPermission(code) {
+        try {
+            if (parent.App && parent.App.getCurrentUser) {
+                const user = parent.App.getCurrentUser();
+                if (user && user.isAdmin) {
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn('[role_list] 检查管理员状态失败:', e);
+        }
+        return permissions.includes(code);
+    }
+
+    async function loadRoles() {
+        try {
+            const res = await API.roles.list();
+            allRoles = res.data || [];
+            await loadRoleStats();
+            renderRoles();
+        } catch (err) {
+            utils.toast('加载失败: ' + err.message, 'error');
+        }
+    }
+
+    async function loadRoleStats() {
+        for (let role of allRoles) {
+            try {
+                const [usersRes, apisRes] = await Promise.all([
+                    API.roles.getRoleUserIds(role.id).catch(() => ({ data: [] })),
+                    API.roles.getRoleApiIds(role.id).catch(() => ({ data: [] }))
+                ]);
+                role.userCount = (usersRes.data || []).length;
+                role.apiCount = (apisRes.data || []).length;
+            } catch (e) {
+                role.userCount = 0;
+                role.apiCount = 0;
+            }
+        }
+    }
+
+    function renderRoles() {
+        const container = $('#roleList');
+        if (allRoles.length === 0) {
+            container.html('<div class="empty"><div class="empty-icon">📭</div>暂无角色</div>');
+            return;
+        }
+
+        let html = '';
+        allRoles.forEach(role => {
+            const statusClass = role.status === 'ACTIVE' ? 'status-ACTIVE' : 'status-INACTIVE';
+            const statusText = role.status === 'ACTIVE' ? '启用' : '禁用';
+            const systemBadge = role.isSystem ? '<span class="system-badge">系统</span>' : '';
+            const canEdit = hasPermission('role:edit');
+            const canDelete = hasPermission('role:delete') && !role.isSystem;
+            
+            html += `
+                <div class="role-card" onclick="${canEdit ? `goToDetail('${role.id}')` : ''}">
+                    <div class="role-info">
+                        <div class="role-name">${role.name}${systemBadge}</div>
+                        <div class="role-code">${role.code}</div>
+                        <div class="role-desc">${role.description || '无描述'}</div>
+                        <div class="role-stats">
+                            <span class="role-stat">👤 用户: <strong>${role.userCount || 0}</strong></span>
+                            <span class="role-stat">🔌 接口: <strong>${role.apiCount || 0}</strong></span>
+                        </div>
+                    </div>
+                    <div class="role-actions">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        ${canEdit ? `<button class="btn btn-sm btn-ghost" id="btn-edit" onclick="event.stopPropagation(); goToDetail('${role.id}')">编辑</button>` : ''}
+                        ${canDelete ? `<button class="btn btn-sm btn-danger" id="btn-delete" onclick="event.stopPropagation(); deleteRole('${role.id}', '${role.name}')">删除</button>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        container.html(html);
+    }
+
+    function goToDetail(roleId) {
+        if (parent.loadPage) {
+            parent.loadPage('roleEdit', roleId);
+        } else {
+            window.location.href = 'role_edit.html?id=' + roleId;
+        }
+    }
+
+    function goToForm(roleId) {
+        if (parent.loadPage) {
+            parent.loadPage('roleEdit', roleId);
+        } else {
+            const url = roleId ? 'role_edit.html?id=' + roleId : 'role_edit.html';
+            window.location.href = url;
+        }
+    }
+
+    async function deleteRole(id, name) {
+        const confirmed = await utils.showConfirm(
+            '删除角色',
+            `确定要删除角色「${name}」吗？\n\n此操作将同时删除相关的用户角色关联和接口权限配置。`,
+            '🗑️',
+            true
+        );
+        if (!confirmed) return;
+
+        try {
+            await API.roles.delete(id);
+            utils.toast('角色已删除', 'success');
+            loadRoles();
+        } catch (err) {
+            utils.toast(err.message || '删除失败', 'error');
+        }
+    }
+    </script>
+</body>
+</html>
