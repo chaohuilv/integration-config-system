@@ -1,6 +1,13 @@
 {
   "permissions": [
     {
+      "code": "dashboard:view",
+      "name": "查看大盘",
+      "description": "查看实时监控大盘",
+      "module": "dashboard",
+      "sortOrder": 0
+    },
+    {
       "code": "api:view",
       "name": "查看接口",
       "description": "查看接口配置列表和详情",

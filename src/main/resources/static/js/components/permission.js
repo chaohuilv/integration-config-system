@@ -49,7 +49,7 @@ const Permission = (function() {
     // 需要菜单权限的列表页 code（与 menu-config.json 中 pageType=LIST 的菜单对应）
     // 表单页（FORM 类型）不需要菜单权限，从列表页调用即可
     const LIST_PAGE_CODES = new Set([
-        'list', 'import', 'debug', 'logs', 'environments',
+        'dashboard', 'list', 'import', 'debug', 'logs', 'environments',
         'users', 'roles', 'audit-logs', 'sdk'
     ]);
 

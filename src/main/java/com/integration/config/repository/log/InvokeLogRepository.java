@@ -51,4 +51,44 @@ public interface InvokeLogRepository extends JpaRepository<InvokeLog, Long> {
 
     @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.success = false")
     Long countAllFail();
+
+    // 今日统计
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.invokeTime >= :start AND l.success = true")
+    Long countTodaySuccess(@Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.invokeTime >= :start AND l.success = false")
+    Long countTodayFail(@Param("start") LocalDateTime start);
+
+    @Query("SELECT COALESCE(AVG(l.costTime), 0) FROM InvokeLog l WHERE l.invokeTime >= :start")
+    Double avgCostTimeToday(@Param("start") LocalDateTime start);
+
+    // 最近24小时趋势（每小时）— H2 FORMATDATETIME
+    @Query(value = "SELECT FORMATDATETIME(INVOKE_TIME, 'yyyy-MM-dd HH:00'), " +
+           "COUNT(*), " +
+           "SUM(CASE WHEN SUCCESS = true THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN SUCCESS = false THEN 1 ELSE 0 END) " +
+           "FROM INVOKE_LOG WHERE INVOKE_TIME >= :start " +
+           "GROUP BY FORMATDATETIME(INVOKE_TIME, 'yyyy-MM-dd HH:00') " +
+           "ORDER BY 1", nativeQuery = true)
+    List<Object[]> countHourlyTrend(@Param("start") LocalDateTime start);
+
+    // 接口调用TOP排行（JPQL）
+    @Query("SELECT l.apiCode, COUNT(l), " +
+           "SUM(CASE WHEN l.success = true THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN l.success = false THEN 1 ELSE 0 END), " +
+           "COALESCE(AVG(l.costTime), 0) " +
+           "FROM InvokeLog l WHERE l.invokeTime >= :start " +
+           "GROUP BY l.apiCode ORDER BY COUNT(l) DESC")
+    List<Object[]> topApisByCalls(@Param("start") LocalDateTime start);
+
+    // 最近7天每日统计 — H2 FORMATDATETIME
+    @Query(value = "SELECT FORMATDATETIME(INVOKE_TIME, 'yyyy-MM-dd'), " +
+           "COUNT(*), " +
+           "SUM(CASE WHEN SUCCESS = true THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN SUCCESS = false THEN 1 ELSE 0 END), " +
+           "COALESCE(AVG(COST_TIME), 0) " +
+           "FROM INVOKE_LOG WHERE INVOKE_TIME >= :start " +
+           "GROUP BY FORMATDATETIME(INVOKE_TIME, 'yyyy-MM-dd') " +
+           "ORDER BY 1", nativeQuery = true)
+    List<Object[]> countDailyTrend(@Param("start") LocalDateTime start);
 }

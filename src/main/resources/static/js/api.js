@@ -392,6 +392,30 @@ const API = {
 
         // 获取按钮权限
         getButtonPermissions: () => request('/system/permissions/buttons')
+    },
+
+    // 实时大盘
+    dashboard: {
+        // 总览数据（卡片）
+        getOverview: () => request('/dashboard/overview'),
+
+        // 调用趋势（24小时）
+        getInvokeTrend: (hours = 24) => request(`/dashboard/invoke-trend?hours=${hours}`),
+
+        // 接口调用排行
+        getTopApis: (limit = 10) => request(`/dashboard/top-apis?limit=${limit}`),
+
+        // 审计活动分布
+        getAuditStats: () => request('/dashboard/audit-stats'),
+
+        // 最近活动流
+        getRecentActivity: () => request('/dashboard/recent-activity'),
+
+        // 系统健康状态
+        getHealth: () => request('/dashboard/health'),
+
+        // 系统硬件资源（CPU/内存/JVM）
+        getSystemResources: () => request('/dashboard/system-resources')
     }
 };
 
