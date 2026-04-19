@@ -506,6 +506,7 @@
     <script src="../js/vendor/jquery.min.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
 
     <script>
     let isEdit = false;
@@ -522,6 +523,13 @@
     let selectedApiId = null;
 
     $(function() {
+        // 页面访问权限校验
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            bindEvents();
+        });
+
+        function bindEvents() {
         const urlParams = new URLSearchParams(window.location.search);
         roleId = urlParams.get('id');
         
@@ -564,6 +572,7 @@
                 $('#apiDropdownMenu').removeClass('show');
             }
         });
+        } // end bindEvents
     });
 
     async function loadRole(id) {

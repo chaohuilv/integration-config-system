@@ -161,8 +161,9 @@
             }
         });
 
-        // 初始化权限组件
-        Permission.init().then(() => {
+        // 初始化权限组件并检查页面访问权限
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
             // 权限加载后再决定批量删除按钮可见性
             if (Permission.has('audit-log:delete')) {
                 $('#btnBatchDelete').show();

@@ -2,6 +2,7 @@ package com.integration.config.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.integration.config.enums.AppConstants;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -11,15 +12,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * AccessToken 认证服务
- * 基于 Redis 存储 Token，支持 Bearer Token 认证模式
+ * AccessToken 璁よ瘉鏈嶅姟
+ * 鍩轰簬 Redis 瀛樺偍 Token锛屾敮鎸?Bearer Token 璁よ瘉妯″紡
  */
 @Service
 @Slf4j
 public class TokenService {
-
-    private static final String TOKEN_PREFIX = "integration:token:";
-    private static final long DEFAULT_EXPIRE_HOURS = 24;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -30,15 +28,12 @@ public class TokenService {
     }
 
     /**
-     * 创建 access_token
+     * 鍒涘缓 access_token
      *
-     * @param userId      用户ID
-     * @param userCode    用户编码
-     * @param username    用户名
-     * @param displayName 显示名
-     * @param clientIp    客户端IP
-     * @return access_token 字符串
-     */
+     * @param userId      鐢ㄦ埛ID
+     * @param userCode    鐢ㄦ埛缂栫爜
+     * @param username    鐢ㄦ埛鍚?     * @param displayName 鏄剧ず鍚?     * @param clientIp    瀹㈡埛绔疘P
+     * @return access_token 瀛楃涓?     */
     public String createToken(Long userId, String userCode, String username, String displayName, String clientIp) {
         String token = UUID.randomUUID().toString().replace("-", "");
 
@@ -53,9 +48,9 @@ public class TokenService {
         try {
             String json = objectMapper.writeValueAsString(tokenInfo);
             redisTemplate.opsForValue().set(
-                    TOKEN_PREFIX + token,
+                    AppConstants.REDIS_TOKEN_PREFIX + token,
                     json,
-                    DEFAULT_EXPIRE_HOURS,
+                    AppConstants.TOKEN_DEFAULT_EXPIRE_HOURS,
                     TimeUnit.HOURS
             );
             log.info("Token created for user: {} ({}) from {}", userCode, username, clientIp);
@@ -68,17 +63,16 @@ public class TokenService {
     }
 
     /**
-     * 验证 Token，返回用户信息
-     *
+     * 楠岃瘉 Token锛岃繑鍥炵敤鎴蜂俊鎭?     *
      * @param token access_token
-     * @return TokenInfo 如果有效，否则 null
+     * @return TokenInfo 濡傛灉鏈夋晥锛屽惁鍒?null
      */
     public TokenInfo validateToken(String token) {
         if (token == null || token.isBlank()) {
             return null;
         }
 
-        String json = redisTemplate.opsForValue().get(TOKEN_PREFIX + token);
+        String json = redisTemplate.opsForValue().get(AppConstants.REDIS_TOKEN_PREFIX + token);
         if (json == null) {
             return null;
         }
@@ -92,25 +86,24 @@ public class TokenService {
     }
 
     /**
-     * 撤销 Token（登出时调用）
-     *
+     * 鎾ら攢 Token锛堢櫥鍑烘椂璋冪敤锛?     *
      * @param token access_token
      */
     public void revokeToken(String token) {
         if (token != null && !token.isBlank()) {
-            Boolean deleted = redisTemplate.delete(TOKEN_PREFIX + token);
+            Boolean deleted = redisTemplate.delete(AppConstants.REDIS_TOKEN_PREFIX + token);
             log.info("Token revoked: {}, deleted: {}", token, deleted);
         }
     }
 
     /**
-     * 刷新 Token 过期时间（每次请求自动续期）
+     * 鍒锋柊 Token 杩囨湡鏃堕棿锛堟瘡娆¤姹傝嚜鍔ㄧ画鏈燂級
      *
      * @param token access_token
      */
     public void refreshToken(String token) {
         if (token != null && !token.isBlank()) {
-            Boolean success = redisTemplate.expire(TOKEN_PREFIX + token, DEFAULT_EXPIRE_HOURS, TimeUnit.HOURS);
+            Boolean success = redisTemplate.expire(AppConstants.REDIS_TOKEN_PREFIX + token, AppConstants.TOKEN_DEFAULT_EXPIRE_HOURS, TimeUnit.HOURS);
             if (Boolean.FALSE.equals(success)) {
                 log.warn("Failed to refresh token: {}", token);
             }
@@ -118,8 +111,7 @@ public class TokenService {
     }
 
     /**
-     * Token 存储的用户信息
-     */
+     * Token 瀛樺偍鐨勭敤鎴蜂俊鎭?     */
     @Data
     public static class TokenInfo {
         private Long userId;

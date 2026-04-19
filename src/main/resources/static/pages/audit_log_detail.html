@@ -274,8 +274,16 @@
     <script src="../js/vendor/jquery.min.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
     <script>
     $(function() {
+        // 页面访问权限校验
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            initDetail();
+        });
+
+        function initDetail() {
         const params = new URLSearchParams(location.search);
         const id = params.get('id');
 
@@ -420,6 +428,7 @@
                 </div>
             `).show();
         }
+        } // end initDetail
     });
     </script>
 </body>

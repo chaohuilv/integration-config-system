@@ -146,9 +146,18 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入权限组件 -->
+    <script src="../js/components/permission.js"></script>
 
     <script>
     $(function() {
+        // 页面访问权限校验
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            initEnvForm();
+        });
+
+        function initEnvForm() {
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('environments');
 
@@ -244,6 +253,7 @@
                 saveEnv();
             }
         });
+        } // end initEnvForm
     });
     </script>
 </body>

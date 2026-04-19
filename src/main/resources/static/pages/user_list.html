@@ -105,7 +105,10 @@
         setTimeout(() => { $('#searchInput').val(''); }, 50);
 
         // 初始化权限组件，完成后再加载数据
-        Permission.init().then(() => loadUsers());
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            loadUsers();
+        });
 
         // 加载用户列表
         function loadUsers(page) {

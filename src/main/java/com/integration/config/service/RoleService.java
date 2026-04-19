@@ -11,6 +11,7 @@ import com.integration.config.entity.config.ApiRole;
 import com.integration.config.entity.config.RoleMenu;
 import com.integration.config.entity.config.RolePermission;
 import com.integration.config.entity.config.Permission;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.repository.config.RoleRepository;
 import com.integration.config.repository.config.UserRoleRepository;
 import com.integration.config.repository.config.ApiRoleRepository;
@@ -45,13 +46,13 @@ import java.util.Optional;
 public class RoleService {
 
     /** Redis Key 前缀：用户权限缓存 */
-    private static final String CACHE_PREFIX = "integration:cache:user:permissions:";
+    private static final String CACHE_PREFIX = AppConstants.REDIS_USER_PERMISSIONS_PREFIX;
     /** Redis Key 前缀：用户角色缓存（用于 isAdmin 判断） */
-    private static final String CACHE_ROLE_PREFIX = "integration:cache:user:roles:";
+    private static final String CACHE_ROLE_PREFIX = AppConstants.REDIS_USER_ROLES_PREFIX;
     /** Redis Key 前缀：用户可访问接口ID缓存 */
-    private static final String CACHE_API_PREFIX = "integration:cache:user:apis:";
+    private static final String CACHE_API_PREFIX = AppConstants.REDIS_USER_APIS_PREFIX;
     /** 缓存过期时间（秒） */
-    private static final int CACHE_TTL = 600; // 10 分钟
+    private static final int CACHE_TTL = AppConstants.CACHE_TTL_SECONDS;
 
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
@@ -693,7 +694,7 @@ public class RoleService {
             redisTemplate.delete(CACHE_PREFIX + userId);
             redisTemplate.delete(CACHE_ROLE_PREFIX + userId);
             redisTemplate.delete(CACHE_API_PREFIX + userId);
-            redisTemplate.delete("integration:cache:user:menus:" + userId);
+            redisTemplate.delete(AppConstants.REDIS_USER_MENUS_PREFIX + userId);
             log.debug("[RoleService] 已清除用户缓存: userId={}", userId);
         } catch (Exception e) {
             log.warn("[RoleService] 清除用户缓存失败: userId={}, error={}", userId, e.getMessage());

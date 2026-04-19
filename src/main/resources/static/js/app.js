@@ -305,7 +305,8 @@ const App = (function() {
         hasPermission,
         hasMenuAccess,
         getUserPermissions: () => userPermissions,
-        getUserMenus: () => userMenus
+        getUserMenus: () => userMenus,
+        getPageMap: () => pageMap
     };
 })();
 

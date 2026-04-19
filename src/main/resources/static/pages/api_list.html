@@ -83,8 +83,11 @@
             }
         });
 
-        // 初始化权限后再加载数据
-        Permission.init().then(() => refreshList());
+        // 初始化权限并检查页面访问权限
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            refreshList();
+        });
 
         // 搜索按钮点击
         $('#btnSearch').on('click', () => refreshList(1));

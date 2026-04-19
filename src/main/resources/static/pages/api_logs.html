@@ -238,8 +238,9 @@
             }
         });
 
-        // 初始化权限组件
-        Permission.init().then(() => {
+        // 初始化权限组件并检查页面访问权限
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
             if (Permission.has('invoke-log:delete')) {
                 $('#btnBatchDelete').show();
             }

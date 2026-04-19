@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.integration.config.entity.config.Menu;
 import com.integration.config.repository.config.MenuRepository;
 import com.integration.config.repository.config.RoleMenuRepository;
+import com.integration.config.enums.AppConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -33,11 +34,11 @@ public class MenuService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /** 用户菜单缓存 key 前缀 */
-    private static final String CACHE_USER_MENUS_PREFIX = "integration:cache:user:menus:";
+    private static final String CACHE_USER_MENUS_PREFIX = AppConstants.REDIS_USER_MENUS_PREFIX;
     /** 全局 pageMap 缓存 key */
-    private static final String CACHE_PAGE_MAP = "integration:cache:global:pageMap";
+    private static final String CACHE_PAGE_MAP = AppConstants.REDIS_GLOBAL_PAGE_MAP;
     /** 缓存过期时间（秒） */
-    private static final int CACHE_TTL = 600; // 10 分钟
+    private static final int CACHE_TTL = AppConstants.CACHE_TTL_SECONDS;
 
     /**
      * 获取所有菜单

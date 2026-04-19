@@ -1,5 +1,6 @@
 package com.integration.config.config;
 
+import com.integration.config.enums.AppConstants;
 import com.integration.config.service.TokenService;
 import com.integration.config.service.TokenService.TokenInfo;
 import jakarta.servlet.*;
@@ -28,28 +29,13 @@ public class LoginFilter implements Filter {
     }
 
     // 不需要登录的路径前缀
-    private static final String[] EXCLUDE_PREFIXES = {
-            "/login.html",
-            "/api/auth/login",
-            // "/api/auth/check",  // 移除：check 需要验证 Token
-            "/api/health/",
-            "/api/version",
-            "/h2-console",
-            "/css/",
-            "/js/"
-    };
+    private static final String[] EXCLUDE_PREFIXES = AppConstants.AUTH_EXCLUDE_PREFIXES;
 
     // 不需要登录的完整路径
-    private static final String[] EXCLUDE_EXACTS = {
-            "/",
-            "/login.html",
-            "/favicon.ico"
-    };
+    private static final String[] EXCLUDE_EXACTS = AppConstants.AUTH_EXCLUDE_EXACTS;
 
     // 静态资源后缀
-    private static final String[] STATIC_SUFFIXES = {
-            ".css", ".js", ".ico", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".woff", ".woff2", ".ttf", ".eot", ".html"
-    };
+    private static final String[] STATIC_SUFFIXES = AppConstants.STATIC_RESOURCE_SUFFIXES;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -108,10 +94,10 @@ public class LoginFilter implements Filter {
         tokenService.refreshToken(token);
 
         // 将用户信息存入 Request Attribute，供下游 Controller 使用
-        req.setAttribute("userId", tokenInfo.getUserId());
-        req.setAttribute("userCode", tokenInfo.getUserCode());
-        req.setAttribute("username", tokenInfo.getUsername());
-        req.setAttribute("displayName", tokenInfo.getDisplayName());
+        req.setAttribute(AppConstants.REQ_ATTR_USER_ID, tokenInfo.getUserId());
+        req.setAttribute(AppConstants.REQ_ATTR_USER_CODE, tokenInfo.getUserCode());
+        req.setAttribute(AppConstants.REQ_ATTR_USERNAME, tokenInfo.getUsername());
+        req.setAttribute(AppConstants.REQ_ATTR_DISPLAY_NAME, tokenInfo.getDisplayName());
 
         log.debug("[LoginFilter] Access granted. URI: {}, user: {}", uri, tokenInfo.getUserCode());
 
@@ -124,8 +110,8 @@ public class LoginFilter implements Filter {
      * 从 Authorization header 提取 Bearer token
      */
     private String extractBearerToken(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
+        String header = request.getHeader(AppConstants.HEADER_AUTHORIZATION);
+        if (header != null && header.startsWith(AppConstants.AUTH_BEARER_PREFIX)) {
             return header.substring(7).trim();
         }
         // 兼容：也支持从 query parameter 获取 token

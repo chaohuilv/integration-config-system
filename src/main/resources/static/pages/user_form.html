@@ -168,9 +168,18 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入权限组件 -->
+    <script src="../js/components/permission.js"></script>
 
     <script>
     $(function() {
+        // 页面访问权限校验
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            initUserForm();
+        });
+
+        function initUserForm() {
         // 从 URL 参数获取用户 ID（编辑模式）
         const urlParams = new URLSearchParams(window.location.search);
         const editId = urlParams.get('id');
@@ -187,6 +196,7 @@
         $('#btnBack').on('click', goBack);
         $('#btnCancel').on('click', goBack);
         $('#btnSaveUser').on('click', saveUser);
+        } // end initUserForm
     });
 
     // 编辑模式：加载用户数据

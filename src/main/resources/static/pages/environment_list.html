@@ -69,7 +69,10 @@
         });
 
         // 初始化权限组件，完成后再加载数据
-        Permission.init().then(() => load());
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            load();
+        });
 
         // 加载环境列表
         function load() {
