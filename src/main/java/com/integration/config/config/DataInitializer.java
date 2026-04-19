@@ -6,6 +6,7 @@ import com.integration.config.entity.config.Permission;
 import com.integration.config.entity.config.Role;
 import com.integration.config.entity.config.User;
 import com.integration.config.entity.config.UserRole;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.repository.config.MenuRepository;
 import com.integration.config.repository.config.PermissionRepository;
 import com.integration.config.repository.config.RoleRepository;
@@ -286,7 +287,7 @@ public class DataInitializer implements CommandLineRunner {
      * 为 ADMIN 角色分配所有菜单和权限
      */
     private void assignAdminAllAccess() {
-        Role adminRole = roleRepository.findByCode("ADMIN").orElse(null);
+        Role adminRole = roleRepository.findByCode(AppConstants.ROLE_ADMIN_CODE).orElse(null);
         if (adminRole == null) {
             log.warn("[DataInitializer] ADMIN 角色不存在，跳过全量权限分配");
             return;
@@ -318,7 +319,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         AdminUserDefinition adminDef = config.getAdminUser();
-        Role adminRole = roleRepository.findByCode("ADMIN")
+        Role adminRole = roleRepository.findByCode(AppConstants.ROLE_ADMIN_CODE)
                 .orElseThrow(() -> new RuntimeException("ADMIN 角色不存在"));
 
         // 查找或创建 admin 用户
@@ -339,7 +340,7 @@ public class DataInitializer implements CommandLineRunner {
                     .username(adminDef.getUsername())
                     .password(encoder.encode(adminDef.getPassword()))
                     .displayName(adminDef.getDisplayName())
-                    .status("ACTIVE")
+                    .status(AppConstants.USER_STATUS_ACTIVE)
                     .build();
             userRepository.save(admin);
             log.info("[DataInitializer] 管理员账户创建完成: {}", adminDef.getUserCode());

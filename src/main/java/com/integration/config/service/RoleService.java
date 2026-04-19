@@ -278,7 +278,7 @@ public class RoleService {
      * 检查用户是否是管理员
      */
     public boolean isAdmin(Long userId) {
-        boolean admin = userHasRole(userId, "ADMIN");
+        boolean admin = userHasRole(userId, AppConstants.ROLE_ADMIN_CODE);
         log.debug("[RoleService] isAdmin: userId={}, result={}", userId, admin);
         return admin;
     }
@@ -439,7 +439,7 @@ public class RoleService {
                     role.setDescription((String) roleDef.get("description"));
                     role.setIsSystem((Boolean) roleDef.get("isSystem"));
                     role.setSortOrder(roleDef.get("sortOrder") != null ? ((Number) roleDef.get("sortOrder")).intValue() : 0);
-                    role.setStatus("ACTIVE"); // 确保状态为 ACTIVE
+                    role.setStatus(AppConstants.USER_STATUS_ACTIVE); // 确保状态为 ACTIVE
                     roleRepository.save(role);
                     updated++;
                 } else {
@@ -471,7 +471,7 @@ public class RoleService {
         log.info("[RoleService] 使用默认角色初始化...");
 
         // 管理员
-        createOrUpdateRole("ADMIN", "管理员", "拥有所有权限，可管理用户、角色、接口配置", true, 1);
+        createOrUpdateRole(AppConstants.ROLE_ADMIN_CODE, "管理员", "拥有所有权限，可管理用户、角色、接口配置", true, 1);
         // 开发者
         createOrUpdateRole("DEVELOPER", "开发者", "可创建、编辑、调用接口配置", true, 2);
         // 只读
@@ -491,7 +491,7 @@ public class RoleService {
             role.setDescription(description);
             role.setIsSystem(isSystem);
             role.setSortOrder(sortOrder);
-            role.setStatus("ACTIVE");
+            role.setStatus(AppConstants.USER_STATUS_ACTIVE);
             roleRepository.save(role);
         } else {
             Role role = Role.builder()
@@ -616,7 +616,7 @@ public class RoleService {
      */
     @Transactional
     public void assignAllPermissionsToAdmin() {
-        Role adminRole = roleRepository.findByCode("ADMIN")
+        Role adminRole = roleRepository.findByCode(AppConstants.ROLE_ADMIN_CODE)
                 .orElseThrow(() -> new RuntimeException("ADMIN 角色不存在"));
 
         List<Long> allPermissionIds = permissionRepository.findAll().stream()

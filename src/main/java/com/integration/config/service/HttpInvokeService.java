@@ -8,6 +8,7 @@ import com.integration.config.dto.InvokeRequestDTO;
 import com.integration.config.dto.InvokeResponseDTO;
 import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.entity.log.InvokeLog;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.enums.ContentType;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.util.JsonPathUtil;
@@ -122,7 +123,7 @@ public class HttpInvokeService {
             // 6. 写入缓存
             if (Boolean.TRUE.equals(config.getEnableCache()) && response.getSuccess()) {
                 String cacheKey = buildCacheKey(request);
-                int ttl = config.getCacheTime() != null ? config.getCacheTime() : 300;
+                int ttl = config.getCacheTime() != null ? config.getCacheTime() : AppConstants.INVOKE_CACHE_DEFAULT_TTL;
                 redisCacheService.put(cacheKey, response.getData(), ttl);
             }
 
@@ -356,7 +357,7 @@ public class HttpInvokeService {
         }
 
         // 认证信息
-        if (config.getAuthType() != null && !"none".equals(config.getAuthType())) {
+        if (config.getAuthType() != null && !AppConstants.AUTH_TYPE_NONE.equals(config.getAuthType())) {
             applyAuth(headers, config);
         }
 
@@ -380,23 +381,23 @@ public class HttpInvokeService {
         String authType = config.getAuthType() != null ? config.getAuthType().toLowerCase().trim() : "";
         String authInfo = config.getAuthInfo();
 
-        if ("bearer".equals(authType)) {
+        if (AppConstants.AUTH_TYPE_BEARER.equals(authType)) {
             // 去掉已有的 "bearer " 前缀，只保留 token
-            if (authInfo != null && authInfo.toLowerCase().startsWith("bearer ")) {
+            if (authInfo != null && authInfo.toLowerCase().startsWith(AppConstants.AUTH_BEARER_PREFIX.toLowerCase())) {
                 authInfo = authInfo.substring(7).trim();
             }
             if (authInfo != null && !authInfo.isEmpty()) {
-                headers.set("Authorization", "Bearer " + authInfo);
+                headers.set("Authorization", AppConstants.AUTH_BEARER_PREFIX + authInfo);
             }
-        } else if ("basic".equals(authType)) {
+        } else if (AppConstants.AUTH_TYPE_BASIC.equals(authType)) {
             // Basic Auth 同样处理
-            if (authInfo != null && authInfo.toLowerCase().startsWith("basic ")) {
+            if (authInfo != null && authInfo.toLowerCase().startsWith(AppConstants.AUTH_BASIC_PREFIX.toLowerCase())) {
                 authInfo = authInfo.substring(6).trim();
             }
             if (authInfo != null && !authInfo.isEmpty()) {
-                headers.set("Authorization", "Basic " + authInfo);
+                headers.set("Authorization", AppConstants.AUTH_BASIC_PREFIX + authInfo);
             }
-        } else if ("api_key".equals(authType)) {
+        } else if (AppConstants.AUTH_TYPE_API_KEY.equals(authType)) {
             if (authInfo != null && authInfo.contains(":")) {
                 String[] parts = authInfo.split(":", 2);
                 headers.set(parts[0].trim(), parts[1].trim());

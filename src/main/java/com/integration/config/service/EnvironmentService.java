@@ -3,6 +3,7 @@ package com.integration.config.service;
 import com.integration.config.dto.EnvironmentDTO;
 import com.integration.config.entity.config.Environment;
 import com.integration.config.repository.config.EnvironmentRepository;
+import com.integration.config.enums.AppConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,12 +40,12 @@ public class EnvironmentService {
                 .envName(dto.getEnvName())
                 .baseUrl(dto.getBaseUrl())
                 .description(dto.getDescription())
-                .status(dto.getStatus() != null ? dto.getStatus() : "ACTIVE")
+                .status(dto.getStatus() != null ? dto.getStatus() : AppConstants.USER_STATUS_ACTIVE)
                 .urlReplace(dto.getUrlReplace() != null ? dto.getUrlReplace() : true)
                 .build();
 
         // 如果设为启用，同系统其他环境自动停用
-        if ("ACTIVE".equals(entity.getStatus())) {
+        if (AppConstants.USER_STATUS_ACTIVE.equals(entity.getStatus())) {
             deactivateSameSystem(entity.getSystemName());
         }
 
@@ -80,7 +81,7 @@ public class EnvironmentService {
         }
 
         // 如果设为启用，同系统其他环境自动停用（注意：如果改了系统名，也要停老系统的）
-        if ("ACTIVE".equals(entity.getStatus())) {
+        if (AppConstants.USER_STATUS_ACTIVE.equals(entity.getStatus())) {
             deactivateSameSystem(entity.getSystemName(), id);
             // 如果改了系统名，老系统也要停用
             if (!oldSystem.equals(entity.getSystemName())) {
@@ -143,7 +144,7 @@ public class EnvironmentService {
      * 用于接口调用时的 URL 域名替换
      */
     public Optional<EnvironmentDTO> getActiveEnvironment(String systemName) {
-        return environmentRepository.findBySystemNameAndStatus(systemName, "ACTIVE")
+        return environmentRepository.findBySystemNameAndStatus(systemName, AppConstants.USER_STATUS_ACTIVE)
                 .stream().findFirst()
                 .map(this::toDTO);
     }
@@ -156,7 +157,7 @@ public class EnvironmentService {
     }
 
     private void deactivateSameSystem(String systemName, Long excludeId) {
-        List<Environment> actives = environmentRepository.findBySystemNameAndStatus(systemName, "ACTIVE");
+        List<Environment> actives = environmentRepository.findBySystemNameAndStatus(systemName, AppConstants.USER_STATUS_ACTIVE);
         for (Environment env : actives) {
             if (excludeId == null || !env.getId().equals(excludeId)) {
                 env.setStatus("INACTIVE");

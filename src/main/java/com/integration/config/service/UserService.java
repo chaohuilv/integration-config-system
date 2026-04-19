@@ -3,6 +3,7 @@ package com.integration.config.service;
 import com.integration.config.dto.CreateUserDTO;
 import com.integration.config.dto.UserDTO;
 import com.integration.config.entity.config.User;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.repository.config.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +43,7 @@ public class UserService {
             return null;
         }
         User user = userOpt.get();
-        if (!"ACTIVE".equals(user.getStatus())) {
+        if (!AppConstants.USER_STATUS_ACTIVE.equals(user.getStatus())) {
             return null;
         }
         if (passwordEncoder.matches(password, user.getPassword())) {
@@ -92,7 +93,7 @@ public class UserService {
                 .displayName(StringUtils.hasText(dto.getDisplayName()) ? dto.getDisplayName() : dto.getUsername())
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
-                .status(StringUtils.hasText(dto.getStatus()) ? dto.getStatus() : "ACTIVE")
+                .status(StringUtils.hasText(dto.getStatus()) ? dto.getStatus() : AppConstants.USER_STATUS_ACTIVE)
                 .createdBy(creatorId)
                 .build();
 
@@ -162,7 +163,7 @@ public class UserService {
      */
     public List<UserDTO> listAll() {
         return userRepository.findAll(Sort.by(Sort.Direction.ASC, "displayName")).stream()
-                .filter(u -> "ACTIVE".equals(u.getStatus()))
+                .filter(u -> AppConstants.USER_STATUS_ACTIVE.equals(u.getStatus()))
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }

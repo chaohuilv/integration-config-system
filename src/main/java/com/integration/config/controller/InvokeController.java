@@ -8,6 +8,7 @@ import com.integration.config.entity.log.InvokeLog;
 import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.service.HttpInvokeService;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.service.RoleService;
 import com.integration.config.util.Result;
 import jakarta.servlet.http.HttpServletRequest;
@@ -93,7 +94,7 @@ public class InvokeController {
         }
 
         // 检查接口状态
-        if (!"ACTIVE".equals(apiConfig.getStatus().name())) {
+        if (!AppConstants.USER_STATUS_ACTIVE.equals(apiConfig.getStatus().name())) {
             log.warn("[InvokeController] 接口已禁用: {}", apiCode);
             return false;
         }

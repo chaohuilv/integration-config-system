@@ -123,7 +123,7 @@ public class MenuService {
 
         // 查询菜单详情，只返回启用的菜单，按排序号排序
         return menuRepository.findAllById(menuIds).stream()
-                .filter(m -> "ACTIVE".equals(m.getStatus()))
+                .filter(m -> AppConstants.USER_STATUS_ACTIVE.equals(m.getStatus()))
                 .sorted((a, b) -> {
                     int orderA = a.getSortOrder() != null ? a.getSortOrder() : 0;
                     int orderB = b.getSortOrder() != null ? b.getSortOrder() : 0;

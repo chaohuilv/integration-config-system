@@ -2,6 +2,7 @@ package com.integration.config.config;
 
 import com.integration.config.entity.config.User;
 import com.integration.config.repository.config.UserRepository;
+import com.integration.config.enums.AppConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -41,7 +42,7 @@ public class SystemInitializer {
                 .username("系统管理员")        // 用户名称，用于显示
                 .password(passwordEncoder.encode("admin123"))
                 .displayName("系统管理员")
-                .status("ACTIVE")
+                .status(AppConstants.USER_STATUS_ACTIVE)
                 .build();
 
         userRepository.save(admin);

@@ -10,6 +10,7 @@ import com.integration.config.service.MenuService;
 import com.integration.config.service.RoleService;
 import com.integration.config.service.TokenService;
 import com.integration.config.service.UserService;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.util.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -150,7 +151,7 @@ public class AuthController {
         if (roleService.isAdmin(userId)) {
             log.info("[AuthController] 用户 {} 是管理员，返回所有菜单", userId);
             listMenus = menuService.getListMenus().stream()
-                    .filter(m -> "ACTIVE".equals(m.getStatus()))
+                    .filter(m -> AppConstants.USER_STATUS_ACTIVE.equals(m.getStatus()))
                     .collect(Collectors.toList());
         } else {
             // 非管理员根据角色获取菜单（只获取列表页），使用缓存
