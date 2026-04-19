@@ -76,6 +76,7 @@ public class EnvironmentController {
      * 根据ID获取环境配置
      */
     @GetMapping("/{id}")
+    @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询环境详情ID: ' + #id", targetType = "ENVIRONMENT", targetId = "#id")
     public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
         try {
             EnvironmentDTO result = environmentService.getById(id);
@@ -91,6 +92,7 @@ public class EnvironmentController {
      * 分页查询环境配置
      */
     @GetMapping("/list")
+    @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询环境列表'", recordResult = false)
     public ResponseEntity<Map<String, Object>> list(
             @RequestParam(required = false) String systemName,
             @RequestParam(required = false) String status,
@@ -116,6 +118,7 @@ public class EnvironmentController {
      * 获取所有系统名称列表（去重，用于接口配置分组下拉）
      */
     @GetMapping("/systems")
+    @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询系统名称列表'", recordResult = false)
     public ResponseEntity<Map<String, Object>> getAllSystems() {
         try {
             List<String> systems = environmentService.getAllSystemNames();
@@ -129,6 +132,7 @@ public class EnvironmentController {
      * 获取指定系统下的所有环境
      */
     @GetMapping("/by-system/{systemName}")
+    @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询系统环境: ' + #systemName", targetId = "#systemName")
     public ResponseEntity<Map<String, Object>> getBySystem(@PathVariable String systemName) {
         try {
             List<EnvironmentDTO> envs = environmentService.getBySystemName(systemName);

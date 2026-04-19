@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.AuditLog;
 import com.integration.config.dto.AuditSysLogDTO;
 import com.integration.config.service.AuditSysLogService;
 import com.integration.config.util.Result;
@@ -26,6 +27,7 @@ public class AuditSysLogController {
      * 分页查询 + 联合筛选
      */
     @GetMapping("/list")
+    //@AuditLog(operateType = "QUERY", module = "AUDIT_LOG", description = "'查询审计日志列表'", recordResult = false)
     public Result<Page<AuditSysLogDTO>> search(
             @RequestParam(required = false) String userCode,
             @RequestParam(required = false) String operateType,
@@ -49,6 +51,7 @@ public class AuditSysLogController {
      * 批量删除
      */
     @PostMapping("/batch-delete")
+    //@AuditLog(operateType = "DELETE", module = "AUDIT_LOG", description = "'批量删除审计日志'", recordParams = true)
     public Result<Integer> batchDelete(@RequestBody Map<String, List<Long>> body) {
         List<Long> ids = body.get("ids");
         if (ids == null || ids.isEmpty()) {
@@ -62,6 +65,7 @@ public class AuditSysLogController {
      * 导出（返回列表，可前端转 CSV/Excel）
      */
     @GetMapping("/export")
+    //@AuditLog(operateType = "EXPORT", module = "AUDIT_LOG", description = "'导出审计日志'", recordResult = false)
     public Result<List<AuditSysLogDTO>> export(
             @RequestParam(required = false) String userCode,
             @RequestParam(required = false) String operateType,
@@ -82,6 +86,7 @@ public class AuditSysLogController {
      * 详情
      */
     @GetMapping("/{id}")
+    //@AuditLog(operateType = "QUERY", module = "AUDIT_LOG", description = "'查询审计日志详情ID: ' + #id", targetId = "#id")
     public Result<AuditSysLogDTO> getById(@PathVariable Long id) {
         AuditSysLogDTO dto = auditSysLogService.getById(id);
         if (dto == null) return Result.error("记录不存在");

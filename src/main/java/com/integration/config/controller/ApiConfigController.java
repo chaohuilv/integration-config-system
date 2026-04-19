@@ -63,6 +63,7 @@ public class ApiConfigController {
      * 根据ID查询详情
      */
     @GetMapping("/{id}")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口详情ID: ' + #id", targetType = "API", targetId = "#id")
     public Result<ApiConfigDetailDTO> getById(@PathVariable Long id) {
         ApiConfigDetailDTO dto = apiConfigService.getById(id);
         return Result.success(dto);
@@ -72,6 +73,7 @@ public class ApiConfigController {
      * 根据编码查询
      */
     @GetMapping("/code/{code}")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口编码: ' + #code", targetType = "API", targetId = "#code")
     public Result<ApiConfig> getByCode(@PathVariable String code) {
         ApiConfig config = apiConfigService.getByCode(code);
         return Result.success(config);
@@ -81,6 +83,7 @@ public class ApiConfigController {
      * 分页查询
      */
     @GetMapping("/page")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'分页查询接口列表'", recordResult = false)
     public Result<PageResult<ApiConfig>> pageQuery(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Status status,
@@ -94,6 +97,7 @@ public class ApiConfigController {
      * 获取所有启用的接口列表
      */
     @GetMapping("/active")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询启用接口列表'", recordResult = false)
     public Result<List<ApiConfig>> getAllActive() {
         List<ApiConfig> list = apiConfigService.getAllActive();
         return Result.success(list);
@@ -113,6 +117,7 @@ public class ApiConfigController {
      * 获取接口列表（简化信息）
      */
     @GetMapping("/simple-list")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口简化列表'", recordResult = false)
     public Result<List> getSimpleList() {
         List list = apiConfigService.getSimpleList();
         return Result.success(list);

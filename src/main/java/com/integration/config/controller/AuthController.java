@@ -252,6 +252,7 @@ public class AuthController {
      * 分页查询用户
      */
     @GetMapping("/users")
+    @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户列表'", recordResult = false)
     public Result<Page<UserDTO>> listUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
@@ -263,6 +264,7 @@ public class AuthController {
      * 获取所有用户（下拉选择用）
      */
     @GetMapping("/users/all")
+    @AuditLog(operateType = "QUERY", module = "USER", description = "'查询所有用户'", recordResult = false)
     public Result<List<UserDTO>> listAllUsers() {
         return Result.success(userService.listAll());
     }
@@ -271,6 +273,7 @@ public class AuthController {
      * 获取用户详情
      */
     @GetMapping("/users/{id}")
+    @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户详情ID: ' + #id", targetType = "USER", targetId = "#id")
     public Result<UserDTO> getUser(@PathVariable Long id) {
         return userService.getById(id)
                 .map(u -> Result.success(userService.list("", 1, 10).getContent().stream()

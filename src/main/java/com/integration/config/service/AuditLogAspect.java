@@ -1,6 +1,7 @@
 package com.integration.config.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.integration.config.enums.AppConstants;
 import com.integration.config.annotation.AuditLog;
 import com.integration.config.entity.log.AuditSysLog;
 import com.integration.config.repository.log.AuditLogRepository;
@@ -12,9 +13,11 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -65,6 +68,11 @@ public class AuditLogAspect {
                 .userName(userName)
                 .operateTime(startDateTime);
 
+        // 提前获取方法签名和参数（多处使用）
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        String[] paramNames = discoverer.getParameterNames(signature.getMethod());
+        Object[] args = joinPoint.getArgs();
+
         // 设置请求信息
         if (request != null) {
             auditLogBuilder
@@ -73,22 +81,40 @@ public class AuditLogAspect {
                     .requestMethod(request.getMethod())
                     .requestUri(request.getRequestURI());
 
-            // 记录请求参数：始终同时存储 query string 和 body JSON
+            // 记录请求参数
             try {
                 Map<String, Object> requestParamsMap = new HashMap<>();
+                boolean isGetLike = "GET".equalsIgnoreCase(request.getMethod());
 
-                // 1. Query String（始终记录）
-                if (!request.getParameterMap().isEmpty()) {
-                    Map<String, Object> queryParams = new HashMap<>();
-                    request.getParameterMap().forEach((k, v) -> queryParams.put(k, String.join(",", v)));
-                    requestParamsMap.put("query", queryParams);
-                }
+                if (isGetLike) {
+                    // GET 请求：路径参数 + Query 参数
+                    // 1. 路径参数（@PathVariable）：从方法参数中提取
+                    Map<String, Object> pathParams = extractPathParams(joinPoint, signature, paramNames, args);
+                    if (!pathParams.isEmpty()) {
+                        requestParamsMap.put("path", pathParams);
+                    }
 
-                // 2. Body JSON（recordParams=true 时记录）
-                if (auditLog.recordParams()) {
-                    String body = getCachedBody(request);
-                    if (body != null && !body.isBlank()) {
-                        requestParamsMap.put("body", body);
+                    // 2. Query 参数（@RequestParam）
+                    if (!request.getParameterMap().isEmpty()) {
+                        Map<String, Object> queryParams = new HashMap<>();
+                        request.getParameterMap().forEach((k, v) -> queryParams.put(k, String.join(",", v)));
+                        requestParamsMap.put("query", queryParams);
+                    }
+                } else {
+                    // 非 GET 请求：query string + body JSON
+                    // 1. Query String
+                    if (!request.getParameterMap().isEmpty()) {
+                        Map<String, Object> queryParams = new HashMap<>();
+                        request.getParameterMap().forEach((k, v) -> queryParams.put(k, String.join(",", v)));
+                        requestParamsMap.put("query", queryParams);
+                    }
+
+                    // 2. Body JSON（recordParams=true 时记录）
+                    if (auditLog.recordParams()) {
+                        String body = getCachedBody(request);
+                        if (body != null && !body.isBlank()) {
+                            requestParamsMap.put("body", body);
+                        }
                     }
                 }
 
@@ -101,10 +127,7 @@ public class AuditLogAspect {
         }
 
         // 解析 SpEL 表达式
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         StandardEvaluationContext context = new StandardEvaluationContext();
-        String[] paramNames = discoverer.getParameterNames(signature.getMethod());
-        Object[] args = joinPoint.getArgs();
 
         if (paramNames != null) {
             for (int i = 0; i < paramNames.length; i++) {
@@ -209,6 +232,23 @@ public class AuditLogAspect {
             log.debug("getCachedBody failed, fallback to parameterMap", e);
         }
         return null;
+    }
+
+    /**
+     * 提取方法参数中标注了 @PathVariable 的参数
+     */
+    private Map<String, Object> extractPathParams(ProceedingJoinPoint joinPoint, MethodSignature signature,
+                                                   String[] paramNames, Object[] args) {
+        Map<String, Object> pathParams = new HashMap<>();
+        java.lang.reflect.Parameter[] parameters = signature.getMethod().getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            PathVariable pv = parameters[i].getAnnotation(PathVariable.class);
+            if (pv != null && args[i] != null) {
+                String name = pv.value().isEmpty() ? paramNames[i] : pv.value();
+                pathParams.put(name, args[i]);
+            }
+        }
+        return pathParams;
     }
 
     /**

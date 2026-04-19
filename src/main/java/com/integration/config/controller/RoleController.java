@@ -28,6 +28,7 @@ public class RoleController {
      * 获取所有启用的角色（下拉选择用）
      */
     @GetMapping("/active")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询启用角色列表'", recordResult = false)
     public Result<List<Role>> getActiveRoles() {
         List<Role> roles = roleService.getAllActiveRoles();
         return Result.success(roles);
@@ -37,6 +38,7 @@ public class RoleController {
      * 获取所有角色（管理用）
      */
     @GetMapping
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询所有角色'", recordResult = false)
     public Result<List<Role>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();
         return Result.success(roles);
@@ -46,6 +48,7 @@ public class RoleController {
      * 分页查询角色（含统计信息：用户数、接口数、菜单数、权限数）
      */
     @GetMapping("/page")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'分页查询角色'", recordResult = false)
     public Result<PageResult<RoleDTO>> getRolePage(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
@@ -58,6 +61,7 @@ public class RoleController {
      * 获取单个角色
      */
     @GetMapping("/{id}")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询角色详情ID: ' + #id", targetType = "ROLE", targetId = "#id")
     public Result<Role> getRole(@PathVariable Long id) {
         return roleService.getRoleById(id)
                 .map(Result::success)
@@ -112,6 +116,7 @@ public class RoleController {
      * 获取用户的角色列表
      */
     @GetMapping("/user/{userId}")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询用户角色: userId=' + #userId", targetType = "USER", targetId = "#userId")
     public Result<List<Role>> getUserRoles(@PathVariable Long userId) {
         List<Role> roles = roleService.getUserRoles(userId);
         return Result.success(roles);
@@ -121,6 +126,7 @@ public class RoleController {
      * 获取用户的角色ID列表
      */
     @GetMapping("/user/{userId}/ids")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询用户角色ID: userId=' + #userId", targetType = "USER", targetId = "#userId")
     public Result<List<Long>> getUserRoleIds(@PathVariable Long userId) {
         List<Long> roleIds = roleService.getUserRoleIds(userId);
         return Result.success(roleIds);
@@ -130,6 +136,7 @@ public class RoleController {
      * 获取角色下的用户ID列表
      */
     @GetMapping("/{id}/users/ids")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询角色用户ID: roleId=' + #id", targetType = "ROLE", targetId = "#id")
     public Result<List<Long>> getRoleUserIds(@PathVariable Long id) {
         List<Long> userIds = roleService.getRoleUserIds(id);
         return Result.success(userIds);
@@ -169,6 +176,7 @@ public class RoleController {
      * 获取接口的角色列表
      */
     @GetMapping("/api/{apiId}")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询接口角色: apiId=' + #apiId", targetType = "API", targetId = "#apiId")
     public Result<List<Role>> getApiRoles(@PathVariable Long apiId) {
         List<Role> roles = roleService.getApiRoles(apiId);
         return Result.success(roles);
@@ -178,6 +186,7 @@ public class RoleController {
      * 获取接口的角色ID列表
      */
     @GetMapping("/api/{apiId}/ids")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询接口角色ID: apiId=' + #apiId", targetType = "API", targetId = "#apiId")
     public Result<List<Long>> getApiRoleIds(@PathVariable Long apiId) {
         List<Long> roleIds = roleService.getApiRoleIds(apiId);
         return Result.success(roleIds);
@@ -187,6 +196,7 @@ public class RoleController {
      * 获取角色的接口ID列表
      */
     @GetMapping("/{id}/apis/ids")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询角色接口ID: roleId=' + #id", targetType = "ROLE", targetId = "#id")
     public Result<List<Long>> getRoleApiIds(@PathVariable Long id) {
         List<Long> apiIds = roleService.getRoleApiIds(id);
         return Result.success(apiIds);
@@ -226,6 +236,7 @@ public class RoleController {
      * 获取当前用户可访问的接口ID列表
      */
     @GetMapping("/accessible-apis")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询用户可访问接口列表'", recordResult = false)
     public Result<List<Long>> getAccessibleApis(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         List<Long> apiIds = roleService.getUserAccessibleApiIds(userId);
@@ -238,6 +249,7 @@ public class RoleController {
      * 获取角色的菜单ID列表
      */
     @GetMapping("/{id}/menus")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询角色菜单: roleId=' + #id", targetType = "ROLE", targetId = "#id")
     public Result<List<Long>> getRoleMenuIds(@PathVariable Long id) {
         List<Long> menuIds = roleService.getRoleMenuIds(id);
         return Result.success(menuIds);
@@ -263,6 +275,7 @@ public class RoleController {
      * 获取角色的权限ID列表
      */
     @GetMapping("/{id}/permissions")
+    @AuditLog(operateType = "QUERY", module = "ROLE", description = "'查询角色权限: roleId=' + #id", targetType = "ROLE", targetId = "#id")
     public Result<List<Long>> getRolePermissionIds(@PathVariable Long id) {
         List<Long> permissionIds = roleService.getRolePermissionIds(id);
         return Result.success(permissionIds);
