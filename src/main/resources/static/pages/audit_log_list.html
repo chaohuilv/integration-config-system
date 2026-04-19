@@ -144,12 +144,13 @@
     <script src="../js/utils.js"></script>
     <script src="../js/api.js"></script>
     <script src="../js/components/pagination.js"></script>
+    <!-- 引入权限组件 -->
+    <script src="../js/components/permission.js"></script>
     <script>
     $(function() {
         let currentPage = 1;
         const size = 10;
         let selectedIds = new Set();
-        let permissions = []; // 当前用户的权限列表
         let pager; // 分页组件实例
 
         // 初始化分页组件
@@ -160,43 +161,13 @@
             }
         });
 
-        // 加载权限
-        loadPermissions();
-
-        // 加载用户权限
-        async function loadPermissions() {
-            try {
-                const res = await API.auth.getPermissions();
-                if (res.code === 200) {
-                    permissions = res.data || [];
-                    applyPermissions();
-                }
-            } catch (e) {
-                console.error('加载权限失败:', e);
-            }
-        }
-
-        // 应用权限控制
-        function applyPermissions() {
-            if (hasPermission('audit-log:delete')) {
+        // 初始化权限组件
+        Permission.init().then(() => {
+            // 权限加载后再决定批量删除按钮可见性
+            if (Permission.has('audit-log:delete')) {
                 $('#btnBatchDelete').show();
             }
-        }
-
-        // 检查权限
-        function hasPermission(code) {
-            try {
-                if (parent.App && parent.App.getCurrentUser) {
-                    const user = parent.App.getCurrentUser();
-                    if (user && user.isAdmin) {
-                        return true;
-                    }
-                }
-            } catch (e) {
-                console.warn('[audit_log_list] 检查管理员状态失败:', e);
-            }
-            return permissions.includes(code);
-        }
+        });
 
         // ===== 加载操作用户列表 =====
         function loadUserOptions() {
@@ -273,7 +244,7 @@
                         <td>${item.clientIp || '-'}</td>
                         <td><span class="tag ${resultClass}">${item.result || '-'}</span></td>
                         <td class="${costClass}">${item.costTime != null ? item.costTime + 'ms' : '-'}</td>
-                        <td>${hasPermission('audit-log:detail') ? `<button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button>` : '-'}</td>
+                        <td>${Permission.render('audit-log:detail', `<button class="btn btn-sm btn-default" onclick="parent.loadPage('audit-logs-detail', '${item.id}')">详情</button>`, '-')}</td>
                     </tr>`;
                 }).join('');
                 $('#tableBody').html(html);

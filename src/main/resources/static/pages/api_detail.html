@@ -121,7 +121,7 @@
             <p class="view-sub" id="pageSub"></p>
         </div>
         <div class="view-actions">
-            <button class="btn btn-ghost" id="editBtn">✏️ 编辑</button>
+            <button class="btn btn-ghost" id="editBtn" data-permission="api:edit">✏️ 编辑</button>
             <button class="btn btn-ghost" onclick="parent.loadPage('list')">← 返回列表</button>
         </div>
     </div>
@@ -138,6 +138,8 @@
     <script src="../js/api.js"></script>
     <!-- 引入分页组件 -->
     <script src="../js/components/pagination.js"></script>
+    <!-- 引入权限组件 -->
+    <script src="../js/components/permission.js"></script>
 
     <script>
     $(function() {
@@ -147,14 +149,13 @@
         let logPage = 1;
         let logTotal = 0;
         const logSize = 10;
-        let permissions = []; // 当前用户的权限列表
         let logPager; // 日志分页组件实例
 
         // 获取 URL 参数
         currentId = utils.getUrlParam('id');
 
-        //加载权限
-        loadPermissions();
+        // 初始化权限组件
+        Permission.init();
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('detail');
@@ -163,50 +164,6 @@
         $('#editBtn').on('click', function() {
             parent.loadPage('form', currentId);
         });
-
-        // 加载用户权限
-        async function loadPermissions() {
-            try {
-                const res = await API.auth.getPermissions();
-                console.log('[api_list] 权限接口返回:', res);
-                if (res.code === 200) {
-                    permissions = res.data || [];
-                    console.log('[api_list] 权限列表:', permissions);
-                    console.log('[api_list] parent.App:', parent.App);
-                    console.log('[api_list] parent.App.getCurrentUser:', parent.App ? parent.App.getCurrentUser : 'undefined');
-                    if (parent.App && parent.App.getCurrentUser) {
-                        console.log('[api_list] 当前用户:', parent.App.getCurrentUser());
-                    }
-                    applyPermissions();
-                }
-            } catch (e) {
-                console.error('加载权限失败:', e);
-            }
-        }
-
-        // 应用权限控制
-        function applyPermissions() {
-            // 检查新增权限
-            if (!hasPermission('api:edit')) {
-                $('#editBtn').hide();
-            }
-        }
-
-        // 检查权限
-        function hasPermission(code) {
-            // 如果是管理员（从 parent 获取），直接返回 true
-            try {
-                if (parent.App && parent.App.getCurrentUser) {
-                    const user = parent.App.getCurrentUser();
-                    if (user && user.isAdmin) {
-                        return true;
-                    }
-                }
-            } catch (e) {
-                console.warn('[api_list] 检查管理员状态失败:', e);
-            }
-            return permissions.includes(code);
-        }
 
         // 加载接口详情
         async function load() {

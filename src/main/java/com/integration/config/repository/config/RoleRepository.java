@@ -1,6 +1,8 @@
 package com.integration.config.repository.config;
 
 import com.integration.config.entity.config.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,4 +55,10 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
      */
     @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Role r WHERE r.code = :code AND r.id != :excludeId")
     boolean existsByCodeAndIdNot(@Param("code") String code, @Param("excludeId") Long excludeId);
+
+    /**
+     * 分页查询角色（支持关键字搜索）
+     */
+    @Query("SELECT r FROM Role r WHERE (:keyword IS NULL OR :keyword = '' OR r.name LIKE %:keyword% OR r.code LIKE %:keyword% OR r.description LIKE %:keyword%)")
+    Page<Role> findPage(@Param("keyword") String keyword, Pageable pageable);
 }

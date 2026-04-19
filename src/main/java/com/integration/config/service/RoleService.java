@@ -1,6 +1,8 @@
 package com.integration.config.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.integration.config.dto.PageResult;
+import com.integration.config.dto.RoleDTO;
 import com.integration.config.entity.config.Role;
 import com.integration.config.entity.config.UserRole;
 import com.integration.config.entity.config.ApiRole;
@@ -18,6 +20,9 @@ import com.integration.config.entity.config.ApiConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +61,36 @@ public class RoleService {
      */
     public List<Role> getAllRoles() {
         return roleRepository.findAll();
+    }
+
+    /**
+     * 分页查询角色（含统计信息）
+     */
+    public PageResult<RoleDTO> getRolePage(String keyword, int page, int size) {
+        Page<Role> rolePage = roleRepository.findPage(keyword, PageRequest.of(page - 1, size, Sort.by(Sort.Direction.ASC, "sortOrder")));
+
+        List<RoleDTO> dtos = rolePage.getContent().stream().map(role -> {
+            int userCount = userRoleRepository.findByRoleId(role.getId()).size();
+            int apiCount = apiRoleRepository.findByRoleId(role.getId()).size();
+            int menuCount = roleMenuRepository.findByRoleId(role.getId()).size();
+            int permCount = rolePermissionRepository.findByRoleId(role.getId()).size();
+
+            return RoleDTO.builder()
+                    .id(role.getId())
+                    .name(role.getName())
+                    .code(role.getCode())
+                    .description(role.getDescription())
+                    .status(role.getStatus())
+                    .sortOrder(role.getSortOrder())
+                    .isSystem(role.getIsSystem())
+                    .userCount(userCount)
+                    .apiCount(apiCount)
+                    .menuCount(menuCount)
+                    .permissionCount(permCount)
+                    .build();
+        }).toList();
+
+        return PageResult.of(dtos, rolePage.getTotalElements(), page, size);
     }
 
     /**

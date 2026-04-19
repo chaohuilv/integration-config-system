@@ -217,13 +217,14 @@
     <script src="../js/api.js"></script>
     <!-- 引入分页组件 -->
     <script src="../js/components/pagination.js"></script>
+    <!-- 引入权限组件 -->
+    <script src="../js/components/permission.js"></script>
 
     <script>
     $(function() {
         let currentPage = 1;
         const size = 10;
         const detailCache = {}; // 缓存已加载的详情
-        let permissions = []; // 当前用户的权限列表
         let pager; // 分页组件实例
 
         // 通知主壳高亮侧边栏
@@ -237,43 +238,12 @@
             }
         });
 
-        // 加载权限
-        loadPermissions();
-
-        // 加载用户权限
-        async function loadPermissions() {
-            try {
-                const res = await API.auth.getPermissions();
-                if (res.code === 200) {
-                    permissions = res.data || [];
-                    applyPermissions();
-                }
-            } catch (e) {
-                console.error('加载权限失败:', e);
-            }
-        }
-
-        // 应用权限控制
-        function applyPermissions() {
-            if (hasPermission('invoke-log:delete')) {
+        // 初始化权限组件
+        Permission.init().then(() => {
+            if (Permission.has('invoke-log:delete')) {
                 $('#btnBatchDelete').show();
             }
-        }
-
-        // 检查权限
-        function hasPermission(code) {
-            try {
-                if (parent.App && parent.App.getCurrentUser) {
-                    const user = parent.App.getCurrentUser();
-                    if (user && user.isAdmin) {
-                        return true;
-                    }
-                }
-            } catch (e) {
-                console.warn('[api_logs] 检查管理员状态失败:', e);
-            }
-            return permissions.includes(code);
-        }
+        });
 
         // 构建搜索参数
         function buildSearchParams() {
@@ -331,7 +301,7 @@
                     <td>${utils.formatDate(l.invokeTime)}</td>
                     <td>${l.costTime != null ? l.costTime + 'ms' : '-'}</td>
                     <td><span class="badge badge-${l.success ? 'active' : 'inactive'}">${l.success ? '成功' : '失败'}</span></td>
-                    <td>${hasPermission('invoke-log:detail') ? `<button class="btn btn-sm btn-default btn-toggle-detail" data-id="${l.id}">详情</button>` : '-'}</td>
+                    <td>${Permission.render('invoke-log:detail', `<button class="btn btn-sm btn-default btn-toggle-detail" data-id="${l.id}">详情</button>`, '-')}</td>
                 </tr>
                 <tr class="log-detail-row" id="detail-${l.id}">
                     <td colspan="8">

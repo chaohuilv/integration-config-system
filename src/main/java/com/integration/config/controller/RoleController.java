@@ -1,6 +1,8 @@
 package com.integration.config.controller;
 
 import com.integration.config.annotation.AuditLog;
+import com.integration.config.dto.PageResult;
+import com.integration.config.dto.RoleDTO;
 import com.integration.config.entity.config.Role;
 import com.integration.config.service.RoleService;
 import com.integration.config.util.Result;
@@ -38,6 +40,18 @@ public class RoleController {
     public Result<List<Role>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();
         return Result.success(roles);
+    }
+
+    /**
+     * 分页查询角色（含统计信息：用户数、接口数、菜单数、权限数）
+     */
+    @GetMapping("/page")
+    public Result<PageResult<RoleDTO>> getRolePage(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResult<RoleDTO> result = roleService.getRolePage(keyword, page, size);
+        return Result.success(result);
     }
 
     /**

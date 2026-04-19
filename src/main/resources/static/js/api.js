@@ -287,6 +287,9 @@ const API = {
         // 获取所有角色
         list: () => request('/roles'),
 
+        // 分页查询角色（含统计）
+        page: (params) => request('/roles/page', { params }),
+
         // 获取启用的角色（下拉选择用）
         listActive: () => request('/roles/active'),
 
