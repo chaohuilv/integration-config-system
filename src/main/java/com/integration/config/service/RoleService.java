@@ -1,5 +1,7 @@
 package com.integration.config.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.integration.config.dto.PageResult;
 import com.integration.config.dto.RoleDTO;
@@ -23,9 +25,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +44,15 @@ import java.util.Optional;
 @Slf4j
 public class RoleService {
 
+    /** Redis Key 前缀：用户权限缓存 */
+    private static final String CACHE_PREFIX = "integration:cache:user:permissions:";
+    /** Redis Key 前缀：用户角色缓存（用于 isAdmin 判断） */
+    private static final String CACHE_ROLE_PREFIX = "integration:cache:user:roles:";
+    /** Redis Key 前缀：用户可访问接口ID缓存 */
+    private static final String CACHE_API_PREFIX = "integration:cache:user:apis:";
+    /** 缓存过期时间（秒） */
+    private static final int CACHE_TTL = 600; // 10 分钟
+
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final ApiRoleRepository apiRoleRepository;
@@ -46,6 +60,8 @@ public class RoleService {
     private final RolePermissionRepository rolePermissionRepository;
     private final PermissionRepository permissionRepository;
     private final ApiConfigRepository apiConfigRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     // ==================== 角色管理 ====================
 
@@ -142,6 +158,7 @@ public class RoleService {
 
     /**
      * 删除角色
+     * 权限变更后清除该角色下所有用户的缓存
      */
     @Transactional
     public void deleteRole(Long id) {
@@ -152,11 +169,17 @@ public class RoleService {
             throw new RuntimeException("系统预置角色不能删除: " + role.getCode());
         }
 
+        // 记录该角色下的用户，用于清除缓存
+        List<Long> userIds = userRoleRepository.findUserIdsByRoleId(id);
+
         // 删除关联
         userRoleRepository.deleteByRoleId(id);
         apiRoleRepository.deleteByRoleId(id);
 
         roleRepository.deleteById(id);
+
+        // 清除所有受影响用户的缓存
+        userIds.forEach(this::clearUserPermissionCache);
     }
 
     // ==================== 用户角色关联 ====================
@@ -184,9 +207,13 @@ public class RoleService {
 
     /**
      * 设置角色的用户列表（覆盖原有）
+     * 角色成员变更后，清除被移除和新加入的所有用户的权限缓存
      */
     @Transactional
     public void setRoleUsers(Long roleId, List<Long> userIds) {
+        // 记录原有用户列表，用于清除缓存
+        List<Long> oldUserIds = userRoleRepository.findUserIdsByRoleId(roleId);
+
         // 删除原有的用户关联
         userRoleRepository.deleteByRoleId(roleId);
 
@@ -198,10 +225,16 @@ public class RoleService {
                     .build();
             userRoleRepository.save(ur);
         }
+
+        // 清除所有受影响用户的缓存（旧用户 + 新用户）
+        java.util.Set<Long> affectedIds = new java.util.HashSet<>(oldUserIds);
+        affectedIds.addAll(userIds);
+        affectedIds.forEach(this::clearUserPermissionCache);
     }
 
     /**
      * 设置用户的角色（覆盖原有）
+     * 权限变更后清除该用户的权限缓存
      */
     @Transactional
     public void setUserRoles(Long userId, List<Long> roleIds) {
@@ -216,10 +249,14 @@ public class RoleService {
                     .build();
             userRoleRepository.save(ur);
         }
+
+        // 清除该用户的权限和角色缓存
+        clearUserPermissionCache(userId);
     }
 
     /**
      * 检查用户是否有指定角色
+     * 先查 Redis 缓存，miss 时查 DB 并回写缓存
      */
     public boolean userHasRole(Long userId, String roleCode) {
         Optional<Role> role = roleRepository.findByCode(roleCode);
@@ -227,9 +264,12 @@ public class RoleService {
             log.warn("[RoleService] 角色不存在: {}", roleCode);
             return false;
         }
-        boolean hasRole = userRoleRepository.existsByUserIdAndRoleId(userId, role.get().getId());
-        log.info("[RoleService] userHasRole检查: userId={}, roleCode={}, roleId={}, hasRole={}", 
-                userId, roleCode, role.get().getId(), hasRole);
+
+        Long roleId = role.get().getId();
+        List<Long> cachedRoleIds = getCachedUserRoles(userId);
+        boolean hasRole = cachedRoleIds.contains(roleId);
+        log.debug("[RoleService] userHasRole: userId={}, roleCode={}, roleId={}, hasRole={}, fromCache={}", 
+                userId, roleCode, roleId, hasRole, !cachedRoleIds.isEmpty());
         return hasRole;
     }
 
@@ -238,7 +278,7 @@ public class RoleService {
      */
     public boolean isAdmin(Long userId) {
         boolean admin = userHasRole(userId, "ADMIN");
-        log.info("[RoleService] isAdmin检查: userId={}, result={}", userId, admin);
+        log.debug("[RoleService] isAdmin: userId={}, result={}", userId, admin);
         return admin;
     }
 
@@ -267,6 +307,7 @@ public class RoleService {
 
     /**
      * 设置角色的接口列表（覆盖原有）
+     * 接口权限变更后清除该角色下所有用户的接口缓存
      */
     @Transactional
     public void setRoleApis(Long roleId, List<Long> apiIds, Long createdBy) {
@@ -282,13 +323,20 @@ public class RoleService {
                     .build();
             apiRoleRepository.save(ar);
         }
+
+        // 清除该角色下所有用户的接口缓存
+        clearRoleUsersApiCache(roleId);
     }
 
     /**
      * 设置接口的角色（覆盖原有）
+     * 接口权限变更后清除该接口关联的所有角色下的用户缓存
      */
     @Transactional
     public void setApiRoles(Long apiId, List<Long> roleIds, Long createdBy) {
+        // 记录旧的角色列表，用于清除缓存
+        List<Long> oldRoleIds = apiRoleRepository.findRoleIdsByApiId(apiId);
+
         // 删除原有角色
         apiRoleRepository.deleteByApiId(apiId);
 
@@ -301,10 +349,18 @@ public class RoleService {
                     .build();
             apiRoleRepository.save(ar);
         }
+
+        // 清除旧+新角色下所有用户的接口缓存
+        java.util.Set<Long> affectedRoleIds = new java.util.HashSet<>(oldRoleIds);
+        affectedRoleIds.addAll(roleIds);
+        for (Long roleId : affectedRoleIds) {
+            clearRoleUsersApiCache(roleId);
+        }
     }
 
     /**
      * 检查用户是否有权限访问接口
+     * 使用 Redis 缓存，避免每次查 DB
      * 
      * @param userId 用户ID
      * @param apiId 接口ID
@@ -316,16 +372,9 @@ public class RoleService {
             return true;
         }
 
-        // 检查接口是否配置了角色限制
-        List<Long> apiRoleIds = apiRoleRepository.findRoleIdsByApiId(apiId);
-        
-        // 如果接口没有配置任何角色，则所有人都不可以访问（开放接口）
-        if (apiRoleIds.isEmpty()) {
-            return false;
-        }
-
-        // 检查用户是否有接口所需的任一角色
-        return apiRoleRepository.hasAccessToApi(userId, apiId);
+        // 从缓存获取用户可访问的 API ID 集合
+        java.util.Set<Long> accessibleIds = getCachedUserApiIds(userId);
+        return accessibleIds.contains(apiId);
     }
 
     /**
@@ -342,6 +391,7 @@ public class RoleService {
 
     /**
      * 获取用户可访问的所有接口ID
+     * 使用 Redis 缓存，避免每次查 DB
      */
     public List<Long> getUserAccessibleApiIds(Long userId) {
         if (isAdmin(userId)) {
@@ -350,7 +400,7 @@ public class RoleService {
                     .map(ApiConfig::getId)
                     .toList();
         }
-        return apiRoleRepository.findApiIdsByUserId(userId);
+        return new java.util.ArrayList<>(getCachedUserApiIds(userId));
     }
 
     // ==================== 初始化预置角色 ====================
@@ -465,6 +515,7 @@ public class RoleService {
 
     /**
      * 设置角色的菜单（覆盖原有）
+     * 菜单变更后清除该角色下所有用户的缓存
      */
     @Transactional
     public void setRoleMenus(Long roleId, List<Long> menuIds) {
@@ -479,6 +530,9 @@ public class RoleService {
                     .build();
             roleMenuRepository.save(rm);
         }
+
+        // 清除该角色下所有用户的缓存
+        clearRoleUsersPermissionCache(roleId);
     }
 
     // ==================== 角色权限关联 ====================
@@ -499,13 +553,28 @@ public class RoleService {
 
     /**
      * 获取用户的权限编码列表（通过所有角色汇总）
+     * 先查 Redis 缓存，miss 时查 DB 并回写
      */
     public List<String> getUserPermissionCodes(Long userId) {
-        return rolePermissionRepository.findPermissionCodesByUserId(userId);
+        // 1. 先查 Redis 缓存
+        List<String> cached = getCachedUserPermissions(userId);
+        if (cached != null) {
+            log.debug("[RoleService] getUserPermissionCodes: userId={}, 命中缓存, size={}", userId, cached.size());
+            return cached;
+        }
+
+        // 2. 缓存未命中，查数据库
+        List<String> permissions = rolePermissionRepository.findPermissionCodesByUserId(userId);
+        log.debug("[RoleService] getUserPermissionCodes: userId={}, 查DB, size={}", userId, permissions.size());
+
+        // 3. 回写缓存
+        setUserPermissionCache(userId, permissions);
+        return permissions;
     }
 
     /**
      * 设置角色的权限（覆盖原有）
+     * 权限变更后清除该角色下所有用户的缓存
      */
     @Transactional
     public void setRolePermissions(Long roleId, List<Long> permissionIds) {
@@ -520,10 +589,14 @@ public class RoleService {
                     .build();
             rolePermissionRepository.save(rp);
         }
+
+        // 清除该角色下所有用户的缓存
+        clearRoleUsersPermissionCache(roleId);
     }
 
     /**
      * 检查用户是否有指定权限
+     * 使用 Redis 缓存，避免每次查 DB
      */
     public boolean hasPermission(Long userId, String permissionCode) {
         // 管理员拥有所有权限
@@ -538,6 +611,7 @@ public class RoleService {
     /**
      * 给 ADMIN 角色分配所有权限
      * 用于初始化或修复权限数据
+     * 权限变更后清除 ADMIN 角色下所有用户的缓存
      */
     @Transactional
     public void assignAllPermissionsToAdmin() {
@@ -550,5 +624,153 @@ public class RoleService {
 
         setRolePermissions(adminRole.getId(), allPermissionIds);
         log.info("[RoleService] ADMIN 角色已分配所有 {} 个权限", allPermissionIds.size());
+    }
+
+    // ==================== Redis 缓存方法 ====================
+
+    /**
+     * 从 Redis 获取用户的权限编码缓存
+     * @return 缓存的权限列表，null 表示缓存未命中
+     */
+    private List<String> getCachedUserPermissions(Long userId) {
+        try {
+            String key = CACHE_PREFIX + userId;
+            String json = redisTemplate.opsForValue().get(key);
+            if (json != null) {
+                return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            }
+        } catch (Exception e) {
+            log.warn("[RoleService] 读取用户权限缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 将用户权限编码写入 Redis 缓存
+     */
+    private void setUserPermissionCache(Long userId, List<String> permissions) {
+        try {
+            String key = CACHE_PREFIX + userId;
+            String json = objectMapper.writeValueAsString(permissions);
+            redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(CACHE_TTL));
+            log.debug("[RoleService] 写入用户权限缓存: userId={}, size={}, ttl={}s", userId, permissions.size(), CACHE_TTL);
+        } catch (Exception e) {
+            log.warn("[RoleService] 写入用户权限缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * 从 Redis 获取用户的角色ID缓存
+     * @return 缓存的角色ID列表，空列表表示缓存命中但用户无角色
+     */
+    private List<Long> getCachedUserRoles(Long userId) {
+        try {
+            String key = CACHE_ROLE_PREFIX + userId;
+            String json = redisTemplate.opsForValue().get(key);
+            if (json != null) {
+                return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
+            }
+        } catch (Exception e) {
+            log.warn("[RoleService] 读取用户角色缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+        // 缓存未命中，查 DB 并回写
+        List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
+        try {
+            String key = CACHE_ROLE_PREFIX + userId;
+            String json = objectMapper.writeValueAsString(roleIds);
+            redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(CACHE_TTL));
+        } catch (Exception e) {
+            log.warn("[RoleService] 写入用户角色缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+        return roleIds;
+    }
+
+    /**
+     * 清除指定用户的权限、角色、接口缓存
+     */
+    private void clearUserPermissionCache(Long userId) {
+        try {
+            redisTemplate.delete(CACHE_PREFIX + userId);
+            redisTemplate.delete(CACHE_ROLE_PREFIX + userId);
+            redisTemplate.delete(CACHE_API_PREFIX + userId);
+            redisTemplate.delete("integration:cache:user:menus:" + userId);
+            log.debug("[RoleService] 已清除用户缓存: userId={}", userId);
+        } catch (Exception e) {
+            log.warn("[RoleService] 清除用户缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * 清除指定角色下所有用户的缓存（权限+角色+接口）
+     */
+    private void clearRoleUsersPermissionCache(Long roleId) {
+        try {
+            List<Long> userIds = userRoleRepository.findUserIdsByRoleId(roleId);
+            for (Long userId : userIds) {
+                clearUserPermissionCache(userId);
+            }
+            log.debug("[RoleService] 已清除角色下所有用户缓存: roleId={}, userCount={}", roleId, userIds.size());
+        } catch (Exception e) {
+            log.warn("[RoleService] 清除角色用户缓存失败: roleId={}, error={}", roleId, e.getMessage());
+        }
+    }
+
+    // ==================== 接口权限 Redis 缓存 ====================
+
+    /**
+     * 从 Redis 获取用户可访问的 API ID 集合
+     * miss 时查 DB 并回写缓存
+     */
+    private java.util.Set<Long> getCachedUserApiIds(Long userId) {
+        try {
+            String key = CACHE_API_PREFIX + userId;
+            String json = redisTemplate.opsForValue().get(key);
+            if (json != null) {
+                List<Long> ids = objectMapper.readValue(json, new TypeReference<List<Long>>() {});
+                log.debug("[RoleService] 用户接口缓存命中: userId={}, size={}", userId, ids.size());
+                return new java.util.HashSet<>(ids);
+            }
+        } catch (Exception e) {
+            log.warn("[RoleService] 读取用户接口缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+
+        // 缓存未命中，查 DB 并回写
+        List<Long> apiIds = apiRoleRepository.findApiIdsByUserId(userId);
+        try {
+            String key = CACHE_API_PREFIX + userId;
+            String json = objectMapper.writeValueAsString(apiIds);
+            redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(CACHE_TTL));
+            log.debug("[RoleService] 写入用户接口缓存: userId={}, size={}, ttl={}s", userId, apiIds.size(), CACHE_TTL);
+        } catch (Exception e) {
+            log.warn("[RoleService] 写入用户接口缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+        return new java.util.HashSet<>(apiIds);
+    }
+
+    /**
+     * 清除指定用户的接口权限缓存
+     */
+    private void clearUserApiCache(Long userId) {
+        try {
+            redisTemplate.delete(CACHE_API_PREFIX + userId);
+            log.debug("[RoleService] 已清除用户接口缓存: userId={}", userId);
+        } catch (Exception e) {
+            log.warn("[RoleService] 清除用户接口缓存失败: userId={}, error={}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * 清除指定角色下所有用户的接口缓存
+     */
+    private void clearRoleUsersApiCache(Long roleId) {
+        try {
+            List<Long> userIds = userRoleRepository.findUserIdsByRoleId(roleId);
+            for (Long userId : userIds) {
+                clearUserApiCache(userId);
+            }
+            log.debug("[RoleService] 已清除角色下所有用户的接口缓存: roleId={}, userCount={}", roleId, userIds.size());
+        } catch (Exception e) {
+            log.warn("[RoleService] 清除角色用户接口缓存失败: roleId={}, error={}", roleId, e.getMessage());
+        }
     }
 }

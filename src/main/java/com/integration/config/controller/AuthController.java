@@ -153,27 +153,19 @@ public class AuthController {
                     .filter(m -> "ACTIVE".equals(m.getStatus()))
                     .collect(Collectors.toList());
         } else {
-            // 非管理员根据角色获取菜单（只获取列表页）
+            // 非管理员根据角色获取菜单（只获取列表页），使用缓存
             List<Long> roleIds = roleService.getUserRoleIds(userId);
             log.info("[AuthController] 用户 {} 的角色ID列表: {}", userId, roleIds);
             
-            listMenus = menuService.getUserMenus(roleIds).stream()
+            listMenus = menuService.getUserMenus(userId, roleIds).stream()
                     .filter(m -> "LIST".equals(m.getPageType()) || m.getPageType() == null)
                     .collect(Collectors.toList());
             log.info("[AuthController] 用户 {} 可访问的菜单: {}", userId, 
                     listMenus.stream().map(Menu::getCode).toList());
         }
         
-        // 获取所有菜单（包括列表页和表单页），用于前端路由映射
-        List<Menu> allMenus = menuService.getAllMenusForPageMap();
-        
-        // 构建页面映射
-        Map<String, String> pageMap = new HashMap<>();
-        for (Menu menu : allMenus) {
-            if (menu.getPath() != null && menu.getPageFile() != null) {
-                pageMap.put(menu.getPath(), menu.getPageFile());
-            }
-        }
+        // 获取 pageMap（使用 Redis 全局缓存）
+        Map<String, String> pageMap = menuService.getPageMap();
         
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
