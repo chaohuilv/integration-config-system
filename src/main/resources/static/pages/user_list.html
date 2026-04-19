@@ -104,8 +104,8 @@
         // 延迟清空搜索框，防止浏览器自动填充缓存
         setTimeout(() => { $('#searchInput').val(''); }, 50);
 
-        // 初始化权限组件
-        Permission.init();
+        // 初始化权限组件，完成后再加载数据
+        Permission.init().then(() => loadUsers());
 
         // 加载用户列表
         function loadUsers(page) {

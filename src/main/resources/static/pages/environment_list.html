@@ -68,11 +68,8 @@
             }
         });
 
-        // 初始化权限组件
-        Permission.init();
-
-        // 加载环境列表
-        load();
+        // 初始化权限组件，完成后再加载数据
+        Permission.init().then(() => load());
 
         // 加载环境列表
         function load() {

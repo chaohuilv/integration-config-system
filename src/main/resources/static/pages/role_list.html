@@ -119,8 +119,8 @@
         // 延迟清空搜索框
         setTimeout(() => { $('#searchInput').val(''); }, 50);
 
-        // 初始化权限组件
-        Permission.init();
+        // 初始化权限组件，完成后再加载数据
+        Permission.init().then(() => loadRoles());
 
         // 加载角色列表
         function loadRoles(page) {

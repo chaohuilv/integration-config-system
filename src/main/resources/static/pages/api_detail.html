@@ -155,7 +155,7 @@
         currentId = utils.getUrlParam('id');
 
         // 初始化权限组件
-        Permission.init();
+        Permission.init().then(() => load());
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('detail');
@@ -376,8 +376,6 @@
             }
         }
 
-        // 初始加载
-        load();
     });
     </script>
 </body>
