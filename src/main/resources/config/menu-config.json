@@ -1,16 +1,6 @@
 {
   "menus": [
     {
-      "code": "dashboard",
-      "name": "实时大盘",
-      "icon": "📊",
-      "path": "dashboard",
-      "pageFile": "pages/dashboard.html",
-      "section": "集成管理",
-      "sortOrder": 0,
-      "pageType": "LIST"
-    },
-    {
       "code": "list",
       "name": "接口配置",
       "icon": "📋",
@@ -91,7 +81,7 @@
       "path": "users",
       "pageFile": "pages/user_list.html",
       "section": "系统管理",
-      "sortOrder": 10,
+      "sortOrder": 50,
       "pageType": "LIST"
     },
     {
@@ -109,7 +99,7 @@
       "path": "roles",
       "pageFile": "pages/role_list.html",
       "section": "系统管理",
-      "sortOrder": 11,
+      "sortOrder": 51,
       "pageType": "LIST"
     },
     {
@@ -127,7 +117,7 @@
       "path": "audit-logs",
       "pageFile": "pages/audit_log_list.html",
       "section": "系统管理",
-      "sortOrder": 12,
+      "sortOrder": 52,
       "pageType": "LIST"
     },
     {
@@ -139,13 +129,23 @@
       "pageType": "FORM"
     },
     {
+      "code": "dashboard",
+      "name": "实时大盘",
+      "icon": "📊",
+      "path": "dashboard",
+      "pageFile": "pages/dashboard.html",
+      "section": "系统管理",
+      "sortOrder": 53,
+      "pageType": "LIST"
+    },
+    {
       "code": "sdk",
       "name": "SDK文档",
       "icon": "💻",
       "path": "sdk",
       "pageFile": "pages/api_sdk.html",
       "section": "开发文档",
-      "sortOrder": 20,
+      "sortOrder": 100,
       "pageType": "LIST"
     }
   ]

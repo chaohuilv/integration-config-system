@@ -96,7 +96,7 @@ const App = (function() {
         return !userMenus.some(m => m.code === page);
     }
 
-    // ===== 侧边栏加载 =====
+    // ===== 侧边栏加载（骨架从 _sidebar.html 加载，菜单动态渲染）=====
     function loadSidebar() {
         fetch('_sidebar.html')
             .then(r => r.text())
@@ -106,7 +106,7 @@ const App = (function() {
                     container.innerHTML = html;
                     updateNav('list');
                     fillSidebarUser();
-                    applyMenuPermissions();
+                    renderSidebarMenus();
                 }
             })
             .catch(() => {
@@ -117,47 +117,74 @@ const App = (function() {
             });
     }
 
-    // ===== 应用菜单权限（隐藏无权限的菜单项）=====
-    function applyMenuPermissions() {
-        console.log('[App] applyMenuPermissions called, userMenus=', userMenus);
-        
-        if (currentUser && currentUser.isAdmin) {
-            console.log('[App] 当前用户是管理员，显示所有菜单');
-            return; // 管理员显示所有菜单
+    // ===== 动态渲染侧边栏菜单 =====
+    function renderSidebarMenus() {
+        const nav = document.getElementById('sidebarNav');
+        if (!nav) return;
+
+        // userMenus 来自 /api/auth/menus，已按用户权限过滤（管理员=全部，普通用户=角色授权）
+        // 后端已按 sortOrder 升序返回
+        if (!userMenus || userMenus.length === 0) {
+            nav.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:30px;font-size:13px;">暂无菜单</div>';
+            return;
         }
-        
-        // 获取用户可访问的菜单code列表
-        const allowedCodes = userMenus.map(m => m.code);
-        console.log('[App] 用户可访问的菜单code:', allowedCodes);
-        
-        // 遍历所有菜单项，隐藏无权限的
-        document.querySelectorAll('.nav-item').forEach(item => {
-            const id = item.id;
-            if (id && id.startsWith('nav-')) {
-                // nav-item 的 ID 格式为 'nav-xxx'，对应的 menu code 就是 'xxx'（或 'audit-logs' 特殊情况）
-                // 但 sidebar 中 nav-audit 对应 audit-logs
-                let menuCode = id.substring(4); // 移除 'nav-' 前缀
-                
-                // 特殊映射：nav-audit -> audit-logs
-                if (menuCode === 'audit') {
-                    menuCode = 'audit-logs';
-                }
-                
-                const hasAccess = allowedCodes.includes(menuCode);
-                console.log('[App] 菜单项', id, '-> menuCode:', menuCode, 'hasAccess:', hasAccess);
-                
-                if (!hasAccess) {
-                    item.style.display = 'none';
-                }
+
+        // 按 section 分组，保持 sortOrder 顺序
+        const sectionMap = {};
+        const sectionOrder = [];
+        userMenus.forEach(menu => {
+            const section = menu.section || '其他';
+            if (!sectionMap[section]) {
+                sectionMap[section] = [];
+                sectionOrder.push(section);
             }
+            sectionMap[section].push(menu);
         });
-        
-        // 隐藏没有可见子菜单的一级菜单分组
+
+        let html = '';
+        sectionOrder.forEach(section => {
+            const items = sectionMap[section];
+            html += '<div class="nav-section" data-section="' + section + '">';
+            html += '<div class="nav-section-title" onclick="toggleSection(\'' + section + '\')">';
+            html += '<span>' + section + '</span>';
+            html += '<span class="toggle-icon">▼</span>';
+            html += '</div>';
+            html += '<div class="nav-items">';
+            items.forEach(menu => {
+                const code = menu.code || menu.path || '';
+                const name = menu.name || '';
+                const icon = menu.icon || '📄';
+                html += '<div class="nav-item" id="nav-' + code + '" onclick="parent.loadPage(\'' + code + '\')">';
+                html += '<span class="nav-icon">' + icon + '</span>';
+                html += '<span>' + name + '</span>';
+                html += '<span class="nav-arrow">›</span>';
+                html += '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        nav.innerHTML = html;
+
+        // 恢复折叠状态
+        restoreSectionStates();
+    }
+
+    // ===== 侧边栏折叠状态 =====
+    function toggleSection(sectionName) {
+        const section = document.querySelector('.nav-section[data-section="' + sectionName + '"]');
+        if (section) {
+            section.classList.toggle('collapsed');
+            const collapsed = section.classList.contains('collapsed');
+            localStorage.setItem('nav-section-' + sectionName + '-collapsed', collapsed);
+        }
+    }
+
+    function restoreSectionStates() {
         document.querySelectorAll('.nav-section').forEach(section => {
-            const visibleItems = section.querySelectorAll('.nav-item:not([style*="display: none"])');
-            if (visibleItems.length === 0) {
-                section.style.display = 'none';
-                console.log('[App] 隐藏一级菜单:', section.querySelector('.nav-section-title span')?.textContent);
+            const sectionName = section.dataset.section;
+            const collapsed = localStorage.getItem('nav-section-' + sectionName + '-collapsed');
+            if (collapsed === 'true') {
+                section.classList.add('collapsed');
             }
         });
     }
@@ -213,9 +240,7 @@ const App = (function() {
     // ===== 更新导航高亮 =====
     function updateNav(page) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        // 特殊处理：audit-logs 页面高亮 nav-audit
-        const navId = page === 'audit-logs' ? 'nav-audit' : 'nav-' + page;
-        const el = document.getElementById(navId);
+        const el = document.getElementById('nav-' + page);
         if (el) el.classList.add('active');
     }
 
@@ -319,4 +344,5 @@ if (typeof window !== 'undefined') {
     window.closeUpdateToast = App.closeUpdateToast;
     window.hasPermission = App.hasPermission;
     window.hasMenuAccess = App.hasMenuAccess;
+    window.toggleSection = App.toggleSection;
 }

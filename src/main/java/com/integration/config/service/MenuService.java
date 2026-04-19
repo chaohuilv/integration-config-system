@@ -231,6 +231,11 @@ public class MenuService {
     public List<Menu> getListMenus() {
         return menuRepository.findAll().stream()
                 .filter(m -> "LIST".equals(m.getPageType()) || m.getPageType() == null)
+                .sorted((a, b) -> {
+                    int orderA = a.getSortOrder() != null ? a.getSortOrder() : 0;
+                    int orderB = b.getSortOrder() != null ? b.getSortOrder() : 0;
+                    return Integer.compare(orderA, orderB);
+                })
                 .collect(Collectors.toList());
     }
 
