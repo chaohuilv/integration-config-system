@@ -136,6 +136,8 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入分页组件 -->
+    <script src="../js/components/pagination.js"></script>
 
     <script>
     $(function() {
@@ -146,6 +148,7 @@
         let logTotal = 0;
         const logSize = 10;
         let permissions = []; // 当前用户的权限列表
+        let logPager; // 日志分页组件实例
 
         // 获取 URL 参数
         currentId = utils.getUrlParam('id');
@@ -339,7 +342,6 @@
 
                 if (!logs.length) {
                     $('#logsWrap').html('<div style="text-align:center;padding:40px;color:#ccc;">暂无日志记录</div>');
-                    $('#logPagination').html('');
                     return;
                 }
 
@@ -364,59 +366,19 @@
                 });
 
                 // 渲染分页
-                renderPagination();
+                if (!logPager) {
+                    logPager = new Pagination('#logPagination', {
+                        pageSize: logSize,
+                        onPageChange: function(p) {
+                            loadLogs(p);
+                        }
+                    });
+                }
+                logPager.render(data, logPage);
             } catch (err) {
                 $('#logsWrap').html('<div style="text-align:center;padding:40px;color:#ff4d4f;">加载失败: ' + utils.escapeHtml(err.message) + '</div>');
-                $('#logPagination').html('');
                 utils.toast('日志加载失败', 'error');
             }
-        }
-
-        // 渲染分页
-        function renderPagination() {
-            const totalPages = Math.ceil(logTotal / logSize);
-            if (totalPages <= 1) {
-                $('#logPagination').html('');
-                return;
-            }
-
-            let pages = [];
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= logPage - 1 && i <= logPage + 1)) {
-                    pages.push(i);
-                } else if (pages[pages.length - 1] !== '...') {
-                    pages.push('...');
-                }
-            }
-
-            let html = '<button class="btn btn-sm btn-default" id="btnLogPrev"' + (logPage <= 1 ? ' disabled' : '') + '>上一页</button>';
-            
-            pages.forEach(p => {
-                if (p === '...') {
-                    html += '<span style="padding:0 8px;">...</span>';
-                } else {
-                    html += '<button class="btn btn-sm ' + (p === logPage ? 'btn-primary' : 'btn-default') + ' btn-log-page" data-page="' + p + '">' + p + '</button>';
-                }
-            });
-
-            html += '<button class="btn btn-sm btn-default" id="btnLogNext"' + (logPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
-            html += '<span style="margin-left:12px;color:#999;">共 ' + logTotal + ' 条</span>';
-
-            $('#logPagination').html(html);
-
-            // 绑定分页按钮事件
-            $('#btnLogPrev').on('click', function() {
-                if (logPage > 1) loadLogs(logPage - 1);
-            });
-
-            $('#btnLogNext').on('click', function() {
-                if (logPage < totalPages) loadLogs(logPage + 1);
-            });
-
-            $('.btn-log-page').on('click', function() {
-                const page = $(this).data('page');
-                loadLogs(page);
-            });
         }
 
         // 显示日志详情
@@ -446,7 +408,7 @@
                 `;
 
                 $('#logsWrap').html(detailHtml);
-                $('#logPagination').html('');
+                if (logPager) logPager.destroy();
 
                 // 绑定返回列表按钮事件
                 $('#btnBackToList').on('click', function() {

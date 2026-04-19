@@ -60,15 +60,27 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入分页组件 -->
+    <script src="../js/components/pagination.js"></script>
 
     <script>
     $(function() {
         let currentPage = 1;
         const size = 10;
         let permissions = []; // 当前用户的权限列表
+        let pager; // 分页组件实例
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('list');
+
+        // 初始化分页组件
+        pager = new Pagination('#pagination', {
+            pageSize: size,
+            onPageChange: function(page) {
+                currentPage = page;
+                refreshList(page);
+            }
+        });
 
         // 加载权限
         loadPermissions();
@@ -142,7 +154,7 @@
             })
             .then(json => {
                 renderTable(json.data.records);
-                renderPagination(json.data.total, json.data.page, json.data.size);
+                pager.render(json.data, currentPage);
             })
             .catch(err => {
                 utils.toast('加载失败: ' + err.message, 'error');
@@ -177,29 +189,6 @@
             `).join('');
 
             tb.html(html);
-        }
-
-        function renderPagination(total, page, size) {
-            const totalPages = Math.ceil(total / size);
-            const el = $('#pagination');
-            
-            if (!totalPages) {
-                el.html('');
-                return;
-            }
-
-            let html = `<button ${page <= 1 ? 'disabled' : ''} onclick="refreshList(${page - 1})">上一页</button>`;
-            
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
-                    html += `<button class="${i === page ? 'active' : ''}" onclick="refreshList(${i})">${i}</button>`;
-                } else if (i === page - 3 || i === page + 3) {
-                    html += `<button disabled>...</button>`;
-                }
-            }
-            
-            html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="refreshList(${page + 1})">下一页</button>`;
-            el.html(html);
         }
 
         async function toggleStatus(id) {

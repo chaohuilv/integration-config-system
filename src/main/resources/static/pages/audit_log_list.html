@@ -143,12 +143,22 @@
     <script src="../js/vendor/jquery.min.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/api.js"></script>
+    <script src="../js/components/pagination.js"></script>
     <script>
     $(function() {
         let currentPage = 1;
         const size = 10;
         let selectedIds = new Set();
         let permissions = []; // 当前用户的权限列表
+        let pager; // 分页组件实例
+
+        // 初始化分页组件
+        pager = new Pagination('#pagination', {
+            pageSize: size,
+            onPageChange: function(page) {
+                refreshList(page);
+            }
+        });
 
         // 加载权限
         loadPermissions();
@@ -221,18 +231,14 @@
                 
                 const pageData = json.data;
                 if (!pageData) {
-                    console.error('[refreshList] pageData is null');
                     $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
-                    $('#pagination').html('');
                     return;
                 }
                 
                 // 兼容 Spring Data Page 和 MyBatis-Plus Page 格式
                 const list = pageData.content || pageData.records || [];
-                const totalPages = pageData.totalElements || pageData.total || 0;
-
                 renderTable(list);
-                renderPagination(parseInt(totalPages));
+                pager.render(pageData, currentPage);
             }).catch((err) => {
                 console.error('[refreshList] error:', err, '| msg:', err.message);
                 utils.toast('加载失败: ' + (err.message || '未知错误'), 'error');
@@ -322,39 +328,6 @@
             $('#btnBatchDelete').prop('disabled', count === 0);
             $('#selectedCount').text(count > 0 ? `（${count}条）` : '');
         }
-
-        // ===== 分页 =====
-        function renderPagination(total) {
-            const totalPages = Math.ceil(total / size);
-
-            if (!totalPages) {
-                $('#pagination').html('');
-                return;
-            }
-
-            let html = `<button ${currentPage <= 1 ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage - 1}">上一页</button>`;
-
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary active ' : 'btn-default'} btn-page" data-page="${i}">${i}</button>`;
-                } else if (i === currentPage - 3 || i === currentPage + 3) {
-                    html += `<button disabled class="btn btn-sm btn-default">...</button>`;
-                }
-            }
-
-            html += `<button ${currentPage >= totalPages ? 'disabled' : ''} class="btn btn-sm btn-default btn-page" data-page="${currentPage + 1}">下一页</button>`;
-
-            $('#pagination').html(html);
-
-            // 绑定分页按钮事件
-            $('.btn-page').on('click', function() {
-                const page = parseInt($(this).data('page'));
-                if (page >= 1 && page <= totalPages) {
-                    refreshList(page);
-                }
-            });
-        }
-
 
         // ===== 搜索 & 重置 =====
         $('#btnSearch').on('click', () => refreshList(1));

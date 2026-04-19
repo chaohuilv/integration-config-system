@@ -193,24 +193,22 @@
     color: #667eea;
 }
 
-/* ===== 分页 ===== */
+/* ===== 分页组件（Pagination） ===== */
 .pagination {
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
     margin-top: 16px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
-.pagination span {
-    font-size: 13px;
-    color: #999;
-    padding: 0 6px;
-}
-
-.pagination button {
-    padding: 7px 13px;
+/* 分页按钮 */
+.pg-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 10px;
     border: 1px solid #e0e0e0;
     background: white;
     border-radius: 6px;
@@ -218,23 +216,77 @@
     font-size: 13px;
     color: #555;
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    user-select: none;
 }
 
-.pagination button:hover:not(:disabled) {
+.pg-btn:hover:not(:disabled):not(.pg-active) {
     border-color: #667eea;
     color: #667eea;
+    background: #f5f3ff;
 }
 
-.pagination button.active {
+.pg-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+/* 当前页高亮 */
+.pg-btn.pg-active {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border-color: transparent;
     box-shadow: 0 2px 6px rgba(102,126,234,0.3);
+    cursor: default;
+    font-weight: 600;
 }
 
-.pagination button:disabled {
+/* 禁用态 */
+.pg-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+    background: #f9fafb;
+}
+
+/* 省略号 */
+.pg-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    font-size: 13px;
+    color: #999;
+    padding: 0 4px;
+    user-select: none;
+}
+
+/* 总条数 */
+.pg-info {
+    font-size: 13px;
+    color: #999;
+    padding: 0 8px;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+
+/* 每页条数选择 */
+.pg-size-select {
+    margin-left: 8px;
+    padding: 4px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #555;
+    background: white;
+    cursor: pointer;
+    outline: none;
+}
+
+.pg-size-select:focus {
+    border-color: #667eea;
 }
 
 /* ===== 空状态 ===== */

@@ -79,15 +79,26 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入分页组件 -->
+    <script src="../js/components/pagination.js"></script>
 
     <script>
     $(function() {
         let currentPage = 1;
         const pageSize = 10;
         let permissions = [];
+        let pager; // 分页组件实例
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('users');
+
+        // 初始化分页组件
+        pager = new Pagination('#pagination', {
+            pageSize: pageSize,
+            onPageChange: function(page) {
+                loadUsers(page);
+            }
+        });
 
         // 延迟清空搜索框，防止浏览器自动填充缓存
         setTimeout(() => { $('#searchInput').val(''); }, 50);
@@ -149,12 +160,10 @@
 
             if (!data || !data.content || data.content.length === 0) {
                 tbody.html('<tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>暂无用户数据</td></tr>');
-                $('#pagination').html('');
                 return;
             }
 
             const users = data.content;
-            const totalPages = data.totalPages;
 
             const rowsHtml = users.map(u => `
                 <tr>
@@ -173,28 +182,7 @@
             `).join('');
 
             tbody.html(rowsHtml);
-            renderPagination(data.totalElements, totalPages);
-        }
-
-        // 渲染分页
-        function renderPagination(total, totalPages) {
-            const el = $('#pagination');
-
-            if (!totalPages || totalPages <= 1) {
-                el.html('');
-                return;
-            }
-
-            const html = `
-                <span>共 ${total} 条</span>
-                <button class="btn btn-sm btn-default" onclick="loadUsers(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
-                <button class="btn btn-sm btn-default" onclick="loadUsers(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
-                <span>第 ${currentPage} / ${totalPages} 页</span>
-                <button class="btn btn-sm btn-default" onclick="loadUsers(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
-                <button class="btn btn-sm btn-default" onclick="loadUsers(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>末页</button>
-            `;
-
-            el.html(html);
+            pager.render(data, currentPage);
         }
 
         // 删除用户

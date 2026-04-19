@@ -45,15 +45,27 @@
     <script src="../js/utils.js"></script>
     <!-- 引入 API 封装 -->
     <script src="../js/api.js"></script>
+    <!-- 引入分页组件 -->
+    <script src="../js/components/pagination.js"></script>
 
     <script>
     $(function() {
         let currentPage = 1;
         const size = 10;
         let permissions = [];
+        let pager; // 分页组件实例
 
         // 通知主壳高亮侧边栏
         if (parent.setNav) parent.setNav('environments');
+
+        // 初始化分页组件
+        pager = new Pagination('#pagination', {
+            pageSize: size,
+            onPageChange: function(page) {
+                currentPage = page;
+                load();
+            }
+        });
 
         // 加载权限
         loadPermissions();
@@ -102,7 +114,7 @@
                 const data = json.data;
                 const list = data && data.content || [];
                 renderEnvList(list);
-                renderPagination(data && data.totalElements || 0, data && data.number + 1 || 1, data && data.size || size);
+                pager.render(data, currentPage);
             })
             .catch(err => {
                 utils.toast('加载失败: ' + err.message, 'error');
@@ -140,35 +152,6 @@
             tbody.html(rowsHtml);
         }
 
-        // 分页
-        function renderPagination(total, page, size) {
-            const totalPages = Math.ceil(total / size);
-            const el = $('#pagination');
-
-            if (!totalPages) {
-                el.html('');
-                return;
-            }
-
-            let html = `<button ${page <= 1 ? 'disabled' : ''} onclick="goPage(${page - 1})">上一页</button>`;
-
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
-                    html += `<button class="${i === page ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
-                } else if (i === page - 3 || i === page + 3) {
-                    html += `<button disabled>...</button>`;
-                }
-            }
-
-            html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="goPage(${page + 1})">下一页</button>`;
-            el.html(html);
-        }
-
-        function goPage(p) {
-            currentPage = p;
-            load();
-        }
-
         // 删除环境
         async function deleteEnv(id) {
             const ok = await utils.showConfirm('确认删除', '确定要删除此环境配置吗？', '🗑️', true);
@@ -185,7 +168,6 @@
         }
 
         // 暴露给全局
-        window.goPage = goPage;
         window.deleteEnv = deleteEnv;
     });
     </script>
