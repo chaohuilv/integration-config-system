@@ -50,6 +50,20 @@
       "sortOrder": 6
     },
     {
+      "code": "api:version",
+      "name": "创建新版本",
+      "description": "基于现有接口创建新版本",
+      "module": "api",
+      "sortOrder": 7
+    },
+    {
+      "code": "api:deprecate",
+      "name": "废弃接口",
+      "description": "标记接口为废弃状态或恢复",
+      "module": "api",
+      "sortOrder": 8
+    },
+    {
       "code": "env:view",
       "name": "查看环境",
       "description": "查看环境配置",
@@ -176,18 +190,25 @@
       "sortOrder": 42
     },
     {
+      "code": "audit-log:view",
+      "name": "查看审计日志",
+      "description": "查看审计日志列表和导出",
+      "module": "log",
+      "sortOrder": 43
+    },
+    {
       "code": "audit-log:detail",
       "name": "查看审计日志详情",
       "description": "查看审计日志详细信息",
       "module": "log",
-      "sortOrder": 43
+      "sortOrder": 44
     },
     {
       "code": "audit-log:delete",
       "name": "删除审计日志",
       "description": "删除审计日志记录",
       "module": "log",
-      "sortOrder": 44
+      "sortOrder": 45
     },
     {
       "code": "menu:manage",

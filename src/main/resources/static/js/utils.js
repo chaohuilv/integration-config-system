@@ -102,6 +102,64 @@ const Utils = (function() {
         }
     }
 
+    // ===== 输入弹窗 =====
+    let _promptResolve = null;
+
+    /**
+     * 显示输入弹窗
+     * @param title 标题
+     * @param desc 描述文字
+     * @param defaultValue 默认值（可选）
+     * @returns Promise<string|null> 用户输入字符串，或 null（取消）
+     */
+    function showPrompt(title, desc, defaultValue = '') {
+        // 如果在 iframe 中，调用父窗口的 prompt
+        if (window.parent && window.parent !== window && window.parent.utils && window.parent.utils.showPrompt) {
+            return window.parent.utils.showPrompt(title, desc, defaultValue);
+        }
+
+        return new Promise(resolve => {
+            _promptResolve = resolve;
+            const overlay = document.getElementById('promptOverlay');
+            if (!overlay) {
+                console.warn('Prompt overlay not found');
+                resolve(null);
+                return;
+            }
+
+            document.getElementById('promptTitle').textContent = title || '输入';
+            document.getElementById('promptDesc').textContent = desc || '';
+            const input = document.getElementById('promptInput');
+            input.value = defaultValue || '';
+            // 自动聚焦并选中文字
+            setTimeout(() => { input.focus(); input.select(); }, 50);
+            overlay.classList.add('show');
+        });
+    }
+
+    function closePrompt() {
+        const overlay = document.getElementById('promptOverlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+        }
+        if (_promptResolve) {
+            _promptResolve(null);
+            _promptResolve = null;
+        }
+    }
+
+    function doPrompt() {
+        const overlay = document.getElementById('promptOverlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+        }
+        const value = document.getElementById('promptInput') ? document.getElementById('promptInput').value : '';
+        if (_promptResolve) {
+            _promptResolve(value);
+            _promptResolve = null;
+        }
+    }
+
     // ===== 日期格式化 =====
     function formatDate(date, format = 'YYYY-MM-DD HH:mm:ss') {
         if (!date) return '-';
@@ -164,6 +222,9 @@ const Utils = (function() {
         showConfirm,
         closeConfirm,
         doConfirm,
+        showPrompt,
+        closePrompt,
+        doPrompt,
         formatDate,
         formatJSON,
         parseJSON,

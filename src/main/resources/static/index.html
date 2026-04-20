@@ -26,6 +26,24 @@
         </div>
     </div>
 
+    <!-- 全局输入弹窗 -->
+    <div class="confirm-overlay" id="promptOverlay">
+        <div class="confirm-box">
+            <div class="confirm-icon" id="promptIcon">📝</div>
+            <div class="confirm-title" id="promptTitle">输入</div>
+            <div class="confirm-desc" id="promptDesc" style="margin-bottom:12px;"></div>
+            <div class="confirm-btns" style="flex-direction:column;gap:10px;">
+                <input type="text" id="promptInput"
+                    style="width:100%;padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;"
+                    onkeydown="if(event.key==='Enter')utils.doPrompt();if(event.key==='Escape')utils.closePrompt();">
+            </div>
+            <div class="confirm-btns" style="margin-top:0;">
+                <button class="btn btn-cancel" onclick="utils.closePrompt()">取消</button>
+                <button class="btn btn-primary-submit" id="promptOkBtn" onclick="utils.doPrompt()">确定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 版本更新提示 -->
     <div class="update-toast" id="updateToast">
         <span>🔄 检测到新版本，建议刷新页面</span>

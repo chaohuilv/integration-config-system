@@ -263,6 +263,30 @@
                 💡 接口访问权限请在 <a href="javascript:goToRoles()">角色权限管理</a> 中配置，在角色详情页为角色授权接口。
             </div>
 
+            <!-- 版本信息（编辑模式下显示，其他版本入口） -->
+            <div class="form-section" id="versionSection" style="display:none;">
+                <h3>📌 版本信息</h3>
+                <div class="form-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="form-group">
+                        <label>当前版本</label>
+                        <div id="vCurrent" style="padding:10px;background:#f5f5f5;border-radius:6px;font-weight:600;color:#333;">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label>基础编码</label>
+                        <div id="vBaseCode" style="padding:10px;background:#f5f5f5;border-radius:6px;font-size:13px;color:#555;">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label>版本状态</label>
+                        <div id="vStatus" style="padding:10px;background:#f5f5f5;border-radius:6px;font-size:13px;">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label>全部版本</label>
+                        <div id="vCount" style="padding:10px;background:#f5f5f5;border-radius:6px;font-size:13px;">-</div>
+                    </div>
+                </div>
+                <div id="otherVersionsList" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+
             <div class="form-section">
                 <h3>其他</h3>
                 <div class="form-group">
@@ -385,6 +409,33 @@
 
                     // 更新动态Token区域显示状态
                     toggleAuth();
+
+                    // 填充版本信息
+                    if (d.version) {
+                        $('#versionSection').show();
+                        $('#vCurrent').text((d.version || 'v1') + (d.latestVersion ? ' ★ 最新' : ''));
+                        $('#vBaseCode').text(d.baseCode || d.code || '-');
+
+                        let statusText = d.status === 'ACTIVE' ? '✅ 启用' : '⛔ 禁用';
+                        if (d.deprecated) statusText += ' ⛔ 已废弃';
+                        $('#vStatus').html(statusText);
+                        $('#vCount').text((d.versionCount || 1) + ' 个版本');
+
+                        // 显示其他版本快捷入口
+                        const otherList = $('#otherVersionsList');
+                        otherList.empty();
+                        if (d.otherVersions && d.otherVersions.length > 0) {
+                            d.otherVersions.forEach(function(v) {
+                                const badge = `<span class="version-tag ${v.deprecated ? 'version-deprecated' : (v.latestVersion ? 'version-latest' : 'version-old')}"
+                                    style="cursor:pointer;" onclick="parent.loadPage('form','${v.id}')">
+                                    ${v.version}${v.latestVersion ? ' ★' : ''}${v.deprecated ? ' ⛔' : ''}
+                                </span>`;
+                                otherList.append(badge);
+                            });
+                        } else if ((d.versionCount || 1) <= 1) {
+                            otherList.append('<span style="color:#999;font-size:13px;">暂无其他版本</span>');
+                        }
+                    }
                 })
                 .catch(err => {
                     utils.toast('加载失败: ' + err.message, 'error');

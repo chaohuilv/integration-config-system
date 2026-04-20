@@ -709,3 +709,39 @@
     .stats { grid-template-columns: repeat(2, 1fr); }
     .form-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== 接口版本标签 ===== */
+.version-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.version-latest {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+.version-old {
+    background: #f5f5f5;
+    color: #757575;
+    border: 1px solid #e0e0e0;
+}
+.version-deprecated {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffcc80;
+}
+
+/* ===== 按钮警告色 ===== */
+.btn-warning {
+    background: #fff7e6 !important;
+    color: #ad6800 !important;
+    border-color: #ffd591 !important;
+}
+.btn-warning:hover {
+    background: #ffe7ba !important;
+    border-color: #ffa940 !important;
+}

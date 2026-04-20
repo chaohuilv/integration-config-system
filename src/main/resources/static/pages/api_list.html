@@ -26,6 +26,11 @@
                 <option value="ACTIVE">启用</option>
                 <option value="INACTIVE">禁用</option>
             </select>
+            <select id="sVersion">
+                <option value="">全部版本</option>
+                <option value="latest">只看最新</option>
+                <option value="deprecated">只看废弃</option>
+            </select>
             <button class="btn btn-ghost" id="btnSearch">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 搜索
@@ -38,16 +43,16 @@
                     <tr>
                         <th>接口名称</th>
                         <th>接口编码</th>
+                        <th>版本</th>
                         <th>分组</th>
                         <th>方法</th>
-                        <th>目标URL</th>
-                        <th>创建人</th>
                         <th>状态</th>
+                        <th>废弃</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="apiTableBody">
-                    <tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                    <tr><td colspan="7" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -99,16 +104,20 @@
 
         // 状态筛选变化
         $('#sStatus').on('change', () => refreshList(1));
+        // 版本筛选变化
+        $('#sVersion').on('change', () => refreshList(1));
 
         function refreshList(page) {
             if (page) currentPage = page;
 
             const keyword = $('#sKeyword').val();
             const status = $('#sStatus').val();
+            const version = $('#sVersion').val();
 
             API.config.list({
                 keyword: keyword,
                 status: status,
+                version: version,
                 page: currentPage,
                 size: size
             })
@@ -121,6 +130,71 @@
             });
         }
 
+        // 创建新版本
+        async function createNewVersion(id) {
+            const versionInfo = await API.config.get(id).catch(() => null);
+            if (!versionInfo || !versionInfo.data) {
+                utils.toast('加载接口信息失败', 'error');
+                return;
+            }
+            const api = versionInfo.data;
+            const nextV = nextVersionStr(api.version);
+            const defaultName = buildNewVersionName(api.name, api.version, nextV);
+
+            const newName = await utils.showPrompt(
+                '创建新版本',
+                `当前版本：${api.version || 'v1'}，将创建新版本 ${nextV}\n请输入新版本名称，直接确定使用默认值：`,
+                defaultName
+            );
+            if (newName === null) return; // 用户取消
+
+            // 用输入内容作为新版本的 name
+            const payload = {
+                name: newName || defaultName,
+                url: api.url,
+                description: api.description,
+                method: api.method,
+                headers: api.headers,
+                requestParams: api.requestParams,
+                requestBody: api.requestBody,
+                authType: api.authType,
+                authInfo: api.authInfo,
+                timeout: api.timeout,
+                retryCount: api.retryCount,
+                enableCache: api.enableCache,
+                cacheTime: api.cacheTime,
+                status: api.status,
+                groupName: api.groupName
+            };
+
+            try {
+                await API.config.createVersion(id, payload);
+                utils.toast('新版本创建成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('创建失败: ' + err.message, 'error');
+            }
+        }
+
+        function nextVersionStr(current) {
+            if (!current) return 'v2';
+            const m = current.match(/^v(\d+)$/);
+            if (m) return 'v' + (parseInt(m[1]) + 1);
+            return current + '_v2';
+        }
+
+        // 构建新版本名称：如果名称以旧版本号结尾则替换，否则追加
+        function buildNewVersionName(oldName, oldVersion, newVersion) {
+            if (!oldName) return newVersion || 'v1';
+            if (oldVersion && oldName.endsWith(' ' + oldVersion)) {
+                // 名称以 " v2" 结尾，替换为新版本号
+                return oldName.substring(0, oldName.lastIndexOf(' ' + oldVersion)) + ' ' + newVersion;
+            } else {
+                // 否则追加新版本号
+                return oldName + ' ' + newVersion;
+            }
+        }
+
         function renderTable(apis) {
             const tb = $('#apiTableBody');
 
@@ -129,24 +203,37 @@
                 return;
             }
 
-            const html = apis.map(a => `
+            const html = apis.map(a => {
+                const isLatest = a.latestVersion;
+                const isDeprecated = a.deprecated;
+                const versionClass = isDeprecated ? 'version-deprecated' : (isLatest ? 'version-latest' : 'version-old');
+                const versionTag = `<span class="version-tag ${versionClass}">${a.version || 'v1'}${isLatest ? ' ★' : ''}${isDeprecated ? ' ⛔' : ''}</span>`;
+
+                return `
                 <tr>
                     <td><strong>${utils.escapeHtml(a.name)}</strong></td>
-                    <td><code>${utils.escapeHtml(a.code)}</code></td>
-                    <td style="color:#999;font-size:13px;">${utils.escapeHtml(a.groupName || '-')}</td>
+                    <td><code style="font-size:12px;">${utils.escapeHtml(a.code)}</code></td>
+                    <td>${versionTag}</td>
+                    <td style="color:#666;font-size:13px;">${utils.escapeHtml(a.groupName || '-')}</td>
                     <td><span class="method method-${(a.method || 'GET').toLowerCase()}">${a.method}</span></td>
-                    <td title="${utils.escapeHtml(a.url)}" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${utils.escapeHtml(a.url)}</td>
-                    <td style="color:#666;font-size:13px;">${utils.escapeHtml(a.createdByName || '-')}</td>
                     <td><span class="badge badge-${(a.status || 'ACTIVE').toLowerCase()}">${a.status === 'ACTIVE' ? '启用' : '禁用'}</span></td>
+                    <td>
+                        ${Permission.render('api:deprecate', isDeprecated
+                            ? `<button class="btn btn-sm btn-default" onclick="toggleDeprecated('${a.id}')" title="已废弃，点击恢复">⛔ 废弃</button>`
+                            : `<button class="btn btn-sm btn-ghost" onclick="toggleDeprecated('${a.id}')" title="点击废弃">☑ 正常</button>`
+                        )}
+                    </td>
                     <td class="actions">
                         ${Permission.render('api:detail', `<button class="btn btn-sm btn-default" onclick="parent.loadPage('detail', '${a.id}')">详情</button>`)}
                         ${Permission.render('api:invoke', `<button class="btn btn-sm btn-success" onclick="testApi('${a.code}')">测试</button>`)}
                         ${Permission.render('api:edit', `<button class="btn btn-sm btn-default" onclick="parent.loadPage('form', '${a.id}')">编辑</button>`)}
+                        ${Permission.render('api:version', `<button class="btn btn-sm btn-ghost" onclick="createNewVersion('${a.id}')">新版本</button>`)}
                         ${Permission.render('api:edit', `<button class="btn btn-sm btn-default" onclick="toggleStatus('${a.id}')">${a.status === 'ACTIVE' ? '禁用' : '启用'}</button>`)}
                         ${Permission.render('api:delete', `<button class="btn btn-sm btn-danger" onclick="deleteApi('${a.id}')">删除</button>`)}
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
 
             tb.html(html);
         }
@@ -155,6 +242,16 @@
             try {
                 await API.config.toggle(id);
                 utils.toast('状态更新成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('操作失败: ' + err.message, 'error');
+            }
+        }
+
+        async function toggleDeprecated(id) {
+            try {
+                await API.config.toggleDeprecated(id);
+                utils.toast('操作成功', 'success');
                 refreshList();
             } catch (err) {
                 utils.toast('操作失败: ' + err.message, 'error');
@@ -184,6 +281,8 @@
         window.testApi = testApi;
         window.deleteApi = deleteApi;
         window.toggleStatus = toggleStatus;
+        window.createNewVersion = createNewVersion;
+        window.toggleDeprecated = toggleDeprecated;
     });
     </script>
 </body>

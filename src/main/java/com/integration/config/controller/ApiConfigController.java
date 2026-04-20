@@ -1,6 +1,7 @@
 package com.integration.config.controller;
 
 import com.integration.config.annotation.AuditLog;
+import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.*;
 import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.enums.Status;
@@ -29,6 +30,7 @@ public class ApiConfigController {
      * 创建接口配置
      */
     @PostMapping
+    @RequirePermission("api:add")
     @AuditLog(operateType = "CREATE", module = "API_CONFIG", description = "'创建接口: ' + #dto.code", targetType = "API", targetId = "#result.data.code", recordParams = true)
     public Result<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
@@ -41,6 +43,7 @@ public class ApiConfigController {
      * 更新接口配置
      */
     @PutMapping("/{id}")
+    @RequirePermission("api:edit")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'更新接口: ' + #dto.code", targetType = "API", targetId = "#dto.code", recordParams = true)
     public Result<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
@@ -53,6 +56,7 @@ public class ApiConfigController {
      * 删除接口配置
      */
     @DeleteMapping("/{id}")
+    @RequirePermission("api:delete")
     @AuditLog(operateType = "DELETE", module = "API_CONFIG", description = "'删除接口ID: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
     public Result<Void> delete(@PathVariable Long id) {
         apiConfigService.delete(id);
@@ -63,6 +67,7 @@ public class ApiConfigController {
      * 根据ID查询详情
      */
     @GetMapping("/{id}")
+    @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口详情ID: ' + #id", targetType = "API", targetId = "#id")
     public Result<ApiConfigDetailDTO> getById(@PathVariable Long id) {
         ApiConfigDetailDTO dto = apiConfigService.getById(id);
@@ -73,6 +78,7 @@ public class ApiConfigController {
      * 根据编码查询
      */
     @GetMapping("/code/{code}")
+    @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口编码: ' + #code", targetType = "API", targetId = "#code")
     public Result<ApiConfig> getByCode(@PathVariable String code) {
         ApiConfig config = apiConfigService.getByCode(code);
@@ -83,13 +89,15 @@ public class ApiConfigController {
      * 分页查询
      */
     @GetMapping("/page")
+    @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'分页查询接口列表'", recordResult = false)
     public Result<PageResult<ApiConfig>> pageQuery(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Status status,
+            @RequestParam(required = false) String version,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        PageResult<ApiConfig> result = apiConfigService.pageQuery(keyword, status, page, size);
+        PageResult<ApiConfig> result = apiConfigService.pageQuery(keyword, status, version, page, size);
         return Result.success(result);
     }
 
@@ -97,6 +105,7 @@ public class ApiConfigController {
      * 获取所有启用的接口列表
      */
     @GetMapping("/active")
+    @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询启用接口列表'", recordResult = false)
     public Result<List<ApiConfig>> getAllActive() {
         List<ApiConfig> list = apiConfigService.getAllActive();
@@ -107,6 +116,7 @@ public class ApiConfigController {
      * 切换状态
      */
     @PostMapping("/{id}/toggle")
+    @RequirePermission("api:edit")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'切换接口状态: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
     public Result<Void> toggleStatus(@PathVariable Long id) {
         apiConfigService.toggleStatus(id);
@@ -117,10 +127,64 @@ public class ApiConfigController {
      * 获取接口列表（简化信息）
      */
     @GetMapping("/simple-list")
+    @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口简化列表'", recordResult = false)
     public Result<List> getSimpleList() {
         List list = apiConfigService.getSimpleList();
         return Result.success(list);
+    }
+
+    // ==================== 版本控制 ====================
+
+    /**
+     * 创建新版本（基于现有接口复制）
+     * @param sourceId 源接口ID
+     * @param dto 新版本配置（只需填写 name/description/url 等需修改的字段，版本信息自动生成）
+     */
+    @PostMapping("/{id}/version")
+    @RequirePermission("api:version")
+    @AuditLog(operateType = "CREATE", module = "API_CONFIG", description = "'创建新版本，源接口: ' + #sourceId", targetType = "API", targetId = "#result.data?.code", recordParams = true)
+    public Result<ApiConfig> createNewVersion(@PathVariable("id") Long sourceId,
+                                               @RequestBody CreateVersionDTO dto,
+                                               HttpServletRequest request) {
+        Long userId = getUserId(request);
+        String userName = getUserName(request);
+        ApiConfig config = apiConfigService.createNewVersion(sourceId, dto, userId, userName);
+        return Result.success("新版本创建成功", config);
+    }
+
+    /**
+     * 获取某接口的所有版本列表
+     */
+    @GetMapping("/{id}/versions")
+    @RequirePermission("api:detail")
+    @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口版本列表: ' + #id", targetType = "API", targetId = "#id", recordResult = false)
+    public Result<List<ApiConfig>> getAllVersions(@PathVariable Long id) {
+        ApiConfig entity = apiConfigService.getByIdForEntity(id);
+        List<ApiConfig> versions = apiConfigService.getAllVersions(entity.getBaseCode());
+        return Result.success(versions);
+    }
+
+    /**
+     * 设置某版本为最新推荐版本
+     */
+    @PostMapping("/{id}/set-latest")
+    @RequirePermission("api:version")
+    @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'设置最新版本: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
+    public Result<Void> setLatestVersion(@PathVariable Long id, HttpServletRequest request) {
+        apiConfigService.setLatestVersion(id);
+        return Result.success("已设为最新版本", null);
+    }
+
+    /**
+     * 废弃/恢复某版本
+     */
+    @PostMapping("/{id}/deprecate")
+    @RequirePermission("api:deprecate")
+    @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'切换废弃状态: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
+    public Result<Void> toggleDeprecated(@PathVariable Long id, HttpServletRequest request) {
+        apiConfigService.toggleDeprecated(id);
+        return Result.success("操作成功", null);
     }
 
     // ==================== Curl 一键导入 ====================
@@ -130,6 +194,7 @@ public class ApiConfigController {
      * 支持标准 curl 命令格式，自动提取 URL、方法、请求头、请求体
      */
     @PostMapping("/import/curl")
+    @RequirePermission("api:add")
     @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'Curl导入接口'", recordParams = true)
     public Result<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String curl = body.get("curl");

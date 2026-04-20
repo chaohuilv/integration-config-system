@@ -18,7 +18,14 @@ import java.time.LocalDateTime;
  * 接口配置实体（Config 数据库）
  */
 @Entity
-@Table(name = "API_CONFIG")
+@Table(name = "API_CONFIG", indexes = {
+    @Index(name = "IDX_API_CODE", columnList = "CODE", unique = true),
+    @Index(name = "IDX_API_BASE_CODE", columnList = "BASE_CODE"),
+    @Index(name = "IDX_API_STATUS", columnList = "STATUS"),
+    @Index(name = "IDX_API_GROUP", columnList = "GROUP_NAME")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "UK_API_BASE_VERSION", columnNames = {"BASE_CODE", "VERSION"})
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -106,6 +113,22 @@ public class ApiConfig {
     @Column(name = "GROUP_NAME", length = 100)
     private String groupName;
 
+    /** 接口版本，如 v1/v2/v3，null 等同于 v1 */
+    @Column(name = "VERSION", length = 20)
+    private String version;
+
+    /** 基础编码，同一接口多版本的共同标识（如 api:user-list，v2/v3 都指向它） */
+    @Column(name = "BASE_CODE", length = 50)
+    private String baseCode;
+
+    /** 是否为最新推荐版本（仅 latestVersion=true 的版本会被 SDK 默认调用） */
+    @Column(name = "LATEST_VERSION")
+    private Boolean latestVersion;
+
+    /** 是否已废弃（deprecated=true 时调用仍可用，但会返回警告） */
+    @Column(name = "DEPRECATED")
+    private Boolean deprecated;
+
     // ==================== 动态Token相关字段 ====================
 
     /** 是否启用动态Token（Token过期需定期刷新） */
@@ -174,6 +197,12 @@ public class ApiConfig {
         if (status == null) status = Status.ACTIVE;
         if (timeout == null) timeout = 30000;
         if (retryCount == null) retryCount = 0;
+        // 版本控制默认值
+        if (version == null || version.isEmpty()) version = "v1";
+        if (latestVersion == null) latestVersion = true;  // 第一个版本默认是最新
+        if (deprecated == null) deprecated = false;
+        // baseCode 默认等于 code（第一个版本时）
+        if (baseCode == null || baseCode.isEmpty()) baseCode = code;
     }
 
     @PreUpdate

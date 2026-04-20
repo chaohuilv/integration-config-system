@@ -234,6 +234,17 @@
             }
             authInfoHtml += '</div>';
 
+            // 构建版本信息 HTML
+            let versionHtml = '<div class="detail-section"><h3>📌 版本管理</h3>';
+            versionHtml += '<div class="detail-row"><span class="detail-label">当前版本</span><span id="detailVersionTag">-</span></div>';
+            versionHtml += '<div class="detail-row"><span class="detail-label">基础编码</span><span><code>' + utils.escapeHtml(d.baseCode || d.code || '-') + '</code></span></div>';
+            versionHtml += '<div class="detail-row"><span class="detail-label">版本数量</span><span>' + (d.versionCount || 1) + ' 个版本</span></div>';
+            if (d.otherVersions && d.otherVersions.length > 0) {
+                versionHtml += '<div class="detail-row"><span class="detail-label">其他版本</span><span id="detailOtherVersions">-</span></div>';
+            }
+            versionHtml += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;" id="versionActions"></div>';
+            versionHtml += '</div>';
+
             // 渲染详情内容
             const html = `
                 <div class="detail-scroll">
@@ -262,6 +273,7 @@
                             <div class="detail-row"><span class="detail-label">请求体</span><pre class="detail-json">${utils.escapeHtml(d.requestBody || '-')}</pre></div>
                         </div>
                         ${authInfoHtml}
+                        ${versionHtml}
                     </div>
 
                     <div class="detail-section" style="margin-top:24px;">
@@ -276,6 +288,32 @@
 
             $('#body').html(html);
 
+            // 填充版本标签
+            const verTag = $('#detailVersionTag');
+            if (d.version) {
+                const isLatest = d.latestVersion;
+                const isDep = d.deprecated;
+                const cls = isDep ? 'version-deprecated' : (isLatest ? 'version-latest' : 'version-old');
+                verTag.html(`<span class="version-tag ${cls}">${d.version}${isLatest ? ' ★ 最新' : ''}${isDep ? ' ⛔ 废弃' : ''}</span>`);
+
+                // 其他版本
+                if (d.otherVersions && d.otherVersions.length > 0) {
+                    const otherHtml = d.otherVersions.map(v => {
+                        const cls2 = v.deprecated ? 'version-deprecated' : (v.latestVersion ? 'version-latest' : 'version-old');
+                        return `<span class="version-tag ${cls2}" style="cursor:pointer;" onclick="parent.loadPage('form','${v.id}')">${v.version}${v.latestVersion ? ' ★' : ''}${v.deprecated ? ' ⛔' : ''}</span>`;
+                    }).join(' ');
+                    $('#detailOtherVersions').html(otherHtml);
+                }
+
+                // 操作按钮
+                const actions = $('#versionActions');
+                actions.html(
+                    Permission.render('api:version', `<button class="btn btn-sm btn-default" onclick="detailCreateVersion()">➕ 新版本</button>`)
+                    + (d.latestVersion ? '' : Permission.render('api:version', `<button class="btn btn-sm btn-default" onclick="detailSetLatest()">⭐ 设为最新</button>`))
+                    + Permission.render('api:deprecate', `<button class="btn btn-sm ${d.deprecated ? 'btn-default' : 'btn-warning'}" onclick="detailToggleDeprecate()">${d.deprecated ? '↩ 恢复' : '⛔ 废弃'}</button>`)
+                );
+            }
+
             // 绑定刷新日志按钮事件
             $('#btnRefreshLogs').on('click', function() {
                 loadLogs(1);
@@ -284,6 +322,62 @@
             // 初始加载日志
             loadLogs(1);
         }
+
+        // 创建新版本（详情页）
+        async function detailCreateVersion() {
+            const d = currentData;
+            if (!d) return;
+            const nextV = nextVer(d.version);
+            const newName = await utils.showPrompt(
+                '创建新版本',
+                `当前版本：${d.version || 'v1'}，将创建新版本 ${nextV}\n请输入新版本名称，直接确定使用默认值：`,
+                d.name + ' ' + nextV
+            );
+            if (newName === null) return;
+            try {
+                await API.config.createVersion(d.id, { name: newName });
+                utils.toast('新版本创建成功', 'success');
+                load();
+            } catch (err) { utils.toast(err.message, 'error'); }
+        }
+
+        // 设为最新
+        async function detailSetLatest() {
+            if (!currentId) return;
+            const ok = await utils.showConfirm('设为最新', '确定将此版本设为最新推荐版本？', '⭐');
+            if (!ok) return;
+            try {
+                await API.config.setLatest(currentId);
+                utils.toast('已设为最新版本', 'success');
+                load();
+            } catch (err) { utils.toast(err.message, 'error'); }
+        }
+
+        // 切换废弃状态
+        async function detailToggleDeprecate() {
+            if (!currentId) return;
+            const d = currentData;
+            const msg = d.deprecated ? '确定恢复此版本？' : '废弃后接口仍可调用，但会返回警告。确定废弃？';
+            const ok = await utils.showConfirm(d.deprecated ? '恢复版本' : '废弃版本', msg, d.deprecated ? '↩' : '⛔', !d.deprecated);
+            if (!ok) return;
+            try {
+                await API.config.toggleDeprecated(currentId);
+                utils.toast('操作成功', 'success');
+                load();
+            } catch (err) { utils.toast(err.message, 'error'); }
+        }
+
+        function nextVer(current) {
+            if (!current) return 'v2';
+            const m = current.match(/^v(\d+)$/);
+            if (m) return 'v' + (parseInt(m[1]) + 1);
+            return current + '_v2';
+        }
+
+        // 暴露给全局
+        window.detailCreateVersion = detailCreateVersion;
+        window.detailSetLatest = detailSetLatest;
+        window.detailToggleDeprecate = detailToggleDeprecate;
 
         // 加载日志列表
         async function loadLogs(page) {

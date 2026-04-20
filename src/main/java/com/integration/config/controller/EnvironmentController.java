@@ -1,6 +1,7 @@
 package com.integration.config.controller;
 
 import com.integration.config.annotation.AuditLog;
+import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.EnvironmentDTO;
 import com.integration.config.service.EnvironmentService;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class EnvironmentController {
      * 创建环境配置
      */
     @PostMapping
+    @RequirePermission("env:add")
     @AuditLog(operateType = "CREATE", module = "ENVIRONMENT", description = "'创建环境: ' + #dto.systemName + '/' + #dto.envName", targetType = "ENVIRONMENT", recordParams = true)
     public ResponseEntity<Map<String, Object>> create(@Valid @RequestBody EnvironmentDTO dto) {
         try {
@@ -44,6 +46,7 @@ public class EnvironmentController {
      * 更新环境配置
      */
     @PutMapping("/{id}")
+    @RequirePermission("env:edit")
     @AuditLog(operateType = "UPDATE", module = "ENVIRONMENT", description = "'更新环境: ' + #dto.systemName + '/' + #dto.envName", targetType = "ENVIRONMENT", targetId = "#id", recordParams = true)
     public ResponseEntity<Map<String, Object>> update(@PathVariable Long id, @Valid @RequestBody EnvironmentDTO dto) {
         try {
@@ -60,6 +63,7 @@ public class EnvironmentController {
      * 删除环境配置
      */
     @DeleteMapping("/{id}")
+    @RequirePermission("env:delete")
     @AuditLog(operateType = "DELETE", module = "ENVIRONMENT", description = "'删除环境ID: ' + #id", targetType = "ENVIRONMENT", targetId = "#id", recordParams = true)
     public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
         try {
@@ -76,6 +80,7 @@ public class EnvironmentController {
      * 根据ID获取环境配置
      */
     @GetMapping("/{id}")
+    @RequirePermission("env:detail")
     @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询环境详情ID: ' + #id", targetType = "ENVIRONMENT", targetId = "#id")
     public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
         try {
@@ -92,6 +97,7 @@ public class EnvironmentController {
      * 分页查询环境配置
      */
     @GetMapping("/list")
+    @RequirePermission("env:view")
     @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询环境列表'", recordResult = false)
     public ResponseEntity<Map<String, Object>> list(
             @RequestParam(required = false) String systemName,
@@ -118,6 +124,7 @@ public class EnvironmentController {
      * 获取所有系统名称列表（去重，用于接口配置分组下拉）
      */
     @GetMapping("/systems")
+    @RequirePermission("env:view")
     @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询系统名称列表'", recordResult = false)
     public ResponseEntity<Map<String, Object>> getAllSystems() {
         try {
@@ -132,6 +139,7 @@ public class EnvironmentController {
      * 获取指定系统下的所有环境
      */
     @GetMapping("/by-system/{systemName}")
+    @RequirePermission("env:view")
     @AuditLog(operateType = "QUERY", module = "ENVIRONMENT", description = "'查询系统环境: ' + #systemName", targetId = "#systemName")
     public ResponseEntity<Map<String, Object>> getBySystem(@PathVariable String systemName) {
         try {

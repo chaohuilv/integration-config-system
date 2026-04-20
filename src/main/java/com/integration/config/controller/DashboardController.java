@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.RequirePermission;
 import com.integration.config.enums.Status;
 import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.config.EnvironmentRepository;
@@ -43,6 +44,7 @@ public class DashboardController {
      * 总览数据（卡片）
      */
     @GetMapping("/overview")
+    @RequirePermission("dashboard:view")
     public Result<Map<String, Object>> getOverview() {
         Map<String, Object> data = new LinkedHashMap<>();
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -89,6 +91,7 @@ public class DashboardController {
      * 调用趋势（24小时）
      */
     @GetMapping("/invoke-trend")
+    @RequirePermission("dashboard:view")
     public Result<List<Map<String, Object>>> getInvokeTrend(@RequestParam(defaultValue = "24") Integer hours) {
         LocalDateTime start = LocalDateTime.now().minusHours(hours);
         List<Object[]> rows = invokeLogRepository.countHourlyTrend(start);
@@ -108,6 +111,7 @@ public class DashboardController {
      * 接口调用排行
      */
     @GetMapping("/top-apis")
+    @RequirePermission("dashboard:view")
     public Result<List<Map<String, Object>>> getTopApis(@RequestParam(defaultValue = "10") Integer limit) {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         List<Object[]> rows = invokeLogRepository.topApisByCalls(start);
@@ -130,6 +134,7 @@ public class DashboardController {
      * 审计活动分布
      */
     @GetMapping("/audit-stats")
+    @RequirePermission("dashboard:view")
     public Result<Map<String, Object>> getAuditStats() {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         Map<String, Object> data = new LinkedHashMap<>();
@@ -175,6 +180,7 @@ public class DashboardController {
      * 最近活动流
      */
     @GetMapping("/recent-activity")
+    @RequirePermission("dashboard:view")
     public Result<List<Map<String, Object>>> getRecentActivity() {
         List<com.integration.config.entity.log.AuditSysLog> logs = auditLogRepository.findTop20ByOrderByOperateTimeDesc();
         List<Map<String, Object>> result = new ArrayList<>();
@@ -198,6 +204,7 @@ public class DashboardController {
      * 系统健康状态
      */
     @GetMapping("/health")
+    @RequirePermission("dashboard:view")
     public Result<Map<String, Object>> getHealth() {
         Map<String, Object> data = new LinkedHashMap<>();
 
@@ -218,6 +225,7 @@ public class DashboardController {
      * 系统硬件资源（CPU / 内存 / JVM）
      */
     @GetMapping("/system-resources")
+    @RequirePermission("dashboard:view")
     public Result<Map<String, Object>> getSystemResources() {
         Map<String, Object> data = new LinkedHashMap<>();
 

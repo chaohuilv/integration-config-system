@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 接口配置详情 DTO（响应）
@@ -38,6 +39,17 @@ public class ApiConfigDetailDTO {
     private Integer cacheTime;
     private Status status;
     private String groupName;
+
+    // ========== 版本控制 ==========
+    private String version;
+    private String baseCode;
+    private Boolean latestVersion;
+    private Boolean deprecated;
+    /** 同 baseCode 下的所有版本数量 */
+    private Integer versionCount;
+    /** 同 baseCode 下的其他版本列表（简要） */
+    private List<VersionSummary> otherVersions;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdByName;
@@ -93,6 +105,25 @@ public class ApiConfigDetailDTO {
                 .tokenParamName(entity.getTokenParamName())
                 .tokenPrefix(entity.getTokenPrefix())
                 .tokenCacheTime(entity.getTokenCacheTime())
+                .version(entity.getVersion())
+                .baseCode(entity.getBaseCode())
+                .latestVersion(entity.getLatestVersion())
+                .deprecated(entity.getDeprecated())
                 .build();
+    }
+
+    /** 版本摘要（用于详情页展示其他版本） */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VersionSummary {
+        private Long id;
+        private String code;
+        private String version;
+        private Boolean latestVersion;
+        private Boolean deprecated;
+        private Status status;
+        private String url;
     }
 }

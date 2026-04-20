@@ -3,44 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>接口配置 - Curl导入</title>
+    <title>导入接口</title>
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components.css">
     <style>
-        /* 导入页专属样式 */
-        .import-scroll {
+        .import-scroll { flex: 1; overflow-y: auto; min-height: 0; padding: 24px 28px; }
+        .import-wrap { max-width: 960px; }
+
+        /* 选项卡 */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .tab-btn {
             flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            padding: 24px 28px;
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all .2s;
         }
+        .tab-btn:hover { background: rgba(255,255,255,0.5); }
+        .tab-btn.active { background: white; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
 
-        .import-wrap {
-            max-width: 900px;
-        }
-
+        /* 卡片 */
         .import-card {
             background: white;
             border-radius: 12px;
             border: 1px solid #f0f0f0;
-            padding: 28px;
-            margin-bottom: 20px;
+            padding: 24px 28px;
+            margin-bottom: 16px;
         }
-
         .import-card h3 {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: #333;
-            margin: 0 0 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin: 0 0 14px;
         }
 
-        .curl-textarea {
+        /* 输入区 */
+        .curl-textarea, .json-textarea {
             width: 100%;
             min-height: 160px;
-            padding: 16px;
+            padding: 14px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-family: 'Monaco', 'Menlo', monospace;
@@ -48,137 +61,156 @@
             resize: vertical;
             background: #fafafa;
             box-sizing: border-box;
-            transition: all .2s;
+            transition: border-color .2s;
             line-height: 1.6;
         }
-
-        .curl-textarea:focus {
+        .curl-textarea:focus, .json-textarea:focus {
             outline: none;
             border-color: #667eea;
             background: white;
             box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
         }
+        .curl-textarea::placeholder, .json-textarea::placeholder { color: #bbb; }
 
-        .curl-textarea::placeholder {
-            color: #bbb;
-        }
-
-        .example-box {
+        /* 提示框 */
+        .hint-box {
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 14px 18px;
-            margin-top: 12px;
+            padding: 12px 16px;
+            margin-top: 10px;
             font-size: 13px;
             color: #666;
+            line-height: 1.8;
+        }
+        .hint-box strong { color: #333; }
+        .hint-box code {
+            background: #f0f0f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 12px;
         }
 
-        .example-box strong {
-            color: #333;
-        }
-
+        /* 操作按钮 */
         .import-actions {
-            margin-top: 16px;
+            margin-top: 14px;
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
+        /* 预览结果 */
         .parse-result {
             background: white;
             border-radius: 12px;
             border: 1px solid #f0f0f0;
             padding: 20px 24px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
-
         .parse-result h3 {
             font-size: 15px;
             font-weight: 600;
             color: #333;
-            margin: 0 0 16px;
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-
-        .result-grid {
+        .result-summary {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
         }
-
         .result-item {
             background: #f8f9fa;
             border-radius: 8px;
-            padding: 12px 16px;
+            padding: 10px 14px;
         }
-
-        .result-item .label {
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 4px;
-        }
-
-        .result-item .value {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            word-break: break-all;
-        }
-
+        .result-item .label { font-size: 12px; color: #999; margin-bottom: 3px; }
+        .result-item .value { font-size: 14px; font-weight: 600; color: #333; word-break: break-all; }
         .result-item .value.method-get { color: #52c41a; }
         .result-item .value.method-post { color: #1890ff; }
         .result-item .value.method-put { color: #fa8c16; }
         .result-item .value.method-delete { color: #ff4d4f; }
         .result-item .value.method-patch { color: #722ed1; }
 
-        .result-detail {
-            background: #f8f9fa;
+        /* 接口列表（预览+勾选） */
+        .api-list { max-height: 400px; overflow-y: auto; }
+        .api-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+        .api-row:last-child { border-bottom: none; }
+        .api-row:hover { background: #fafafa; }
+        .api-row input[type=checkbox] { flex-shrink: 0; cursor: pointer; }
+        .api-row .method-badge {
+            display: inline-block;
+            min-width: 52px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .api-row .api-info { flex: 1; min-width: 0; }
+        .api-row .api-name { font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .api-row .api-code { font-size: 12px; color: #999; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .api-row .api-url { font-size: 11px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* 批量操作工具栏 */
+        .batch-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #f0f7ff;
             border-radius: 8px;
-            padding: 14px 18px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-size: 13px;
         }
 
-        .result-detail .label {
-            color: #999;
-            margin-bottom: 6px;
-            font-size: 12px;
-        }
-
-        .result-detail pre {
-            margin: 0;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            color: #333;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 120px;
-            overflow: auto;
-            background: white;
-            padding: 10px 14px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-        }
-
+        /* 认证标签 */
         .auth-tag {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 3px 10px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
+            flex-shrink: 0;
         }
-
         .auth-none { background: #f5f5f5; color: #999; }
-        .auth-api_key { background: #e6f7e6; color: #52c41a; }
         .auth-bearer { background: #e6f7ff; color: #1890ff; }
         .auth-basic { background: #fff7e6; color: #fa8c16; }
-        .auth-dynamic { background: #f9f0ff; color: #722ed1; }
+        .auth-api_key { background: #e6f7e6; color: #52c41a; }
+
+        /* 导出卡片 */
+        .export-form { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .export-form .form-group { margin: 0; }
+        .export-form input { width: 100%; box-sizing: border-box; }
+
+        /* 错误/成功提示 */
+        .parse-error { padding: 14px 18px; border-radius: 8px; font-size: 13px; border: 1px solid; }
+        .parse-error.error { background: #fff2f0; border-color: #ffccc7; color: #cf1322; }
+        .parse-error.success { background: #f6ffed; border-color: #b7eb8f; color: #389e0d; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .result-summary { grid-template-columns: repeat(2, 1fr); }
+            .export-form { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <div class="view-header">
         <div class="view-title">
-            <h2>📥 Curl 一键导入</h2>
-            <p class="view-sub">粘贴 curl 命令，自动解析并生成接口配置</p>
+            <h2>📥 导入接口</h2>
+            <p class="view-sub">支持 curl / OpenAPI / Swagger 多格式导入，以及 OpenAPI 3.0 导出</p>
         </div>
         <div class="view-actions">
             <button class="btn btn-ghost" onclick="parent.loadPage('list')">← 返回列表</button>
@@ -188,39 +220,103 @@
     <div class="view-body">
         <div class="import-scroll">
             <div class="import-wrap">
-                <!-- 输入区 -->
-                <div class="import-card">
-                    <h3>📋 粘贴 curl 命令</h3>
-                    <textarea
-                        id="curlInput"
-                        class="curl-textarea"
-                        placeholder="粘贴完整的 curl 命令，例如：
+
+                <!-- 选项卡 -->
+                <div class="tab-bar">
+                    <button class="tab-btn active" data-tab="curl">📋 Curl 导入</button>
+                    <button class="tab-btn" data-tab="openapi">📄 OpenAPI / Swagger 导入</button>
+                    <button class="tab-btn" data-tab="export">📤 导出 OpenAPI 3.0</button>
+                </div>
+
+                <!-- ===== Curl 选项卡 ===== -->
+                <div id="tab-curl">
+                    <div class="import-card">
+                        <h3>📋 粘贴 curl 命令</h3>
+                        <textarea id="curlInput" class="curl-textarea" placeholder="粘贴完整的 curl 命令，例如：
 
 curl -X POST 'https://api.example.com/users' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer your-token-here' \
   -d '{&quot;name&quot;: &quot;张三&quot;, &quot;age&quot;: 25}'"></textarea>
-
-                    <div class="example-box">
-                        <strong>💡 支持的格式：</strong><br>
-                        • 支持单行和多行 curl 命令<br>
-                        • 自动识别 GET/POST/PUT/DELETE/PATCH 方法<br>
-                        • 自动识别 Authorization Bearer Token / Basic Auth / API Key<br>
-                        • 自动提取请求头和请求体
+                        <div class="hint-box">
+                            <strong>💡 支持的格式：</strong>
+                            支持单行和多行 curl 命令，自动识别 GET/POST/PUT/DELETE/PATCH 方法，Bearer Token / Basic Auth / API Key 认证方式
+                        </div>
+                        <div class="import-actions">
+                            <button class="btn btn-primary" id="btnParseCurl">🔍 解析预览</button>
+                            <button class="btn btn-default" id="btnClearCurl">🗑️ 清空</button>
+                        </div>
                     </div>
 
-                    <div class="import-actions">
-                        <button class="btn btn-primary" id="btnParse">
-                            🔍 解析预览
-                        </button>
-                        <button class="btn btn-default" id="btnClear">
-                            🗑️ 清空
-                        </button>
-                    </div>
+                    <!-- curl 解析结果 -->
+                    <div id="curlResult" style="display:none;"></div>
                 </div>
 
-                <!-- 解析结果区 -->
-                <div id="parseResultArea" style="display:none;"></div>
+                <!-- ===== OpenAPI 选项卡 ===== -->
+                <div id="tab-openapi" style="display:none;">
+                    <!-- 粘贴 JSON -->
+                    <div class="import-card">
+                        <h3>📄 粘贴 OpenAPI / Swagger JSON</h3>
+                        <textarea id="openapiInput" class="json-textarea" placeholder="粘贴完整的 OpenAPI 3.0 或 Swagger 2.0 JSON，例如：
+
+{
+  &quot;openapi&quot;: &quot;3.0.3&quot;,
+  &quot;info&quot;: { &quot;title&quot;: &quot;My API&quot;, &quot;version&quot;: &quot;1.0.0&quot; },
+  &quot;servers&quot;: [{ &quot;url&quot;: &quot;https://api.example.com&quot; }],
+  &quot;paths&quot;: {
+    &quot;/users&quot;: {
+      &quot;get&quot;: { &quot;summary&quot;: &quot;获取用户列表&quot;, &quot;operationId&quot;: &quot;getUsers&quot; }
+    }
+  }
+}"></textarea>
+                        <div class="hint-box">
+                            <strong>💡 支持的格式：</strong>
+                            OpenAPI 3.0 JSON 和 Swagger 2.0 JSON。支持 <code>operationId</code> 作为接口编码，<code>summary</code> 作为名称，<code>tags[0]</code> 作为分组，query 参数自动解析为 JSON
+                        </div>
+                        <div class="import-actions">
+                            <button class="btn btn-primary" id="btnParseOpenApi">🔍 解析预览</button>
+                            <label class="btn btn-default" style="cursor:pointer;">
+                                📁 上传 JSON 文件
+                                <input type="file" id="openapiFile" accept=".json" style="display:none;">
+                            </label>
+                            <button class="btn btn-ghost" id="btnClearOpenApi">🗑️ 清空</button>
+                        </div>
+                    </div>
+
+                    <!-- OpenAPI 解析结果（预览+勾选） -->
+                    <div id="openapiResult" style="display:none;"></div>
+                </div>
+
+                <!-- ===== 导出选项卡 ===== -->
+                <div id="tab-export" style="display:none;">
+                    <div class="import-card">
+                        <h3>📤 导出为 OpenAPI 3.0 JSON</h3>
+                        <div class="export-form">
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666;margin-bottom:4px;display:block;">标题</label>
+                                <input type="text" id="expTitle" placeholder="如：用户服务 API" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666;margin-bottom:4px;display:block;">版本号</label>
+                                <input type="text" id="expVersion" placeholder="如：1.0.0" class="form-input" value="1.0.0">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:13px;color:#666;margin-bottom:4px;display:block;">服务器地址</label>
+                                <input type="text" id="expServerUrl" placeholder="如：https://api.example.com" class="form-input">
+                            </div>
+                        </div>
+                        <div class="hint-box">
+                            <strong>💡 导出说明：</strong>
+                            导出全部 <b>启用状态</b> 的接口，生成标准 OpenAPI 3.0.3 JSON 文件，可直接导入 Apifox、Postman、Apipost 等工具
+                        </div>
+                        <div class="import-actions">
+                            <button class="btn btn-primary" id="btnExportAll">📤 导出全部</button>
+                        </div>
+                    </div>
+
+                    <div id="exportResult" style="display:none;"></div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -236,329 +332,350 @@ curl -X POST 'https://api.example.com/users' \
 
     <script>
     $(function() {
-        // 页面访问权限校验
         Permission.init({ guard: true }).then(() => {
             if (Permission.isDenied()) return;
-            initImport();
+            init();
         });
 
-        function initImport() {
-        // 存储解析结果
-        let parsedData = null;
+        // 当前选中的接口（OpenAPI 解析后）
+        let parsedApis = [];
+        let selectedSet = new Set();
 
-        // 通知主壳高亮侧边栏
-        if (parent.setNav) parent.setNav('import');
+        function init() {
+            if (parent.setNav) parent.setNav('import');
 
-        // 清空输入
-        function clearInput() {
-            $('#curlInput').val('');
-            $('#parseResultArea').hide().html('');
-            parsedData = null;
+            // 选项卡切换
+            $('.tab-btn').on('click', function() {
+                $('.tab-btn').removeClass('active');
+                $(this).addClass('active');
+                const tab = $(this).data('tab');
+                $('#tab-curl, #tab-openapi, #tab-export').hide();
+                $('#tab-' + tab).show();
+            });
+
+            // ---- Curl 导入 ----
+            $('#btnParseCurl').on('click', parseAndPreviewCurl);
+            $('#btnClearCurl').on('click', () => {
+                $('#curlInput').val('');
+                $('#curlResult').hide().html('');
+            });
+            $('#curlInput').on('paste', () => setTimeout(parseAndPreviewCurl, 100));
+
+            // ---- OpenAPI 导入 ----
+            $('#btnParseOpenApi').on('click', parseAndPreviewOpenApi);
+            $('#btnClearOpenApi').on('click', () => {
+                $('#openapiInput').val('');
+                $('#openapiResult').hide().html('');
+                parsedApis = [];
+                selectedSet.clear();
+            });
+            // 文件上传
+            $('#openapiFile').on('change', function() {
+                const file = this.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#openapiInput').val(e.target.result);
+                    parseAndPreviewOpenApi();
+                };
+                reader.readAsText(file);
+            });
+
+            // ---- 导出 ----
+            $('#btnExportAll').on('click', doExportAll);
         }
 
-        // 解析 curl 命令（本地解析）
+        // ===================== Curl 解析 =====================
+        function parseAndPreviewCurl() {
+            const curl = $('#curlInput').val().trim();
+            if (!curl) { utils.toast('请输入 curl 命令', 'warning'); return; }
+
+            const result = parseCurlLocal(curl);
+            if (!result.success) {
+                $('#curlResult').html('<div class="parse-error error">❌ ' + utils.escapeHtml(result.message) + '</div>').show();
+                return;
+            }
+
+            const authClass = 'auth-' + (result.authType || 'none').toLowerCase();
+            const authLabels = { 'NONE':'🔓 无认证', 'API_KEY':'🔑 API Key', 'BEARER':'🎫 Bearer Token', 'BASIC':'🔐 Basic Auth' };
+            const methodClass = 'method-' + (result.method||'get').toLowerCase();
+            const authLabel = authLabels[result.authType] || '🔓 无认证';
+
+            let headersDisplay = '';
+            if (result.headers && Object.keys(result.headers).length > 0) {
+                headersDisplay = Object.keys(result.headers).map(k => k + ': ' + result.headers[k]).join('\n');
+            }
+
+            const html = `
+                <div class="parse-result">
+                    <h3>📊 解析结果预览</h3>
+                    <div class="result-summary">
+                        <div class="result-item"><div class="label">接口编码</div><div class="value">${utils.escapeHtml(result.code)}</div></div>
+                        <div class="result-item"><div class="label">接口名称</div><div class="value">${utils.escapeHtml(result.name)}</div></div>
+                        <div class="result-item"><div class="label">HTTP 方法</div><div class="value ${methodClass}">${result.method}</div></div>
+                        <div class="result-item"><div class="label">认证方式</div><div class="value"><span class="auth-tag ${authClass}">${authLabel}</span></div></div>
+                    </div>
+                    <div class="result-item" style="margin-bottom:12px;">
+                        <div class="label">目标 URL</div>
+                        <div style="font-family:monospace;font-size:13px;word-break:break-all;background:#fafafa;padding:8px 12px;border-radius:6px;">${utils.escapeHtml(result.url)}</div>
+                    </div>
+                    ${headersDisplay ? '<div class="result-item" style="margin-bottom:12px;"><div class="label">请求头</div><pre style="font-family:monospace;font-size:12px;background:#fafafa;padding:8px 12px;border-radius:6px;margin:4px 0 0;">' + utils.escapeHtml(headersDisplay) + '</pre></div>' : ''}
+                    ${result.body ? '<div class="result-item" style="margin-bottom:12px;"><div class="label">请求体</div><pre style="font-family:monospace;font-size:12px;background:#fafafa;padding:8px 12px;border-radius:6px;margin:4px 0 0;">' + utils.escapeHtml(result.body) + '</pre></div>' : ''}
+                    <div class="import-actions">
+                        <button class="btn btn-primary" id="btnImportCurl">✅ 确认导入</button>
+                        <button class="btn btn-default" onclick="$('#btnParseCurl').click()">🔄 重新解析</button>
+                    </div>
+                </div>`;
+            $('#curlResult').html(html).show();
+
+            $('#btnImportCurl').on('click', () => doImportCurl(result));
+        }
+
+        function doImportCurl(parsed) {
+            const btn = $('#btnImportCurl');
+            btn.prop('disabled', true).text('⏳ 导入中...');
+            API.config.importCurl({ curl: $('#curlInput').val().trim() })
+                .then(json => {
+                    utils.toast('导入成功！接口编码：' + json.data, 'success');
+                    setTimeout(() => parent.loadPage('list'), 1200);
+                })
+                .catch(err => utils.toast('导入失败：' + err.message, 'error'))
+                .finally(() => btn.prop('disabled', false).text('✅ 确认导入'));
+        }
+
+        // ===================== OpenAPI 解析 =====================
+        function parseAndPreviewOpenApi() {
+            const json = $('#openapiInput').val().trim();
+            if (!json) { utils.toast('请输入 OpenAPI JSON', 'warning'); return; }
+
+            const btn = $('#btnParseOpenApi');
+            btn.prop('disabled', true).text('⏳ 解析中...');
+
+            API.openapi.parse(json)
+                .then(json2 => {
+                    if (json2.code !== 200) {
+                        $('#openapiResult').html('<div class="parse-error error">❌ ' + utils.escapeHtml(json2.message) + '</div>').show();
+                        return;
+                    }
+                    parsedApis = json2.data || [];
+                    selectedSet = new Set(parsedApis.map((_, i) => i));
+                    renderOpenApiPreview(parsedApis, selectedSet);
+                })
+                .catch(err => $('#openapiResult').html('<div class="parse-error error">❌ ' + utils.escapeHtml(err.message) + '</div>').show())
+                .finally(() => btn.prop('disabled', false).text('🔍 解析预览'));
+        }
+
+        function renderOpenApiPreview(apis, selected) {
+            const count = selected.size;
+            const html = `
+                <div class="parse-result">
+                    <h3>
+                        📊 解析结果
+                        <span style="font-size:13px;color:#999;font-weight:400;">共 ${apis.length} 个接口，已选 ${count} 个</span>
+                    </h3>
+                    <div class="batch-toolbar">
+                        <input type="checkbox" id="checkAll" ${count === apis.length ? 'checked' : ''}>
+                        <label for="checkAll" style="cursor:pointer;">全选 / 取消</label>
+                        <span style="flex:1"></span>
+                        <span style="color:#667eea;font-weight:600;">${count} 个接口将被导入</span>
+                        <button class="btn btn-primary btn-sm" id="btnImportSelected" ${count === 0 ? 'disabled' : ''}>✅ 确认导入</button>
+                    </div>
+                    <div class="api-list">
+                        ${apis.map((a, i) => {
+                            const authClass = 'auth-' + (a.authType || 'none').toLowerCase();
+                            const authLabels = { 'NONE':'无认证', 'API_KEY':'API Key', 'BEARER':'Bearer', 'BASIC':'Basic' };
+                            const methodClass = 'method-' + (a.method||'get').toLowerCase();
+                            const checked = selected.has(i) ? 'checked' : '';
+                            return `
+                            <div class="api-row">
+                                <input type="checkbox" data-idx="${i}" ${checked}>
+                                <span class="method-badge method-${methodClass.replace('method-','')}">${a.method || 'GET'}</span>
+                                <div class="api-info">
+                                    <div class="api-name">${utils.escapeHtml(a.name || '-')}</div>
+                                    <div class="api-code">${utils.escapeHtml(a.code || '-')}</div>
+                                </div>
+                                <span class="auth-tag ${authClass}">${authLabels[a.authType] || '无认证'}</span>
+                                <span style="color:#999;font-size:12px;">${utils.escapeHtml(a.groupName || '')}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            $('#openapiResult').html(html).show();
+
+            // 全选
+            $('#checkAll').on('change', function() {
+                if (this.checked) {
+                    apis.forEach((_, i) => selected.add(i));
+                } else {
+                    selected.clear();
+                }
+                renderOpenApiPreview(apis, selected);
+            });
+
+            // 单选
+            $('.api-row input[type=checkbox]').on('change', function() {
+                const idx = parseInt($(this).data('idx'));
+                if (this.checked) selected.add(idx);
+                else selected.delete(idx);
+                renderOpenApiPreview(apis, selected);
+            });
+
+            // 导入
+            $('#btnImportSelected').on('click', () => doImportSelected(apis, selected));
+        }
+
+        function doImportSelected(apis, selected) {
+            const toImport = Array.from(selected).map(i => apis[i]);
+            const btn = $('#btnImportSelected');
+            btn.prop('disabled', true).text('⏳ 导入中...');
+
+            API.openapi.batchImport(toImport)
+                .then(json => {
+                    if (json.code !== 200) { utils.toast(json.message, 'error'); return; }
+                    const d = json.data;
+                    utils.toast(`导入完成：成功 ${d.success} 个${d.skipped > 0 ? '，跳过 ' + d.skipped + ' 个（编码冲突）' : ''}`, 'success');
+                    setTimeout(() => parent.loadPage('list'), 1500);
+                })
+                .catch(err => utils.toast('导入失败：' + err.message, 'error'))
+                .finally(() => btn.prop('disabled', false).text('✅ 确认导入'));
+        }
+
+        // ===================== 导出 =====================
+        function doExportAll() {
+            const params = {};
+            const title = $('#expTitle').val().trim();
+            const version = $('#expVersion').val().trim();
+            const serverUrl = $('#expServerUrl').val().trim();
+            if (title) params.title = title;
+            if (version) params.version = version;
+            if (serverUrl) params.serverUrl = serverUrl;
+
+            const btn = $('#btnExportAll');
+            btn.prop('disabled', true).text('⏳ 导出中...');
+
+            API.openapi.exportAll(params)
+                .then(json => {
+                    if (json.code !== 200) { utils.toast(json.message, 'error'); return; }
+                    const exportJson = json.data.json || json.data;
+                    downloadJson(exportJson, (title || 'openapi-export') + '.json');
+                    $('#exportResult').html(`<div class="parse-error success">✅ 导出成功！已下载 <b>${(exportJson.length / 1024).toFixed(1)} KB</b> 的 OpenAPI 3.0 JSON 文件</div>`).show();
+                })
+                .catch(err => utils.toast('导出失败：' + err.message, 'error'))
+                .finally(() => btn.prop('disabled', false).text('📤 导出全部'));
+        }
+
+        function downloadJson(content, filename) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ===================== Curl 本地解析工具 =====================
         function parseCurlLocal(curl) {
-            if (!curl) return { success: false, message: 'curl command cannot be empty' };
-
+            if (!curl) return { success: false, message: 'curl 命令不能为空' };
             try {
-                // 预处理：合并多行
                 curl = curl.trim().replace(/\\\s*/g, ' ').replace(/\s+/g, ' ');
-
-                // 1. 提取 URL
                 let url = null;
                 const urlMatch = curl.match(/['"](https?:\/\/[^'"]*?)['"]/);
-                if (urlMatch) {
-                    url = urlMatch[1];
-                } else {
-                    const u2 = curl.match(/(https?:\/\/\S+)/);
-                    if (u2) {
-                        url = u2[1].replace(/['">]+$/, '');
-                    }
-                }
-                if (!url || !url.match(/^https?:\/\//)) {
-                    return { success: false, message: 'URL not found, make sure the curl command contains http:// or https://' };
-                }
+                if (urlMatch) url = urlMatch[1];
+                else { const u2 = curl.match(/(https?:\/\/\S+)/); if (u2) url = u2[1].replace(/['">]+$/, ''); }
+                if (!url || !url.match(/^https?:\/\//)) return { success: false, message: '未找到 URL，请确保 curl 命令包含 http:// 或 https://' };
 
-                // 1.5 从 URL 中分离 query params
-                let cleanUrl = url;
-                let requestParams = null;
+                let cleanUrl = url, requestParams = null;
                 if (url.indexOf('?') >= 0) {
-                    const qi = url.indexOf('?');
-                    cleanUrl = url.substring(0, qi);
-                    const queryString = url.substring(qi + 1);
-                    requestParams = parseQueryStringToJson(queryString);
+                    const qi = url.indexOf('?'); cleanUrl = url.substring(0, qi);
+                    requestParams = parseQueryString(url.substring(qi + 1));
                 }
 
-                // 2. 提取方法
                 let method = 'GET';
                 const methodMatch = curl.match(/-X\s+(\w+)/i);
-                if (methodMatch) {
-                    method = methodMatch[1].toUpperCase();
-                } else if (curl.match(/-d\s| --data| --data-raw/i)) {
-                    method = 'POST';
-                }
+                if (methodMatch) method = methodMatch[1].toUpperCase();
+                else if (curl.match(/-d\s|--data|--data-raw/i)) method = 'POST';
 
-                // 3. 提取请求头
                 const headers = {};
-                const headerMatches = curl.match(/-H\s*['"]([^'"]*?)['"]/gi) || [];
-                headerMatches.forEach(h => {
+                (curl.match(/-H\s*['"]([^'"]*?)['"]/gi) || []).forEach(h => {
                     const m = h.match(/-H\s+['"](.+?):\s*(.*?)['"]$/i);
-                    if (m) {
-                        headers[m[1].trim()] = m[2].trim();
-                    }
+                    if (m) headers[m[1].trim()] = m[2].trim();
                 });
+                ['Host','Content-Length','Connection','Keep-Alive','Accept-Encoding','Origin'].forEach(k => delete headers[k]);
 
-                // 4. 提取请求体
                 let body = null;
                 const bodyMatch = curl.match(/-d\s+['"]([^'"]*?)['"]/);
                 if (bodyMatch) body = bodyMatch[1];
 
-                // 5. 清理系统 header
-                delete headers['Host'];
-                delete headers['Content-Length'];
-                delete headers['Connection'];
-                delete headers['Keep-Alive'];
-                delete headers['Accept-Encoding'];
-                delete headers['Origin'];
-
-                // 6. 识别认证
                 let authType = null, authParamName = null, authValue = null;
                 const auth = headers['Authorization'];
                 if (auth) {
-                    if (auth.toLowerCase().indexOf('bearer ') === 0) {
-                        authType = 'BEARER';
-                    } else if (auth.toLowerCase().indexOf('basic ') === 0) {
-                        authType = 'BASIC';
-                    } else {
-                        authType = 'API_KEY';
-                    }
-                    authParamName = 'Authorization';
-                    authValue = auth;
+                    if (auth.toLowerCase().indexOf('bearer ') === 0) authType = 'BEARER';
+                    else if (auth.toLowerCase().indexOf('basic ') === 0) authType = 'BASIC';
+                    else authType = 'API_KEY';
+                    authParamName = 'Authorization'; authValue = auth;
                 }
-                if (!authType) {
-                    ['X-API-Key', 'Api-Key', 'apikey'].forEach(k => {
-                        if (headers[k] && !authType) {
-                            authType = 'API_KEY';
-                            authParamName = k;
-                            authValue = headers[k];
-                        }
-                    });
-                }
-
-                // 7-9. 生成编码、名称、分组
-                const code = generateCodeLocal(cleanUrl);
-                const name = generateNameLocal(cleanUrl);
-                const groupName = extractGroupLocal(cleanUrl);
+                if (!authType) ['X-API-Key','Api-Key'].forEach(k => { if (headers[k] && !authType) { authType='API_KEY'; authParamName=k; authValue=headers[k]; } });
 
                 return {
-                    success: true,
-                    url: cleanUrl,
-                    requestParams: requestParams,
-                    method: method,
-                    headers: headers,
-                    body: body,
-                    authType: authType,
-                    authParamName: authParamName,
-                    authValue: authValue,
-                    code: code,
-                    name: name,
-                    groupName: groupName
+                    success: true, url: cleanUrl, requestParams,
+                    method, headers, body, authType, authParamName, authValue,
+                    code: generateCode(cleanUrl), name: generateName(cleanUrl),
+                    groupName: extractGroup(cleanUrl)
                 };
-            } catch (e) {
-                return { success: false, message: 'parse failed: ' + e.message };
-            }
+            } catch (e) { return { success: false, message: '解析失败：' + e.message }; }
         }
 
-        // 将 query string 转为 JSON
-        function parseQueryStringToJson(queryString) {
-            if (!queryString) return null;
-            const pairs = queryString.split('&');
+        function parseQueryString(qs) {
+            if (!qs) return null;
             const obj = {};
-            pairs.forEach(pair => {
+            qs.split('&').forEach(pair => {
                 const eq = pair.indexOf('=');
                 if (eq <= 0) return;
-                const key = pair.substring(0, eq);
-                const value = eq < pair.length ? decodeURIComponent(pair.substring(eq + 1)) : '';
-                obj[key] = value;
+                obj[pair.substring(0, eq)] = eq < pair.length ? decodeURIComponent(pair.substring(eq + 1)) : '';
             });
             const keys = Object.keys(obj);
-            if (keys.length === 0) return null;
-            return JSON.stringify(obj, null, 2);
+            return keys.length ? JSON.stringify(obj, null, 2) : null;
         }
 
-        // 生成接口编码
-        function generateCodeLocal(url) {
+        function generateCode(url) {
             try {
                 let path = url.split('?')[0];
-                let idx = path.indexOf('://');
-                idx = path.indexOf('/', idx + 3);
+                let idx = path.indexOf('://'); idx = path.indexOf('/', idx + 3);
                 if (idx > 0) path = path.substring(idx + 1);
-                path = path.replace(/\.[a-zA-Z]+$/, '');
-                path = path.replace(/\{[^}]+\}/g, '-');
-                path = path.replace(/\/+/g, '-');
-                path = path.replace(/[^a-zA-Z0-9\/-]/g, '-');
-                path = path.replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
-                return path || 'api';
-            } catch (e) {
-                return 'api-' + Date.now().toString(36);
-            }
+                return path.replace(/\.[a-z]+$/,'').replace(/\{[^}]+\}/g,'-')
+                    .replace(/\/+/g,'-').replace(/[^a-zA-Z0-9\/-]/g,'-')
+                    .replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase() || 'api';
+            } catch (e) { return 'api-' + Date.now().toString(36); }
         }
 
-        // 生成接口名称
-        function generateNameLocal(url) {
+        function generateName(url) {
             try {
                 let path = url.split('?')[0];
-                let idx = path.indexOf('://');
-                idx = path.indexOf('/', idx + 3);
+                let idx = path.indexOf('://'); idx = path.indexOf('/', idx + 3);
                 if (idx > 0) path = path.substring(idx + 1);
                 const parts = path.split('/');
-                for (let i = parts.length - 1; i >= 0; i--) {
-                    let part = parts[i];
-                    if (!part || /^\d+$/.test(part) || /^-+$/.test(part)) continue;
-                    part = part.replace(/[^a-zA-Z0-9]/g, ' ').trim();
-                    if (part) {
-                        return part.charAt(0).toUpperCase() + part.slice(1);
-                    }
+                for (let i = parts.length-1; i >= 0; i--) {
+                    let p = parts[i];
+                    if (!p || /^\d+$/.test(p)) continue;
+                    p = p.replace(/[^a-zA-Z0-9]/g,' ').trim();
+                    if (p) return p.charAt(0).toUpperCase() + p.slice(1);
                 }
-                const di = url.indexOf('://') + 3;
-                const ei = url.indexOf('/', di);
-                const host = ei > di ? url.substring(di, ei) : url.substring(di);
-                return host.charAt(0).toUpperCase() + host.slice(1);
-            } catch (e) {
-                return 'API';
-            }
+                return url.substring(url.indexOf('://')+3).split('/')[0].split('.')[0];
+            } catch (e) { return 'API'; }
         }
 
-        // 提取分组
-        function extractGroupLocal(url) {
+        function extractGroup(url) {
             try {
                 let path = url.split('?')[0];
-                let idx = path.indexOf('://');
-                idx = path.indexOf('/', idx + 3);
+                let idx = path.indexOf('://'); idx = path.indexOf('/', idx + 3);
                 if (idx < 0) return 'Default';
-                const group = path.substring(idx + 1).split('/')[0];
-                if (!group) return 'Default';
-                return group.charAt(0).toUpperCase() + group.slice(1);
-            } catch (e) {
-                return 'Default';
-            }
+                const g = path.substring(idx+1).split('/')[0];
+                return g ? g.charAt(0).toUpperCase() + g.slice(1) : 'Default';
+            } catch (e) { return 'Default'; }
         }
-
-        // 解析并预览
-        function parseAndPreview() {
-            const curl = $('#curlInput').val().trim();
-            
-            if (!curl) {
-                utils.toast('请输入 curl 命令', 'warning');
-                return;
-            }
-
-            // 解析 curl 命令
-            parsedData = parseCurlLocal(curl);
-            
-            if (!parsedData.success) {
-                $('#parseResultArea').html(
-                    '<div class="parse-result" style="border-color:#ff4d4f;">' +
-                    '<h3 style="color:#ff4d4f;">❌ ' + utils.escapeHtml(parsedData.message) + '</h3>' +
-                    '</div>'
-                ).show();
-                return;
-            }
-
-            const authClass = 'auth-' + (parsedData.authType || 'none').toLowerCase();
-            const authLabels = {
-                'NONE': '🔓 无认证',
-                'API_KEY': '🔑 API Key',
-                'BEARER': '🎫 Bearer Token',
-                'BASIC': '🔐 Basic Auth',
-                'DYNAMIC': '🔄 动态Token'
-            };
-            const methodClass = 'method-' + (parsedData.method || 'get').toLowerCase();
-            const authLabel = authLabels[parsedData.authType] || '🔓 无认证';
-
-            // 格式化请求头
-            let headersDisplay = '';
-            if (parsedData.headers && Object.keys(parsedData.headers).length > 0) {
-                headersDisplay = Object.keys(parsedData.headers).map(k => {
-                    return k + ': ' + parsedData.headers[k];
-                }).join('\n');
-            }
-
-            // 请求参数 JSON 格式化
-            let paramsDisplay = '';
-            if (parsedData.requestParams) {
-                try {
-                    paramsDisplay = JSON.stringify(JSON.parse(parsedData.requestParams), null, 2);
-                } catch (e) {
-                    paramsDisplay = parsedData.requestParams;
-                }
-            }
-
-            // 渲染预览结果
-            const html = `
-                <div class="parse-result">
-                    <h3>📊 解析结果预览</h3>
-                    <div class="result-grid">
-                        <div class="result-item"><div class="label">接口编码</div><div class="value">${utils.escapeHtml(parsedData.code || '-')}</div></div>
-                        <div class="result-item"><div class="label">接口名称</div><div class="value">${utils.escapeHtml(parsedData.name || '-')}</div></div>
-                        <div class="result-item"><div class="label">HTTP 方法</div><div class="value ${methodClass}">${parsedData.method || 'GET'}</div></div>
-                        <div class="result-item"><div class="label">认证方式</div><div class="value"><span class="auth-tag ${authClass}">${authLabel}</span></div></div>
-                        <div class="result-item"><div class="label">分组</div><div class="value">${utils.escapeHtml(parsedData.groupName || '默认分组')}</div></div>
-                    </div>
-                    <div class="result-detail"><div class="label">🌐 目标 URL</div><pre style="word-break:break-all;">${utils.escapeHtml(parsedData.url || '-')}</pre></div>
-                    ${paramsDisplay ? '<div class="result-detail"><div class="label">🔗 请求参数（Query Params，JSON）</div><pre>' + utils.escapeHtml(paramsDisplay) + '</pre></div>' : ''}
-                    ${headersDisplay ? '<div class="result-detail"><div class="label">📋 请求头（Headers）</div><pre>' + utils.escapeHtml(headersDisplay) + '</pre></div>' : ''}
-                    ${parsedData.body ? '<div class="result-detail"><div class="label">📦 请求体（Body）</div><pre>' + utils.escapeHtml(parsedData.body) + '</pre></div>' : ''}
-                    <div class="import-actions" style="margin-top:16px;">
-                        <button class="btn btn-primary" id="btnImport">✅ 确认导入</button>
-                        <button class="btn btn-default" id="btnReparse">🔄 重新解析</button>
-                    </div>
-                </div>
-            `;
-
-            $('#parseResultArea').html(html).show();
-
-            // 绑定按钮事件
-            $('#btnImport').on('click', doImport);
-            $('#btnReparse').on('click', parseAndPreview);
-        }
-
-        // 执行导入
-        function doImport() {
-            const curl = $('#curlInput').val().trim();
-            
-            if (!curl) {
-                utils.toast('请输入 curl 命令', 'warning');
-                return;
-            }
-
-            const btn = $('#btnImport');
-            btn.prop('disabled', true).text('⏳ 导入中...');
-
-            API.config.importCurl({ curl: curl })
-                .then(json => {
-                    utils.toast('导入成功！接口编码：' + json.data, 'success');
-                    setTimeout(() => {
-                        parent.loadPage('list');
-                    }, 1200);
-                })
-                .catch(err => {
-                    utils.toast('导入失败：' + err.message, 'error');
-                })
-                .finally(() => {
-                    btn.prop('disabled', false).text('✅ 确认导入');
-                });
-        }
-
-        // 绑定事件
-        $('#btnParse').on('click', parseAndPreview);
-        $('#btnClear').on('click', clearInput);
-
-        // 粘贴事件：自动解析
-        $('#curlInput').on('paste', function() {
-            setTimeout(parseAndPreview, 100);
-        });
-        } // end initImport
     });
     </script>
 </body>

@@ -199,7 +199,21 @@ const API = {
         getActiveList: () => request('/config/active'),
 
         // 根据编码获取接口
-        getByCode: (code) => request(`/config/code/${code}`)
+        getByCode: (code) => request(`/config/code/${code}`),
+
+        // ========== 版本控制 ==========
+        // 创建新版本（基于现有接口）
+        createVersion: (sourceId, data) => request(`/config/${sourceId}/version`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 获取某接口的所有版本
+        getVersions: (id) => request(`/config/${id}/versions`),
+        // 设置某版本为最新推荐版本
+        setLatest: (id) => request(`/config/${id}/set-latest`, { method: 'POST' }),
+        toggleDeprecated: (id) => request(`/config/${id}/deprecate`, { method: 'POST' }),
+        // 废弃/恢复版本
+        toggleDeprecated: (id) => request(`/config/${id}/deprecate`, { method: 'POST' })
     },
 
     // 调用日志
@@ -280,6 +294,37 @@ const API = {
         },
         // 详情
         get: (id) => request(`/audit-log/${id}`)
+    },
+
+    // OpenAPI 导入导出
+    openapi: {
+        // 解析 JSON，返回预览列表
+        parse: (json) => request('/openapi/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ json })
+        }),
+        // 上传文件解析
+        upload: (formData) => fetch(baseUrl + '/openapi/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + getToken() },
+            body: formData
+        }).then(r => r.json()),
+        // 批量导入
+        batchImport: (dtos) => request('/openapi/import', {
+            method: 'POST',
+            body: JSON.stringify(dtos)
+        }),
+        // 导出全部（返回 JSON 字符串）
+        exportAll: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request('/openapi/export' + (query ? '?' + query : ''));
+        },
+        // 批量导出（返回 JSON 字符串）
+        exportSelected: (params = {}) => request('/openapi/export', {
+            method: 'POST',
+            body: JSON.stringify(params)
+        })
     },
 
     // 角色权限管理

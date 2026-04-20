@@ -27,7 +27,20 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
     @Query("SELECT a FROM ApiConfig a WHERE " +
            "(:keyword IS NULL OR a.name LIKE %:keyword% OR a.code LIKE %:keyword% OR a.description LIKE %:keyword%) " +
            "AND (:status IS NULL OR a.status = :status) " +
-           "ORDER BY a.createdAt DESC")
+           "AND (:latestVersion IS NULL OR a.latestVersion = :latestVersion) " +
+           "AND (:deprecated IS NULL OR a.deprecated = :deprecated) " +
+           "ORDER BY a.baseCode ASC, a.version DESC")
+    Page<ApiConfig> findByConditions(
+            @Param("keyword") String keyword,
+            @Param("status") Status status,
+            @Param("latestVersion") Boolean latestVersion,
+            @Param("deprecated") Boolean deprecated,
+            Pageable pageable);
+
+    @Query("SELECT a FROM ApiConfig a WHERE " +
+           "(:keyword IS NULL OR a.name LIKE %:keyword% OR a.code LIKE %:keyword% OR a.description LIKE %:keyword%) " +
+           "AND (:status IS NULL OR a.status = :status) " +
+           "ORDER BY a.baseCode ASC, a.version DESC")
     Page<ApiConfig> findByKeywordAndStatus(
             @Param("keyword") String keyword,
             @Param("status") Status status,
@@ -37,4 +50,31 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
 
     @Query("SELECT a.code FROM ApiConfig a WHERE a.status = :status")
     List<String> findAllCodesByStatus(@Param("status") Status status);
+
+    // ==================== 版本控制查询 ====================
+
+    /**
+     * 查询某 baseCode 的所有版本（支持 baseCode 为 null）
+     * 使用 JPQL 显式处理 null 值比较
+     */
+    @Query("SELECT a FROM ApiConfig a WHERE " +
+           "(:baseCode IS NULL AND a.baseCode IS NULL OR a.baseCode = :baseCode) " +
+           "ORDER BY a.version DESC")
+    List<ApiConfig> findVersionsByBaseCode(@Param("baseCode") String baseCode);
+
+    /** 查询某 baseCode 的所有版本（JPA 方法式，baseCode=null 查不到，需用上面的 JPQL） */
+    List<ApiConfig> findByBaseCodeOrderByVersionDesc(String baseCode);
+
+    /** 查询某 baseCode 的最新版本 */
+    Optional<ApiConfig> findByBaseCodeAndLatestVersionTrue(String baseCode);
+
+    /** 查询同一 baseCode 是否有 latestVersion=true 的版本 */
+    boolean existsByBaseCodeAndLatestVersionTrue(String baseCode);
+
+    /** 查询某 baseCode 指定版本 */
+    Optional<ApiConfig> findByBaseCodeAndVersion(String baseCode, String version);
+
+    /** 查询某 baseCode 最高版本号（如 v1/v2/v3 -> v3） */
+    @Query("SELECT a FROM ApiConfig a WHERE a.baseCode = :baseCode ORDER BY a.version DESC")
+    List<ApiConfig> findByBaseCodeOrderByVersionDescRaw(@Param("baseCode") String baseCode);
 }

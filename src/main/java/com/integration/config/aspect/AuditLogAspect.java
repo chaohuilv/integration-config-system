@@ -1,7 +1,6 @@
-package com.integration.config.service;
+package com.integration.config.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.integration.config.enums.AppConstants;
 import com.integration.config.annotation.AuditLog;
 import com.integration.config.entity.log.AuditSysLog;
 import com.integration.config.repository.log.AuditLogRepository;
@@ -13,7 +12,6 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;

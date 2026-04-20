@@ -1,6 +1,7 @@
 package com.integration.config.controller;
 
 import com.integration.config.annotation.AuditLog;
+import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.InvokeRequestDTO;
 import com.integration.config.dto.InvokeResponseDTO;
 import com.integration.config.dto.PageResult;
@@ -42,6 +43,7 @@ public class InvokeController {
      * 调用接口
      */
     @PostMapping
+    @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'调用接口: ' + #request.apiCode", targetType = "API", targetId = "#request.apiCode", recordParams = true)
     public Result<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request, HttpServletRequest httpRequest) {
         // 权限检查
@@ -62,6 +64,7 @@ public class InvokeController {
      * 调用接口（简化参数，使用 queryString）
      */
     @GetMapping("/{apiCode}")
+    @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'GET调用接口: ' + #apiCode", targetType = "API", targetId = "#apiCode")
     public Result<InvokeResponseDTO> invokeGet(
             @PathVariable String apiCode,
@@ -114,6 +117,7 @@ public class InvokeController {
      * 查询调用日志（支持接口编码、请求URL、请求体联合模糊查询）
      */
     @GetMapping("/logs")
+    @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志列表'", recordResult = false)
     public Result<PageResult<InvokeLog>> getLogs(
             @RequestParam(required = false) String apiCode,
@@ -147,6 +151,7 @@ public class InvokeController {
      * 查询单条日志详情
      */
     @GetMapping("/logs/detail/{id}")
+    @RequirePermission("invoke-log:detail")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志详情ID: ' + #id", targetId = "#id")
     public Result<InvokeLog> getLogDetail(@PathVariable Long id) {
         return invokeLogRepository.findById(id)
@@ -158,6 +163,7 @@ public class InvokeController {
      * 批量删除日志
      */
     @DeleteMapping("/logs")
+    @RequirePermission("invoke-log:delete")
     @AuditLog(operateType = "DELETE", module = "INVOKE_LOG", description = "'批量删除调用日志'", recordParams = true)
     public Result<Void> deleteLogs(@RequestBody List<Long> ids) {
         for (Long id : ids) {
@@ -170,6 +176,7 @@ public class InvokeController {
      * 获取接口最近调用记录
      */
     @GetMapping("/logs/{apiCode}/recent")
+    @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询接口最近调用: ' + #apiCode", targetType = "API", targetId = "#apiCode")
     public Result<List<InvokeLog>> getRecentLogs(@PathVariable String apiCode) {
         List<InvokeLog> logs = invokeLogRepository.findTop10ByApiCodeOrderByInvokeTimeDesc(apiCode);

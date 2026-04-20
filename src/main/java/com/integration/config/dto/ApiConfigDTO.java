@@ -110,6 +110,20 @@ public class ApiConfigDTO {
      */
     private String groupName;
 
+    // ========== 版本控制 ==========
+
+    /** 接口版本，如 v1/v2/v3，null 等同于 v1 */
+    private String version;
+
+    /** 基础编码，同一接口多版本的共同标识 */
+    private String baseCode;
+
+    /** 是否为最新推荐版本 */
+    private Boolean latestVersion;
+
+    /** 是否已废弃 */
+    private Boolean deprecated;
+
     // ========== 动态Token配置 ==========
 
     /**
