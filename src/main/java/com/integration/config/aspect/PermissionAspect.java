@@ -1,6 +1,8 @@
 package com.integration.config.aspect;
 
 import com.integration.config.annotation.RequirePermission;
+import com.integration.config.enums.ErrorCode;
+import com.integration.config.exception.BusinessException;
 import com.integration.config.service.RoleService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +33,7 @@ public class PermissionAspect {
         // 获取当前请求
         ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attrs == null) {
-            throw new RuntimeException("无法获取请求上下文");
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "无法获取请求上下文");
         }
 
         HttpServletRequest request = attrs.getRequest();
@@ -39,7 +41,7 @@ public class PermissionAspect {
         // 从 request attribute 获取用户ID（由 LoginFilter 设置）
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
-            throw new RuntimeException("用户未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户未登录");
         }
 
         // 获取注解
@@ -51,7 +53,7 @@ public class PermissionAspect {
         // 检查权限
         if (!roleService.hasPermission(userId, permissionCode)) {
             log.warn("[PermissionAspect] 用户 {} 无权限: {}", userId, permissionCode);
-            throw new RuntimeException("无操作权限: " + permissionCode);
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, "无操作权限: " + permissionCode);
         }
 
         log.debug("[PermissionAspect] 用户 {} 权限校验通过: {}", userId, permissionCode);
