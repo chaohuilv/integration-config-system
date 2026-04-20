@@ -6,12 +6,14 @@ import com.integration.config.dto.LoginRequestDTO;
 import com.integration.config.dto.UserDTO;
 import com.integration.config.entity.config.Menu;
 import com.integration.config.entity.config.User;
+import com.integration.config.enums.ErrorCode;
+import com.integration.config.exception.BusinessException;
 import com.integration.config.service.MenuService;
 import com.integration.config.service.RoleService;
 import com.integration.config.service.TokenService;
 import com.integration.config.service.UserService;
 import com.integration.config.enums.AppConstants;
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,10 +45,10 @@ public class AuthController {
      */
     @PostMapping("/login")
     @AuditLog(operateType = "LOGIN", module = "AUTH", description = "'用户登录: ' + #dto.userCode", targetType = "USER", recordParams = true)
-    public Result<Map<String, Object>> login(@RequestBody LoginRequestDTO dto, HttpServletRequest request) {
+    public ResultVO<Map<String, Object>> login(@RequestBody LoginRequestDTO dto, HttpServletRequest request) {
         User user = userService.login(dto.getUserCode(), dto.getPassword());
         if (user == null) {
-            return Result.error("用户编码或密码错误，或账号已禁用");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户编码或密码错误，或账号已禁用");
         }
 
         // 更新登录信息
@@ -70,7 +72,7 @@ public class AuthController {
         data.put("username", user.getUsername());
         data.put("displayName", user.getDisplayName());
         data.put("access_token", accessToken);  // 新增：返回 access_token
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
@@ -79,13 +81,13 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @AuditLog(operateType = "LOGOUT", module = "AUTH", description = "'用户注销'")
-    public Result<Void> logout(HttpServletRequest request) {
+    public ResultVO<Void> logout(HttpServletRequest request) {
         String token = extractBearerToken(request);
         if (token != null) {
             tokenService.revokeToken(token);
             log.info("用户注销: token={}", token.substring(0, 8) + "...");
         }
-        return Result.success();
+        return ResultVO.success();
     }
 
     /**
@@ -93,10 +95,10 @@ public class AuthController {
      * 从 Request Attribute 读取（由 LoginFilter 设置）
      */
     @GetMapping("/current")
-    public Result<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
+    public ResultVO<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
-            return Result.error("未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
         Map<String, Object> data = new HashMap<>();
@@ -104,17 +106,17 @@ public class AuthController {
         data.put("userCode", request.getAttribute("userCode"));
         data.put("username", request.getAttribute("username"));
         data.put("displayName", request.getAttribute("displayName"));
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
      * 检查登录状态
      */
     @GetMapping("/check")
-    public Result<Map<String, Object>> checkLogin(HttpServletRequest request) {
+    public ResultVO<Map<String, Object>> checkLogin(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
-            return Result.error("未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
         Map<String, Object> data = new HashMap<>();
@@ -128,7 +130,7 @@ public class AuthController {
         boolean isAdmin = roleService.isAdmin(userId);
         data.put("isAdmin", isAdmin);
         
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
@@ -139,10 +141,10 @@ public class AuthController {
      * - allMenus: 所有菜单（包括列表页和表单页，用于前端路由映射）
      */
     @GetMapping("/menus")
-    public Result<Map<String, Object>> getUserMenus(HttpServletRequest request) {
+    public ResultVO<Map<String, Object>> getUserMenus(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
-            return Result.error("未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
         List<Menu> listMenus;
@@ -173,21 +175,21 @@ public class AuthController {
         result.put("menus", listMenus);       // 用户可访问的列表页菜单
         result.put("pageMap", pageMap);       // 所有页面路由映射
         
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
      * 获取当前用户的权限编码列表
      */
     @GetMapping("/permissions")
-    public Result<List<String>> getUserPermissions(HttpServletRequest request) {
+    public ResultVO<List<String>> getUserPermissions(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
-            return Result.error("未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
         List<String> permissions = roleService.getUserPermissionCodes(userId);
-        return Result.success(permissions);
+        return ResultVO.success(permissions);
     }
 
     // ==================== 用户管理接口 ====================
@@ -197,20 +199,20 @@ public class AuthController {
      */
     @PostMapping("/users")
     @AuditLog(operateType = "CREATE", module = "USER", description = "'创建用户: ' + #dto.userCode", targetType = "USER", targetId = "#result.data.id", recordParams = true)
-    public Result<UserDTO> createUser(@RequestBody CreateUserDTO dto, HttpServletRequest request) {
+    public ResultVO<UserDTO> createUser(@RequestBody CreateUserDTO dto, HttpServletRequest request) {
         Long creatorId = (Long) request.getAttribute("userId");
         if (creatorId == null) {
-            return Result.error("未登录");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
         try {
             User user = userService.create(dto, creatorId);
-            return Result.success(userService.list("", 1, 10).getContent().stream()
+            return ResultVO.success(userService.list("", 1, 10).getContent().stream()
                     .filter(u -> u.getId().equals(user.getId()))
                     .findFirst()
                     .orElse(null));
         } catch (RuntimeException e) {
-            return Result.error(e.getMessage());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, e.getMessage());
         }
     }
 
@@ -219,17 +221,17 @@ public class AuthController {
      */
     @PutMapping("/users/{id}")
     @AuditLog(operateType = "UPDATE", module = "USER", description = "'更新用户: ' + #dto.userCode", targetType = "USER", targetId = "#id", recordParams = true)
-    public Result<UserDTO> updateUser(@PathVariable Long id, @RequestBody CreateUserDTO dto) {
+    public ResultVO<UserDTO> updateUser(@PathVariable Long id, @RequestBody CreateUserDTO dto) {
         try {
             userService.update(id, dto);
-            return Result.success(userService.getById(id)
+            return ResultVO.success(userService.getById(id)
                     .map(u -> userService.list("", 1, 10).getContent().stream()
                             .filter(dto1 -> dto1.getId().equals(u.getId()))
                             .findFirst()
                             .orElse(null))
                     .orElse(null));
         } catch (RuntimeException e) {
-            return Result.error(e.getMessage());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, e.getMessage());
         }
     }
 
@@ -238,14 +240,14 @@ public class AuthController {
      */
     @DeleteMapping("/users/{id}")
     @AuditLog(operateType = "DELETE", module = "USER", description = "'删除用户ID: ' + #id", targetType = "USER", targetId = "#id", recordParams = true)
-    public Result<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
+    public ResultVO<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
         Long currentUserId = (Long) request.getAttribute("userId");
         if (currentUserId != null && currentUserId.equals(id)) {
-            return Result.error("不能删除当前登录用户");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "不能删除当前登录用户");
         }
 
         userService.delete(id);
-        return Result.success();
+        return ResultVO.success();
     }
 
     /**
@@ -253,11 +255,11 @@ public class AuthController {
      */
     @GetMapping("/users")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户列表'", recordResult = false)
-    public Result<Page<UserDTO>> listUsers(
+    public ResultVO<Page<UserDTO>> listUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return Result.success(userService.list(keyword, page, size));
+        return ResultVO.success(userService.list(keyword, page, size));
     }
 
     /**
@@ -265,8 +267,8 @@ public class AuthController {
      */
     @GetMapping("/users/all")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询所有用户'", recordResult = false)
-    public Result<List<UserDTO>> listAllUsers() {
-        return Result.success(userService.listAll());
+    public ResultVO<List<UserDTO>> listAllUsers() {
+        return ResultVO.success(userService.listAll());
     }
 
     /**
@@ -274,13 +276,13 @@ public class AuthController {
      */
     @GetMapping("/users/{id}")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户详情ID: ' + #id", targetType = "USER", targetId = "#id")
-    public Result<UserDTO> getUser(@PathVariable Long id) {
+    public ResultVO<UserDTO> getUser(@PathVariable Long id) {
         return userService.getById(id)
-                .map(u -> Result.success(userService.list("", 1, 10).getContent().stream()
+                .map(u -> ResultVO.success(userService.list("", 1, 10).getContent().stream()
                         .filter(dto -> dto.getId().equals(u.getId()))
                         .findFirst()
                         .orElse(null)))
-                .orElse(Result.error("用户不存在"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "用户不存在"));
     }
 
     // ==================== 辅助方法 ====================

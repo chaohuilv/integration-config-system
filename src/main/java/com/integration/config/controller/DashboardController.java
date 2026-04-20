@@ -8,7 +8,7 @@ import com.integration.config.repository.config.UserRepository;
 import com.integration.config.repository.config.RoleRepository;
 import com.integration.config.repository.log.AuditLogRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import com.sun.management.OperatingSystemMXBean;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -45,7 +45,7 @@ public class DashboardController {
      */
     @GetMapping("/overview")
     @RequirePermission("dashboard:view")
-    public Result<Map<String, Object>> getOverview() {
+    public ResultVO<Map<String, Object>> getOverview() {
         Map<String, Object> data = new LinkedHashMap<>();
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 
@@ -84,7 +84,7 @@ public class DashboardController {
         data.put("auditToday", todayAudit);
         data.put("auditTotal", auditLogRepository.count());
 
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
@@ -92,7 +92,7 @@ public class DashboardController {
      */
     @GetMapping("/invoke-trend")
     @RequirePermission("dashboard:view")
-    public Result<List<Map<String, Object>>> getInvokeTrend(@RequestParam(defaultValue = "24") Integer hours) {
+    public ResultVO<List<Map<String, Object>>> getInvokeTrend(@RequestParam(defaultValue = "24") Integer hours) {
         LocalDateTime start = LocalDateTime.now().minusHours(hours);
         List<Object[]> rows = invokeLogRepository.countHourlyTrend(start);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -104,7 +104,7 @@ public class DashboardController {
             item.put("fail", row[3]);
             result.add(item);
         }
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
@@ -112,7 +112,7 @@ public class DashboardController {
      */
     @GetMapping("/top-apis")
     @RequirePermission("dashboard:view")
-    public Result<List<Map<String, Object>>> getTopApis(@RequestParam(defaultValue = "10") Integer limit) {
+    public ResultVO<List<Map<String, Object>>> getTopApis(@RequestParam(defaultValue = "10") Integer limit) {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         List<Object[]> rows = invokeLogRepository.topApisByCalls(start);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -127,7 +127,7 @@ public class DashboardController {
             item.put("avgCost", row[4]);
             result.add(item);
         }
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
@@ -135,7 +135,7 @@ public class DashboardController {
      */
     @GetMapping("/audit-stats")
     @RequirePermission("dashboard:view")
-    public Result<Map<String, Object>> getAuditStats() {
+    public ResultVO<Map<String, Object>> getAuditStats() {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         Map<String, Object> data = new LinkedHashMap<>();
 
@@ -173,7 +173,7 @@ public class DashboardController {
         }
         data.put("dailyTrend", daily);
 
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
@@ -181,7 +181,7 @@ public class DashboardController {
      */
     @GetMapping("/recent-activity")
     @RequirePermission("dashboard:view")
-    public Result<List<Map<String, Object>>> getRecentActivity() {
+    public ResultVO<List<Map<String, Object>>> getRecentActivity() {
         List<com.integration.config.entity.log.AuditSysLog> logs = auditLogRepository.findTop20ByOrderByOperateTimeDesc();
         List<Map<String, Object>> result = new ArrayList<>();
         for (com.integration.config.entity.log.AuditSysLog log : logs) {
@@ -197,7 +197,7 @@ public class DashboardController {
             item.put("operateTime", log.getOperateTime());
             result.add(item);
         }
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
@@ -205,7 +205,7 @@ public class DashboardController {
      */
     @GetMapping("/health")
     @RequirePermission("dashboard:view")
-    public Result<Map<String, Object>> getHealth() {
+    public ResultVO<Map<String, Object>> getHealth() {
         Map<String, Object> data = new LinkedHashMap<>();
 
         // Redis
@@ -218,7 +218,7 @@ public class DashboardController {
         }
 
         data.put("timestamp", System.currentTimeMillis());
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     /**
@@ -226,7 +226,7 @@ public class DashboardController {
      */
     @GetMapping("/system-resources")
     @RequirePermission("dashboard:view")
-    public Result<Map<String, Object>> getSystemResources() {
+    public ResultVO<Map<String, Object>> getSystemResources() {
         Map<String, Object> data = new LinkedHashMap<>();
 
         // ---- 操作系统 ----
@@ -298,7 +298,7 @@ public class DashboardController {
         }});
 
         data.put("timestamp", System.currentTimeMillis());
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 
     private String formatBytes(long bytes) {

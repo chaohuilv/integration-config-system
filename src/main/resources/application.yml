@@ -1,15 +1,19 @@
 # ===========================================
-# 统一接口配置系统 - application.yml
+# 应用配置 - application.yml
 # ===========================================
 
 server:
   port: 8080
 
 spring:
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   application:
     name: integration-config-system
 
-  # ========== 静态资源开发模式配置 ==========
+  # ========== 静态资源配置 ==========
   web:
     resources:
       cache:
@@ -17,7 +21,7 @@ spring:
       chain:
         cache: false
 
-  # ========== DevTools 热部署配置 ==========
+  # ========== DevTools 配置 ==========
   devtools:
     restart:
       enabled: true
@@ -25,28 +29,28 @@ spring:
     livereload:
       enabled: true
 
-  # ========== Config 数据库（接口配置）==========
+  # ========== 数据源配置 ==========
   datasource-config:
     url: jdbc:h2:./data/integration_config;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # ========== Log 数据库（调用日志）==========
+  # ========== 日志数据源配置 ==========
   datasource-log:
     url: jdbc:h2:./data/integration_log;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # ========== Token 数据库（Token缓存）==========
+  # ========== Token 数据源配置 ==========
   datasource-token:
     url: jdbc:h2:./data/integration_token;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # H2 控制台（开发时开启）
+  # H2 Web Console 配置
   h2:
     console:
       enabled: true
@@ -65,7 +69,7 @@ spring:
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
 
-  # ========== Redis 配置（Token 存储和业务缓存）==========
+  # ========== Redis 配置（Token 和缓存共用） ==========
   data:
     redis:
       host: 127.0.0.1
@@ -79,12 +83,11 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
-  # 注意：已移除 Spring Session Redis 配置，改用 Bearer Token 认证模式
-  # Token 存储在 Redis database 2 中，前缀为 integration:token:
+  # 不再使用 Spring Session Redis，改用 Bearer Token 认证
+  # Token 存放在 Redis database 2，前缀使用 integration:token:
 
 # ===========================================
-# 自定义配置
-# ===========================================
+# 自定义配置 # ===========================================
 integration:
   http-connect-timeout: 10000
   http-read-timeout: 30000
@@ -92,7 +95,7 @@ integration:
   log-response: true
   max-retry: 3
 
-  # 环境配置功能（自动使用各分组下已启用的环境）
+  # 环境配置开关
   environment:
     enabled: true
 
@@ -100,7 +103,7 @@ integration:
   token:
     expire-hours: 24  # Token 过期时间（小时）
 
-  # Redis 缓存配置参数
+  # Redis 缓存配置
   cache:
     enabled: true
     prefix: "integration:cache:"

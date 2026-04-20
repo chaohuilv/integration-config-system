@@ -4,9 +4,11 @@ import com.integration.config.annotation.AuditLog;
 import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.*;
 import com.integration.config.entity.config.ApiConfig;
+import com.integration.config.enums.ErrorCode;
 import com.integration.config.enums.Status;
+import com.integration.config.exception.BusinessException;
 import com.integration.config.service.ApiConfigService;
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,11 +34,11 @@ public class ApiConfigController {
     @PostMapping
     @RequirePermission("api:add")
     @AuditLog(operateType = "CREATE", module = "API_CONFIG", description = "'创建接口: ' + #dto.code", targetType = "API", targetId = "#result.data.code", recordParams = true)
-    public Result<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
+    public ResultVO<ApiConfig> create(@Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
         String userName = getUserName(request);
         ApiConfig config = apiConfigService.create(dto, userId, userName);
-        return Result.success("创建成功", config);
+        return ResultVO.success("CREATE_SUCCESS", config);
     }
 
     /**
@@ -45,11 +47,11 @@ public class ApiConfigController {
     @PutMapping("/{id}")
     @RequirePermission("api:edit")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'更新接口: ' + #dto.code", targetType = "API", targetId = "#dto.code", recordParams = true)
-    public Result<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
+    public ResultVO<ApiConfig> update(@PathVariable Long id, @Valid @RequestBody ApiConfigDTO dto, HttpServletRequest request) {
         Long userId = getUserId(request);
         String userName = getUserName(request);
         ApiConfig config = apiConfigService.update(id, dto, userId, userName);
-        return Result.success("更新成功", config);
+        return ResultVO.success("UPDATE_SUCCESS", config);
     }
 
     /**
@@ -58,9 +60,9 @@ public class ApiConfigController {
     @DeleteMapping("/{id}")
     @RequirePermission("api:delete")
     @AuditLog(operateType = "DELETE", module = "API_CONFIG", description = "'删除接口ID: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
-    public Result<Void> delete(@PathVariable Long id) {
+    public ResultVO<Void> delete(@PathVariable Long id) {
         apiConfigService.delete(id);
-        return Result.success("删除成功", null);
+        return ResultVO.success("DELETE_SUCCESS");
     }
 
     /**
@@ -69,9 +71,9 @@ public class ApiConfigController {
     @GetMapping("/{id}")
     @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口详情ID: ' + #id", targetType = "API", targetId = "#id")
-    public Result<ApiConfigDetailDTO> getById(@PathVariable Long id) {
+    public ResultVO<ApiConfigDetailDTO> getById(@PathVariable Long id) {
         ApiConfigDetailDTO dto = apiConfigService.getById(id);
-        return Result.success(dto);
+        return ResultVO.success(dto);
     }
 
     /**
@@ -80,9 +82,9 @@ public class ApiConfigController {
     @GetMapping("/code/{code}")
     @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口编码: ' + #code", targetType = "API", targetId = "#code")
-    public Result<ApiConfig> getByCode(@PathVariable String code) {
+    public ResultVO<ApiConfig> getByCode(@PathVariable String code) {
         ApiConfig config = apiConfigService.getByCode(code);
-        return Result.success(config);
+        return ResultVO.success(config);
     }
 
     /**
@@ -91,14 +93,14 @@ public class ApiConfigController {
     @GetMapping("/page")
     @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'分页查询接口列表'", recordResult = false)
-    public Result<PageResult<ApiConfig>> pageQuery(
+    public ResultVO<PageResult<ApiConfig>> pageQuery(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) String version,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         PageResult<ApiConfig> result = apiConfigService.pageQuery(keyword, status, version, page, size);
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
@@ -107,9 +109,9 @@ public class ApiConfigController {
     @GetMapping("/active")
     @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询启用接口列表'", recordResult = false)
-    public Result<List<ApiConfig>> getAllActive() {
+    public ResultVO<List<ApiConfig>> getAllActive() {
         List<ApiConfig> list = apiConfigService.getAllActive();
-        return Result.success(list);
+        return ResultVO.success(list);
     }
 
     /**
@@ -118,9 +120,9 @@ public class ApiConfigController {
     @PostMapping("/{id}/toggle")
     @RequirePermission("api:edit")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'切换接口状态: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
-    public Result<Void> toggleStatus(@PathVariable Long id) {
+    public ResultVO<Void> toggleStatus(@PathVariable Long id) {
         apiConfigService.toggleStatus(id);
-        return Result.success("状态切换成功", null);
+        return ResultVO.success("STATUS_CHANGED");
     }
 
     /**
@@ -129,9 +131,9 @@ public class ApiConfigController {
     @GetMapping("/simple-list")
     @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口简化列表'", recordResult = false)
-    public Result<List> getSimpleList() {
+    public ResultVO<List> getSimpleList() {
         List list = apiConfigService.getSimpleList();
-        return Result.success(list);
+        return ResultVO.success(list);
     }
 
     // ==================== 版本控制 ====================
@@ -144,13 +146,13 @@ public class ApiConfigController {
     @PostMapping("/{id}/version")
     @RequirePermission("api:version")
     @AuditLog(operateType = "CREATE", module = "API_CONFIG", description = "'创建新版本，源接口: ' + #sourceId", targetType = "API", targetId = "#result.data?.code", recordParams = true)
-    public Result<ApiConfig> createNewVersion(@PathVariable("id") Long sourceId,
-                                               @RequestBody CreateVersionDTO dto,
-                                               HttpServletRequest request) {
+    public ResultVO<ApiConfig> createNewVersion(@PathVariable("id") Long sourceId,
+                                                @RequestBody CreateVersionDTO dto,
+                                                HttpServletRequest request) {
         Long userId = getUserId(request);
         String userName = getUserName(request);
         ApiConfig config = apiConfigService.createNewVersion(sourceId, dto, userId, userName);
-        return Result.success("新版本创建成功", config);
+        return ResultVO.success("VERSION_CREATED", config);
     }
 
     /**
@@ -159,10 +161,10 @@ public class ApiConfigController {
     @GetMapping("/{id}/versions")
     @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_CONFIG", description = "'查询接口版本列表: ' + #id", targetType = "API", targetId = "#id", recordResult = false)
-    public Result<List<ApiConfig>> getAllVersions(@PathVariable Long id) {
+    public ResultVO<List<ApiConfig>> getAllVersions(@PathVariable Long id) {
         ApiConfig entity = apiConfigService.getByIdForEntity(id);
         List<ApiConfig> versions = apiConfigService.getAllVersions(entity.getBaseCode());
-        return Result.success(versions);
+        return ResultVO.success(versions);
     }
 
     /**
@@ -171,9 +173,9 @@ public class ApiConfigController {
     @PostMapping("/{id}/set-latest")
     @RequirePermission("api:version")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'设置最新版本: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
-    public Result<Void> setLatestVersion(@PathVariable Long id, HttpServletRequest request) {
+    public ResultVO<Void> setLatestVersion(@PathVariable Long id, HttpServletRequest request) {
         apiConfigService.setLatestVersion(id);
-        return Result.success("已设为最新版本", null);
+        return ResultVO.success("SET_AS_LATEST");
     }
 
     /**
@@ -182,9 +184,9 @@ public class ApiConfigController {
     @PostMapping("/{id}/deprecate")
     @RequirePermission("api:deprecate")
     @AuditLog(operateType = "UPDATE", module = "API_CONFIG", description = "'切换废弃状态: ' + #id", targetType = "API", targetId = "#id", recordParams = true)
-    public Result<Void> toggleDeprecated(@PathVariable Long id, HttpServletRequest request) {
+    public ResultVO<Void> toggleDeprecated(@PathVariable Long id, HttpServletRequest request) {
         apiConfigService.toggleDeprecated(id);
-        return Result.success("操作成功", null);
+        return ResultVO.success("OPERATION_SUCCESS");
     }
 
     // ==================== Curl 一键导入 ====================
@@ -196,18 +198,18 @@ public class ApiConfigController {
     @PostMapping("/import/curl")
     @RequirePermission("api:add")
     @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'Curl导入接口'", recordParams = true)
-    public Result<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
+    public ResultVO<String> importFromCurl(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String curl = body.get("curl");
         if (curl == null || curl.trim().isEmpty()) {
-            return Result.fail("curl 命令不能为空");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "curl 命令不能为空");
         }
         try {
             Long userId = getUserId(request);
             String userName = getUserName(request);
             ApiConfigDTO dto = apiConfigService.importFromCurl(curl, userId, userName);
-            return Result.success("导入成功，接口编码：" + dto.getCode(), dto.getCode());
+            return ResultVO.success("IMPORT_SUCCESS", dto.getCode());
         } catch (IllegalArgumentException e) {
-            return Result.fail(e.getMessage());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, e.getMessage());
         }
     }
 

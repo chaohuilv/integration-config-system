@@ -1,10 +1,11 @@
 package com.integration.config.controller;
 
-import com.integration.config.annotation.AuditLog;
 import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.AuditSysLogDTO;
+import com.integration.config.enums.ErrorCode;
+import com.integration.config.exception.BusinessException;
 import com.integration.config.service.AuditSysLogService;
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,7 +31,7 @@ public class AuditSysLogController {
     @GetMapping("/list")
     @RequirePermission("audit-log:view")
     //@AuditLog(operateType = "QUERY", module = "AUDIT_LOG", description = "'查询审计日志列表'", recordResult = false)
-    public Result<Page<AuditSysLogDTO>> search(
+    public ResultVO<Page<AuditSysLogDTO>> search(
             @RequestParam(required = false) String userCode,
             @RequestParam(required = false) String operateType,
             @RequestParam(required = false) String module,
@@ -46,7 +47,7 @@ public class AuditSysLogController {
                 userCode, operateType, module, targetType, result, keyword,
                 startTime, endTime, page, size
         );
-        return Result.success(resultPage);
+        return ResultVO.success(resultPage);
     }
 
     /**
@@ -55,13 +56,13 @@ public class AuditSysLogController {
     @PostMapping("/batch-delete")
     @RequirePermission("audit-log:delete")
     //@AuditLog(operateType = "DELETE", module = "AUDIT_LOG", description = "'批量删除审计日志'", recordParams = true)
-    public Result<Integer> batchDelete(@RequestBody Map<String, List<Long>> body) {
+    public ResultVO<Integer> batchDelete(@RequestBody Map<String, List<Long>> body) {
         List<Long> ids = body.get("ids");
         if (ids == null || ids.isEmpty()) {
-            return Result.error("请选择要删除的记录");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "请选择要删除的记录");
         }
         int count = auditSysLogService.batchDelete(ids);
-        return Result.success("已删除 " + count + " 条记录", count);
+        return ResultVO.success("已删除 " + count + " 条记录", count);
     }
 
     /**
@@ -70,7 +71,7 @@ public class AuditSysLogController {
     @GetMapping("/export")
     @RequirePermission("audit-log:view")
     //@AuditLog(operateType = "EXPORT", module = "AUDIT_LOG", description = "'导出审计日志'", recordResult = false)
-    public Result<List<AuditSysLogDTO>> export(
+    public ResultVO<List<AuditSysLogDTO>> export(
             @RequestParam(required = false) String userCode,
             @RequestParam(required = false) String operateType,
             @RequestParam(required = false) String module,
@@ -83,7 +84,7 @@ public class AuditSysLogController {
         List<AuditSysLogDTO> list = auditSysLogService.export(
                 userCode, operateType, module, targetType, result, keyword, startTime, endTime
         );
-        return Result.success(list);
+        return ResultVO.success(list);
     }
 
     /**
@@ -91,9 +92,9 @@ public class AuditSysLogController {
      */
     @GetMapping("/{id}")
     @RequirePermission("audit-log:detail")
-    public Result<AuditSysLogDTO> getById(@PathVariable Long id) {
+    public ResultVO<AuditSysLogDTO> getById(@PathVariable Long id) {
         AuditSysLogDTO dto = auditSysLogService.getById(id);
-        if (dto == null) return Result.error("记录不存在");
-        return Result.success(dto);
+        if (dto == null) throw new BusinessException(ErrorCode.NOT_FOUND, "记录不存在");
+        return ResultVO.success(dto);
     }
 }

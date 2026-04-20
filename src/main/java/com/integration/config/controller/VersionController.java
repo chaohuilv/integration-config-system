@@ -1,6 +1,6 @@
 package com.integration.config.controller;
 
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,10 +24,10 @@ public class VersionController {
     private static final String START_TIME = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
     @GetMapping("/version")
-    public Result<Map<String, Object>> getVersion() {
+    public ResultVO<Map<String, Object>> getVersion() {
         Map<String, Object> data = new HashMap<>();
         data.put("version", START_TIME);
         data.put("timestamp", System.currentTimeMillis());
-        return Result.success(data);
+        return ResultVO.success(data);
     }
 }

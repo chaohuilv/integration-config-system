@@ -2,17 +2,19 @@ package com.integration.config.controller;
 
 import com.integration.config.annotation.AuditLog;
 import com.integration.config.annotation.RequirePermission;
+import com.integration.config.enums.ErrorCode;
 import com.integration.config.dto.InvokeRequestDTO;
 import com.integration.config.dto.InvokeResponseDTO;
 import com.integration.config.dto.PageResult;
 import com.integration.config.entity.config.ApiConfig;
 import com.integration.config.entity.log.InvokeLog;
+import com.integration.config.exception.BusinessException;
 import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.service.HttpInvokeService;
 import com.integration.config.enums.AppConstants;
 import com.integration.config.service.RoleService;
-import com.integration.config.util.Result;
+import com.integration.config.vo.ResultVO;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,19 +47,18 @@ public class InvokeController {
     @PostMapping
     @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'调用接口: ' + #request.apiCode", targetType = "API", targetId = "#request.apiCode", recordParams = true)
-    public Result<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request, HttpServletRequest httpRequest) {
+    public ResultVO<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request, HttpServletRequest httpRequest) {
         // 权限检查
         Long userId = (Long) httpRequest.getAttribute("userId");
         if (!checkApiAccess(userId, request.getApiCode())) {
-            return Result.of(405, "无权限访问该接口: " + request.getApiCode(), null);
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限访问该接口: " + request.getApiCode());
         }
 
         InvokeResponseDTO response = httpInvokeService.invoke(request);
-        return Result.of(
-                response.getSuccess() ? 200 : 500,
-                response.getMessage(),
-                response
-        );
+        if (!response.getSuccess()) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invoke failed: " + response.getMessage());
+        }
+        return ResultVO.success(response);
     }
 
     /**
@@ -66,14 +67,14 @@ public class InvokeController {
     @GetMapping("/{apiCode}")
     @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'GET调用接口: ' + #apiCode", targetType = "API", targetId = "#apiCode")
-    public Result<InvokeResponseDTO> invokeGet(
+    public ResultVO<InvokeResponseDTO> invokeGet(
             @PathVariable String apiCode,
             @RequestParam(required = false) String params,
             HttpServletRequest httpRequest) {
         // 权限检查
         Long userId = (Long) httpRequest.getAttribute("userId");
         if (!checkApiAccess(userId, apiCode)) {
-            return Result.of(405, "无权限访问该接口: " + apiCode, null);
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限访问该接口: " + apiCode);
         }
 
         InvokeRequestDTO request = InvokeRequestDTO.builder()
@@ -81,11 +82,10 @@ public class InvokeController {
                 .debug(true) // GET 请求默认调试模式
                 .build();
         InvokeResponseDTO response = httpInvokeService.invoke(request);
-        return Result.of(
-                response.getSuccess() ? 200 : 500,
-                response.getMessage(),
-                response
-        );
+        if (!response.getSuccess()) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invoke failed: " + response.getMessage());
+        }
+        return ResultVO.success(response);
     }
 
     /**
@@ -119,7 +119,7 @@ public class InvokeController {
     @GetMapping("/logs")
     @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志列表'", recordResult = false)
-    public Result<PageResult<InvokeLog>> getLogs(
+    public ResultVO<PageResult<InvokeLog>> getLogs(
             @RequestParam(required = false) String apiCode,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
@@ -144,7 +144,7 @@ public class InvokeController {
                 successCount,
                 failCount
         );
-        return Result.success(result);
+        return ResultVO.success(result);
     }
 
     /**
@@ -153,10 +153,10 @@ public class InvokeController {
     @GetMapping("/logs/detail/{id}")
     @RequirePermission("invoke-log:detail")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志详情ID: ' + #id", targetId = "#id")
-    public Result<InvokeLog> getLogDetail(@PathVariable Long id) {
+    public ResultVO<InvokeLog> getLogDetail(@PathVariable Long id) {
         return invokeLogRepository.findById(id)
-                .map(Result::success)
-                .orElse(Result.of(404, "日志不存在", null));
+                .map(ResultVO::success)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "日志不存在"));
     }
 
     /**
@@ -165,11 +165,11 @@ public class InvokeController {
     @DeleteMapping("/logs")
     @RequirePermission("invoke-log:delete")
     @AuditLog(operateType = "DELETE", module = "INVOKE_LOG", description = "'批量删除调用日志'", recordParams = true)
-    public Result<Void> deleteLogs(@RequestBody List<Long> ids) {
+    public ResultVO<Void> deleteLogs(@RequestBody List<Long> ids) {
         for (Long id : ids) {
             invokeLogRepository.deleteById(id);
         }
-        return Result.success(null);
+        return ResultVO.success(null);
     }
 
     /**
@@ -178,8 +178,8 @@ public class InvokeController {
     @GetMapping("/logs/{apiCode}/recent")
     @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询接口最近调用: ' + #apiCode", targetType = "API", targetId = "#apiCode")
-    public Result<List<InvokeLog>> getRecentLogs(@PathVariable String apiCode) {
+    public ResultVO<List<InvokeLog>> getRecentLogs(@PathVariable String apiCode) {
         List<InvokeLog> logs = invokeLogRepository.findTop10ByApiCodeOrderByInvokeTimeDesc(apiCode);
-        return Result.success(logs);
+        return ResultVO.success(logs);
     }
 }
