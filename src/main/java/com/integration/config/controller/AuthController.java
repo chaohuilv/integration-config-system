@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 认证控制器 - 登录/注销/用户管理 (Bearer Token 模式)
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "AuthController", description = "认证管理")
 public class AuthController {
 
     private final UserService userService;

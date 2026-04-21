@@ -15,6 +15,8 @@ import com.integration.config.service.HttpInvokeService;
 import com.integration.config.enums.AppConstants;
 import com.integration.config.service.RoleService;
 import com.integration.config.vo.ResultVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Slf4j
+@Tag(name = "接口调用", description = "配置接口的在线调试与调用")
 public class InvokeController {
 
     private final HttpInvokeService httpInvokeService;
@@ -47,6 +50,7 @@ public class InvokeController {
     @PostMapping
     @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'调用接口: ' + #request.apiCode", targetType = "API", targetId = "#request.apiCode", recordParams = true)
+    @Operation(summary = "POST 调用接口", description = "通过接口编码调用配置的接口，支持动态参数替换")
     public ResultVO<InvokeResponseDTO> invoke(@RequestBody InvokeRequestDTO request, HttpServletRequest httpRequest) {
         // 权限检查
         Long userId = (Long) httpRequest.getAttribute("userId");
@@ -67,6 +71,7 @@ public class InvokeController {
     @GetMapping("/{apiCode}")
     @RequirePermission("api:invoke")
     @AuditLog(operateType = "OTHER", module = "INVOKE", description = "'GET调用接口: ' + #apiCode", targetType = "API", targetId = "#apiCode")
+    @Operation(summary = "GET 调用接口", description = "通过 URL 参数方式调用接口，默认调试模式")
     public ResultVO<InvokeResponseDTO> invokeGet(
             @PathVariable String apiCode,
             @RequestParam(required = false) String params,
@@ -119,6 +124,7 @@ public class InvokeController {
     @GetMapping("/logs")
     @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志列表'", recordResult = false)
+    @Operation(summary = "查询调用日志", description = "支持接口编码、状态、时间范围等多条件过滤分页查询")
     public ResultVO<PageResult<InvokeLog>> getLogs(
             @RequestParam(required = false) String apiCode,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
@@ -153,6 +159,7 @@ public class InvokeController {
     @GetMapping("/logs/detail/{id}")
     @RequirePermission("invoke-log:detail")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询调用日志详情ID: ' + #id", targetId = "#id")
+    @Operation(summary = "查询调用日志详情", description = "查看单条调用日志的完整请求/响应信息")
     public ResultVO<InvokeLog> getLogDetail(@PathVariable Long id) {
         return invokeLogRepository.findById(id)
                 .map(ResultVO::success)
@@ -165,6 +172,7 @@ public class InvokeController {
     @DeleteMapping("/logs")
     @RequirePermission("invoke-log:delete")
     @AuditLog(operateType = "DELETE", module = "INVOKE_LOG", description = "'批量删除调用日志'", recordParams = true)
+    @Operation(summary = "批量删除调用日志")
     public ResultVO<Void> deleteLogs(@RequestBody List<Long> ids) {
         for (Long id : ids) {
             invokeLogRepository.deleteById(id);
@@ -178,6 +186,7 @@ public class InvokeController {
     @GetMapping("/logs/{apiCode}/recent")
     @RequirePermission("log:view")
     @AuditLog(operateType = "QUERY", module = "INVOKE_LOG", description = "'查询接口最近调用: ' + #apiCode", targetType = "API", targetId = "#apiCode")
+    @Operation(summary = "查询接口最近调用记录", description = "获取指定接口最近 10 条调用日志")
     public ResultVO<List<InvokeLog>> getRecentLogs(@PathVariable String apiCode) {
         List<InvokeLog> logs = invokeLogRepository.findTop10ByApiCodeOrderByInvokeTimeDesc(apiCode);
         return ResultVO.success(logs);

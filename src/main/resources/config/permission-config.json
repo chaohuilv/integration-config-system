@@ -64,6 +64,20 @@
       "sortOrder": 8
     },
     {
+      "code": "api:doc",
+      "name": "查看接口文档",
+      "description": "查看系统内接口文档",
+      "module": "api",
+      "sortOrder": 9
+    },
+    {
+      "code": "api:export",
+      "name": "导出接口文档",
+      "description": "导出接口文档为 Word",
+      "module": "api",
+      "sortOrder": 10
+    },
+    {
       "code": "env:view",
       "name": "查看环境",
       "description": "查看环境配置",

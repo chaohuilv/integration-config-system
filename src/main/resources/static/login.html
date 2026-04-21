@@ -204,6 +204,10 @@
                 .then((result) => {
                     console.log('登录响应:', result);
                     console.log('Token:', result.data && result.data.access_token);
+                    // 确保 token 存好再跳转
+                    if (result.data && result.data.access_token) {
+                        setToken(result.data.access_token);
+                    }
                     window.location.href = 'index.html';
                 })
                 .catch(err => {

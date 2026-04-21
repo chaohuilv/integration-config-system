@@ -139,6 +139,16 @@
       "pageType": "LIST"
     },
     {
+      "code": "api-doc",
+      "name": "接口文档",
+      "icon": "📚",
+      "path": "api-doc",
+      "pageFile": "pages/api_doc.html",
+      "section": "开发文档",
+      "sortOrder": 99,
+      "pageType": "LIST"
+    },
+    {
       "code": "sdk",
       "name": "SDK文档",
       "icon": "💻",

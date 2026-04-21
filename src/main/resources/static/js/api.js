@@ -461,6 +461,75 @@ const API = {
 
         // 系统硬件资源（CPU/内存/JVM）
         getSystemResources: () => request('/dashboard/system-resources')
+    },
+    // API 文档
+    doc: {
+        // 获取所有接口文档（按分组）
+        list: () => request('/doc/list'),
+
+        // 获取单个接口的完整文档
+        detail: (id) => request('/doc/' + id),
+
+        // 导出全部接口文档（Word）
+        exportAll: function() {
+            var token = localStorage.getItem('integration_access_token') || '';
+            var url = API_CONFIG.baseURL + '/doc/export';
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            a.onclick = function() {
+                var req = new XMLHttpRequest();
+                req.open('GET', url, true);
+                req.setRequestHeader('Authorization', 'Bearer ' + token);
+                req.responseType = 'blob';
+                req.onload = function() {
+                    var blob = req.response;
+                    var disposition = req.getResponseHeader('Content-Disposition');
+                    var filename = '接口文档_' + new Date().toISOString().slice(0, 10) + '.docx';
+                    if (disposition) {
+                        var match = disposition.match(/filename\*?=['"]?(?:UTF-8'')?([^;\n"']+)/i);
+                        if (match) filename = decodeURIComponent(match[1]);
+                    }
+                    var blobUrl = URL.createObjectURL(blob);
+                    var link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = filename;
+                    link.click();
+                    URL.revokeObjectURL(blobUrl);
+                };
+                req.send();
+                return false;
+            };
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        },
+
+        // 导出指定分组的接口文档（Word）
+        exportGroup: function(groupName) {
+            var token = localStorage.getItem('integration_access_token') || '';
+            var url = API_CONFIG.baseURL + '/doc/export/group' + (groupName ? '?groupName=' + encodeURIComponent(groupName) : '');
+            var req = new XMLHttpRequest();
+            req.open('GET', url, true);
+            req.setRequestHeader('Authorization', 'Bearer ' + token);
+            req.responseType = 'blob';
+            req.onload = function() {
+                var blob = req.response;
+                var disposition = req.getResponseHeader('Content-Disposition');
+                var filename = '接口文档_' + (groupName || '全部') + '_' + new Date().toISOString().slice(0, 10) + '.docx';
+                if (disposition) {
+                    var match = disposition.match(/filename\*?=['"]?(?:UTF-8'')?([^;\n"']+)/i);
+                    if (match) filename = decodeURIComponent(match[1]);
+                }
+                var blobUrl = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(blobUrl);
+            };
+            req.send();
+        }
     }
 };
 

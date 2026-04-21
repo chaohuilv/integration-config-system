@@ -48,6 +48,12 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
 
     List<ApiConfig> findByStatusOrderByCreatedAtDesc(Status status);
 
+    /** 按分组名称 + 创建时间排序 */
+    List<ApiConfig> findByStatusOrderByGroupNameAscCreatedAtDesc(Status status);
+
+    /** 按状态和分组名称筛选 */
+    List<ApiConfig> findByStatusAndGroupNameOrderByCreatedAtDesc(Status status, String groupName);
+
     @Query("SELECT a.code FROM ApiConfig a WHERE a.status = :status")
     List<String> findAllCodesByStatus(@Param("status") Status status);
 

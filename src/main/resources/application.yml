@@ -109,6 +109,20 @@ integration:
     prefix: "integration:cache:"
     ttl: 300
 
+# ========== SpringDoc OpenAPI 配置 ==========
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    # 自定义 Swagger UI 标题和样式
+    custom-site-languages: zh-CN
+    # 禁用尝试启动按钮（仅展示文档）
+    display-request-duration: true
+  show-actuator: false
+
 logging:
   level:
     com.integration.config: INFO
