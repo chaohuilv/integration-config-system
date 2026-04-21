@@ -86,9 +86,9 @@ public class ApiDocExportService {
         }
 
         // ---------- 分析模板结构 ----------
-        // 用正则找出含 {{...}} 的段落范围
         Pattern placeholderPat = Pattern.compile("\\{\\{([^}]+)\\}\\}");
-        Pattern paraPat = Pattern.compile("(?<=<w:p[^>]*>)[\\s\\S]*?(?=</w:p>)");
+        // 用简单 regex：m.start() = '<' of <w:p>, m.end() = after '</w:p>'
+        Pattern paraPat = Pattern.compile("<w:p\\b[^>]*>.*?</w:p>");
 
         // 找第一个含 {{ 的 <w:p>...</w:p> 的起止索引（字符串索引）
         Matcher paraMatcher = paraPat.matcher(docXml);
@@ -98,17 +98,20 @@ public class ApiDocExportService {
         int paraIndex = 0;
 
         // 扫描所有段落，找占位符所在段落
+        // 简单 regex：m.start() = '<' of <w:p>, m.end() = after '</w:p>'
         List<int[]> placeholderParas = new ArrayList<>();
         while (paraMatcher.find()) {
-            String paraContent = paraMatcher.group();
+            int paraStart = paraMatcher.start();
+            int paraEnd = paraMatcher.end();
+            String paraContent = docXml.substring(paraStart, paraEnd);
             Matcher pm = placeholderPat.matcher(paraContent);
             if (pm.find()) {
                 if (firstPlaceholderParaStart == -1) {
-                    firstPlaceholderParaStart = paraMatcher.start();
-                    firstPlaceholderParaEnd = paraMatcher.end();
+                    firstPlaceholderParaStart = paraStart;
+                    firstPlaceholderParaEnd = paraEnd;
                 }
-                lastPlaceholderParaEnd = paraMatcher.end();
-                placeholderParas.add(new int[]{paraMatcher.start(), paraMatcher.end()});
+                lastPlaceholderParaEnd = paraEnd;
+                placeholderParas.add(new int[]{paraStart, paraEnd});
             }
             paraIndex++;
         }
@@ -147,7 +150,8 @@ public class ApiDocExportService {
                 String apiBlock = substituteTemplate(interfaceTemplateBlock, fields);
                 allInterfaceBlocks.append(apiBlock);
 
-                // 接口间空行
+                // 接口间空行（两个段落 = 2行间距）
+                allInterfaceBlocks.append(buildSpacingPara(200));
                 allInterfaceBlocks.append(buildSpacingPara(200));
                 seq++;
             }
@@ -169,15 +173,63 @@ public class ApiDocExportService {
     }
 
     // ================================================================
-    // 占位符替换
+    // 占位符替换（支持多行文本换行）
     // ================================================================
+
+    private static final Pattern W_T_PATTERN = Pattern.compile(
+            "(<w:t[^>]*>)(\\{\\{" + "(\\w+)" + "\\}\\})(</w:t>)");
 
     private String substituteTemplate(String xml, Map<String, String> fields) {
         String result = xml;
+
+        // 先处理不需要换行的简单占位符（不含 \n 的值）
         for (Map.Entry<String, String> e : fields.entrySet()) {
-            result = result.replace("{{" + e.getKey() + "}}", escapeXmlText(e.getValue()));
+            String value = e.getValue();
+            if (!value.contains("\n")) {
+                // 简单替换
+                result = result.replace("{{" + e.getKey() + "}}", escapeXmlText(value));
+            }
         }
-        return result;
+
+        // 处理含换行的占位符：将 {{key}} 所在 <w:t> 拆成多个 <w:t> + <w:br/>
+        Pattern p = Pattern.compile(
+                "(<w:t[^>]*>)(\\{\\{(\\w+)\\}\\})(</w:t>)");
+        //                                ↑ open tag ↑   placeholder   ↑ close tag
+        Matcher m = p.matcher(result);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            String openTag  = m.group(1);   // <w:t...>
+            String key      = m.group(3);   // key 名称
+            String closeTag = m.group(4);   // </w:t>
+            String value    = fields.getOrDefault(key, "-");
+
+            String replacement = buildMultiLineRun(openTag, closeTag, value);
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+
+        return sb.toString();
+    }
+
+    /**
+     * 将多行文本拆成多个 <w:t> + <w:br/> 段。
+     * 例: "A\nB" → "<w:t>A</w:t><w:br/><w:t>B</w:t>"
+     */
+    private String buildMultiLineRun(String openTag, String closeTag, String value) {
+        if (value == null || value.isBlank()) {
+            return openTag + escapeXmlText("-") + closeTag;
+        }
+        String[] lines = value.split("\n", -1);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            sb.append(openTag)
+              .append(escapeXmlText(lines[i]))
+              .append(closeTag);
+            if (i < lines.length - 1) {
+                sb.append("<w:br/>");
+            }
+        }
+        return sb.toString();
     }
 
     private String escapeXmlText(String s) {

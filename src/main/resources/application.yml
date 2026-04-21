@@ -109,6 +109,17 @@ integration:
     prefix: "integration:cache:"
     ttl: 300
 
+# ===========================================
+# Nacos 配置（配置推送）
+# ===========================================
+nacos:
+  server-addr: 127.0.0.1:8848
+  namespace: public
+  username: nacos
+  password: nacos
+  group: INTEGRATION_API
+  timeout: 5000
+
 # ========== SpringDoc OpenAPI 配置 ==========
 springdoc:
   api-docs:

@@ -24,6 +24,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hutool.version>5.8.25</hutool.version>
         <springdoc.version>2.3.0</springdoc.version>
+        <nacos.version>2.3.2</nacos.version>
     </properties>
 
     <dependencies>
@@ -49,6 +50,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Nacos Client -->
+        <dependency>
+            <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-client</artifactId>
+            <version>${nacos.version}</version>
         </dependency>
 
         <!-- Spring Boot Redis -->

@@ -298,7 +298,6 @@ function renderDetailModal(d) {
     html += '<div class="detail-section"><div class="detail-label">请求地址</div><div class="url-display">' + esc(d.method || 'GET') + ' ' + esc(d.url || '/') + '</div></div>';
 
     html += '<div class="detail-section"><div class="detail-label">基本信息</div><div class="info-tags">' +
-        infoTag('Content-Type', d.contentType || '未指定') +
         infoTag('认证', d.authType || 'NONE') +
         infoTag('超时', d.timeout ? d.timeout + 'ms' : '30000ms') +
         infoTag('重试', d.retryCount != null ? d.retryCount : 0) +
