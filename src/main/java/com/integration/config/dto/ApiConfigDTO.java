@@ -124,6 +124,17 @@ public class ApiConfigDTO {
     /** 是否已废弃 */
     private Boolean deprecated;
 
+    // ========== 频率限制 ==========
+
+    /** 是否启用频率限制 */
+    private Boolean enableRateLimit;
+
+    /** 频率限制时间窗口（秒） */
+    private Integer rateLimitWindow;
+
+    /** 频率限制最大请求数 */
+    private Integer rateLimitMax;
+
     // ========== 动态Token配置 ==========
 
     /**

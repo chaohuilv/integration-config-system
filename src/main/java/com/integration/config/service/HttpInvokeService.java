@@ -107,8 +107,8 @@ public class HttpInvokeService {
             requestUrl = buildUrl(config, request, dynamicToken, traceId);
             logEntry.setRequestUrl(requestUrl);
 
-            // 6. 执行调用
-            response = doInvoke(config, request, traceId, dynamicToken);
+            // 6. 执行调用（带失败重试）
+            response = invokeWithRetry(config, request, traceId, dynamicToken);
 
             // 7. 记录日志
             logEntry.setSuccess(response.getSuccess());
@@ -243,6 +243,101 @@ public class HttpInvokeService {
             tokenLog.setCostTime(0L);
             invokeLogRepository.save(tokenLog);
             return null;
+        }
+    }
+
+    /**
+     * 带重试的调用封装
+     * 失败时根据配置的 retryCount 自动重试，仅对 HTTP 5xx / 连接超时 / 连接拒绝 重试
+     *
+     * @param config       接口配置
+     * @param request      调用请求
+     * @param traceId      链路ID
+     * @param dynamicToken 动态Token
+     * @return 最后一次调用的结果
+     */
+    private InvokeResponseDTO invokeWithRetry(ApiConfig config, InvokeRequestDTO request, String traceId, String dynamicToken) {
+        int maxRetry = config.getRetryCount() != null ? config.getRetryCount() : 0;
+        InvokeResponseDTO response = null;
+
+        for (int attempt = 0; attempt <= maxRetry; attempt++) {
+            if (attempt > 0) {
+                log.info("[{}] 第 {} 次重试 (共 {} 次), apiCode={}", traceId, attempt, maxRetry, config.getCode());
+                try {
+                    Thread.sleep(1000L * attempt); // 递增等待: 1s, 2s, 3s...
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            try {
+                response = doInvoke(config, request, traceId, dynamicToken);
+
+                // 成功 → 直接返回
+                if (response.getSuccess() && response.getStatusCode() < 500) {
+                    return response;
+                }
+
+                // 4xx 客户端错误（除 429 外）→ 不重试
+                if (response.getStatusCode() >= 400 && response.getStatusCode() < 500 && response.getStatusCode() != 429) {
+                    return response;
+                }
+
+                // 5xx 服务端错误 或 429 限流 → 保存失败日志，继续重试
+                log.warn("[{}] 调用失败, statusCode={}, attempt={}/{}, msg={}",
+                        traceId, response.getStatusCode(), attempt, maxRetry, response.getMessage());
+                if (attempt < maxRetry) {
+                    saveRetryLog(request, response, attempt, traceId);
+                }
+
+            } catch (Exception e) {
+                log.warn("[{}] 调用异常, attempt={}/{}, msg={}", traceId, attempt, maxRetry, e.getMessage());
+                response = InvokeResponseDTO.builder()
+                        .success(false)
+                        .statusCode(500)
+                        .message("调用异常: " + e.getMessage())
+                        .costTime(0L)
+                        .invokeTime(LocalDateTime.now())
+                        .traceId(traceId)
+                        .build();
+                // 保存异常日志，继续重试
+                if (attempt < maxRetry) {
+                    saveRetryLog(request, response, attempt, traceId);
+                }
+            }
+        }
+
+        // 所有重试耗尽，返回最后一次结果
+        if (response != null) {
+            response.setMessage(response.getMessage() + " (已重试 " + maxRetry + " 次)");
+        }
+        return response;
+    }
+
+    /**
+     * 保存重试过程中的失败日志
+     */
+    private void saveRetryLog(InvokeRequestDTO request, InvokeResponseDTO response, int attempt, String traceId) {
+        try {
+            InvokeLog retryLog = InvokeLog.builder()
+                    .apiCode(request.getApiCode())
+                    .clientIp(getClientIp())
+                    .traceId(traceId)
+                    .requestParams(JsonUtil.toJson(request.getParams()))
+                    .requestHeaders(JsonUtil.toJson(request.getHeaders()))
+                    .requestBody(request.getBody())
+                    .success(false)
+                    .responseStatus(response.getStatusCode())
+                    .responseData(truncate(response.getData() != null ? response.getData().toString() : null, 5000))
+                    .errorMessage("第 " + (attempt + 1) + " 次调用失败: " + response.getMessage())
+                    .costTime(response.getCostTime())
+                    .invokeTime(LocalDateTime.now())
+                    .retryAttempt(attempt)
+                    .build();
+            invokeLogRepository.save(retryLog);
+        } catch (Exception e) {
+            log.warn("[{}] 保存重试日志失败: {}", traceId, e.getMessage());
         }
     }
 

@@ -155,6 +155,9 @@ public class ApiConfigService {
                 .status(src.getStatus())
                 .groupName(src.getGroupName())
                 .enableDynamicToken(src.getEnableDynamicToken())
+                .enableRateLimit(src.getEnableRateLimit())
+                .rateLimitWindow(src.getRateLimitWindow())
+                .rateLimitMax(src.getRateLimitMax())
                 .tokenApiCode(src.getTokenApiCode())
                 .tokenExtractPath(src.getTokenExtractPath())
                 .tokenPosition(src.getTokenPosition())
@@ -452,6 +455,9 @@ public class ApiConfigService {
                 .status(dto.getStatus() != null ? dto.getStatus() : Status.ACTIVE)
                 .groupName(dto.getGroupName())
                 .enableDynamicToken(dto.getEnableDynamicToken())
+                .enableRateLimit(dto.getEnableRateLimit())
+                .rateLimitWindow(dto.getRateLimitWindow())
+                .rateLimitMax(dto.getRateLimitMax())
                 .tokenApiCode(dto.getTokenApiCode())
                 .tokenExtractPath(dto.getTokenExtractPath())
                 .tokenPosition(dto.getTokenPosition())
@@ -489,6 +495,10 @@ public class ApiConfigService {
         entity.setTokenParamName(dto.getTokenParamName());
         entity.setTokenPrefix(dto.getTokenPrefix());
         entity.setTokenCacheTime(dto.getTokenCacheTime());
+        // 频率限制
+        entity.setEnableRateLimit(dto.getEnableRateLimit());
+        entity.setRateLimitWindow(dto.getRateLimitWindow());
+        entity.setRateLimitMax(dto.getRateLimitMax());
     }
 
     /**

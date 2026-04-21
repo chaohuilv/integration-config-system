@@ -12,6 +12,7 @@ import com.integration.config.exception.BusinessException;
 import com.integration.config.repository.config.ApiConfigRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.service.HttpInvokeService;
+import com.integration.config.service.RateLimitService;
 import com.integration.config.enums.AppConstants;
 import com.integration.config.service.RoleService;
 import com.integration.config.vo.ResultVO;
@@ -43,6 +44,7 @@ public class InvokeController {
     private final InvokeLogRepository invokeLogRepository;
     private final RoleService roleService;
     private final ApiConfigRepository apiConfigRepository;
+    private final RateLimitService rateLimitService;
 
     /**
      * 调用接口
@@ -57,6 +59,9 @@ public class InvokeController {
         if (!checkApiAccess(userId, request.getApiCode())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无权限访问该接口: " + request.getApiCode());
         }
+
+        // 频率限制检查
+        checkRateLimit(request.getApiCode(), userId);
 
         InvokeResponseDTO response = httpInvokeService.invoke(request);
         if (!response.getSuccess()) {
@@ -82,6 +87,9 @@ public class InvokeController {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无权限访问该接口: " + apiCode);
         }
 
+        // 频率限制检查
+        checkRateLimit(apiCode, userId);
+
         InvokeRequestDTO request = InvokeRequestDTO.builder()
                 .apiCode(apiCode)
                 .debug(true) // GET 请求默认调试模式
@@ -91,6 +99,23 @@ public class InvokeController {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invoke failed: " + response.getMessage());
         }
         return ResultVO.success(response);
+    }
+
+    /**
+     * 检查调用频率限制
+     */
+    private void checkRateLimit(String apiCode, Long userId) {
+        ApiConfig apiConfig = apiConfigRepository.findByCode(apiCode).orElse(null);
+        if (apiConfig != null
+                && Boolean.TRUE.equals(apiConfig.getEnableRateLimit())
+                && apiConfig.getRateLimitWindow() != null
+                && apiConfig.getRateLimitMax() != null
+                && apiConfig.getRateLimitMax() > 0) {
+            if (!rateLimitService.tryAcquire(apiCode, userId, apiConfig.getRateLimitWindow(), apiConfig.getRateLimitMax())) {
+                throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS,
+                        "调用频率超限: 每秒最多 " + apiConfig.getRateLimitMax() + " 次（窗口 " + apiConfig.getRateLimitWindow() + " 秒）");
+            }
+        }
     }
 
     /**

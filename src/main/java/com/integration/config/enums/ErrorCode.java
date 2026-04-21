@@ -70,6 +70,10 @@ public enum ErrorCode {
     /** 前置条件不满足 */
     PRECONDITION_FAILED(433, "PRECONDITION_FAILED", "Precondition failed"),
 
+    // ========== 频率限制 (429) ==========
+    /** 请求频率超限 */
+    TOO_MANY_REQUESTS(429, "TOO_MANY_REQUESTS", "Too many requests"),
+
     // ========== 服务端异常 (500) ==========
     /** 系统内部错误 */
     INTERNAL_ERROR(500, "INTERNAL_ERROR", "Internal server error"),

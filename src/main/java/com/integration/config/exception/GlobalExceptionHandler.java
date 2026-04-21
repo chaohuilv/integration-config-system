@@ -4,6 +4,7 @@ import com.integration.config.enums.ErrorCode;
 import com.integration.config.vo.ResultVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -67,9 +68,13 @@ public class GlobalExceptionHandler {
     // ==================== 业务异常 ====================
 
     @ExceptionHandler(BusinessException.class)
-    public ResultVO<Void> handleBusiness(BusinessException e) {
+    public ResponseEntity<ResultVO<Void>> handleBusiness(BusinessException e) {
         log.warn("[业务异常] code={}, msg={}", e.getErrorCode().getCode(), e.getMessage());
-        return ResultVO.error(e.getErrorCode(), e.getMessage());
+        HttpStatus status = e.getErrorCode().getCode() == 429
+                ? HttpStatus.TOO_MANY_REQUESTS
+                : HttpStatus.OK;
+        return ResponseEntity.status(status)
+                .body(ResultVO.error(e.getErrorCode(), e.getMessage()));
     }
 
     // ==================== 服务端异常 (500) ====================

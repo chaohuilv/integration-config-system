@@ -174,6 +174,11 @@
                     <label>超时时间(ms)</label>
                     <input type="number" name="timeout" value="30000" placeholder="30000">
                 </div>
+                <div class="form-group">
+                    <label>失败重试次数</label>
+                    <input type="number" name="retryCount" value="0" placeholder="0" min="0" max="5">
+                    <div class="hint">调用失败后自动重试次数（0=不重试，仅重试 5xx 和连接异常）</div>
+                </div>
             </div>
 
             <div class="form-section">
@@ -255,6 +260,29 @@
                             <option value="true">✅ 启用</option>
                             <option value="false">⛔ 禁用</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>⚡ 频率限制 <small style="color:#999;font-weight:400">（控制接口调用频率，防止被过度调用）</small></h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>启用频率限制</label>
+                        <select name="enableRateLimit" id="fRateLimit">
+                            <option value="false">⛔ 禁用</option>
+                            <option value="true">✅ 启用</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>时间窗口（秒）</label>
+                        <input type="number" name="rateLimitWindow" value="60" placeholder="60" min="1">
+                        <div class="hint">在多长时间内计算请求次数</div>
+                    </div>
+                    <div class="form-group">
+                        <label>最大请求数</label>
+                        <input type="number" name="rateLimitMax" value="10" placeholder="10" min="1">
+                        <div class="hint">时间窗口内允许的最大调用次数</div>
                     </div>
                 </div>
             </div>
@@ -395,8 +423,16 @@
                     if (d.status) form.status.value = d.status;
                     if (d.method) form.method.value = d.method;
                     if (d.timeout) form.timeout.value = d.timeout;
+                    if (d.retryCount != null) form.retryCount.value = d.retryCount;
                     if (d.authType) form.authType.value = d.authType;
                     if (d.tokenPosition) form.tokenPosition.value = d.tokenPosition;
+
+                    // 填充频率限制字段
+                    if (d.enableRateLimit) {
+                        form.enableRateLimit.value = 'true';
+                    }
+                    if (d.rateLimitWindow) form.rateLimitWindow.value = d.rateLimitWindow;
+                    if (d.rateLimitMax) form.rateLimitMax.value = d.rateLimitMax;
 
                     // 格式化 headers JSON
                     if (d.headers) {
@@ -479,6 +515,9 @@
             // 转换 timeout 为数字
             if (payload.timeout) {
                 payload.timeout = parseInt(payload.timeout);
+            }
+            if (payload.retryCount) {
+                payload.retryCount = parseInt(payload.retryCount);
             }
 
             // 编辑模式添加 ID

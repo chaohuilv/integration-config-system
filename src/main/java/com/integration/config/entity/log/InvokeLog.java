@@ -80,6 +80,10 @@ public class InvokeLog {
     @Column(name = "TRACE_ID", length = 64)
     private String traceId;
 
+    /** 重试次数（0=首次调用，1=第1次重试，2=第2次重试...） */
+    @Column(name = "RETRY_ATTEMPT")
+    private Integer retryAttempt;
+
     @PrePersist
     protected void onCreate() {
         if (id == null) {

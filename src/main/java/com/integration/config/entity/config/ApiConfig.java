@@ -129,6 +129,20 @@ public class ApiConfig {
     @Column(name = "DEPRECATED")
     private Boolean deprecated;
 
+    // ==================== 频率限制 ====================
+
+    /** 是否启用频率限制 */
+    @Column(name = "ENABLE_RATE_LIMIT")
+    private Boolean enableRateLimit;
+
+    /** 频率限制时间窗口（秒），如 60 表示每60秒 */
+    @Column(name = "RATE_LIMIT_WINDOW")
+    private Integer rateLimitWindow;
+
+    /** 频率限制最大请求数，在时间窗口内允许的最大调用次数 */
+    @Column(name = "RATE_LIMIT_MAX")
+    private Integer rateLimitMax;
+
     // ==================== 动态Token相关字段 ====================
 
     /** 是否启用动态Token（Token过期需定期刷新） */
