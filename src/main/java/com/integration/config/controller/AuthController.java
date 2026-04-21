@@ -14,6 +14,8 @@ import com.integration.config.service.TokenService;
 import com.integration.config.service.UserService;
 import com.integration.config.enums.AppConstants;
 import com.integration.config.vo.ResultVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 认证控制器 - 登录/注销/用户管理 (Bearer Token 模式)
@@ -33,7 +34,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "AuthController", description = "认证管理")
+@Tag(name = "认证管理", description = "用户登录、注销、当前用户信息及用户 CRUD")
 public class AuthController {
 
     private final UserService userService;
@@ -47,6 +48,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     @AuditLog(operateType = "LOGIN", module = "AUTH", description = "'用户登录: ' + #dto.userCode", targetType = "USER", recordParams = true)
+    @Operation(summary = "用户登录", description = "传入 userCode 和 password，返回 access_token，后续请求通过 Authorization: Bearer <token> 携带")
     public ResultVO<Map<String, Object>> login(@RequestBody LoginRequestDTO dto, HttpServletRequest request) {
         User user = userService.login(dto.getUserCode(), dto.getPassword());
         if (user == null) {
@@ -83,6 +85,7 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @AuditLog(operateType = "LOGOUT", module = "AUTH", description = "'用户注销'")
+    @Operation(summary = "用户注销", description = "撤销当前 Token，使 Token 失效")
     public ResultVO<Void> logout(HttpServletRequest request) {
         String token = extractBearerToken(request);
         if (token != null) {
@@ -97,6 +100,7 @@ public class AuthController {
      * 从 Request Attribute 读取（由 LoginFilter 设置）
      */
     @GetMapping("/current")
+    @Operation(summary = "获取当前用户信息", description = "从请求上下文读取当前登录用户的基本信息")
     public ResultVO<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
@@ -115,6 +119,7 @@ public class AuthController {
      * 检查登录状态
      */
     @GetMapping("/check")
+    @Operation(summary = "检查登录状态", description = "验证 Token 有效性，返回登录状态和用户基本信息，含 isAdmin 标识")
     public ResultVO<Map<String, Object>> checkLogin(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
@@ -143,6 +148,7 @@ public class AuthController {
      * - allMenus: 所有菜单（包括列表页和表单页，用于前端路由映射）
      */
     @GetMapping("/menus")
+    @Operation(summary = "获取当前用户菜单", description = "返回用户可访问的侧边栏菜单列表及所有页面路由映射（pageMap）")
     public ResultVO<Map<String, Object>> getUserMenus(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
@@ -184,6 +190,7 @@ public class AuthController {
      * 获取当前用户的权限编码列表
      */
     @GetMapping("/permissions")
+    @Operation(summary = "获取当前用户权限列表", description = "返回当前用户拥有的所有权限编码，用于前端按钮级别权限判断")
     public ResultVO<List<String>> getUserPermissions(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
@@ -201,6 +208,7 @@ public class AuthController {
      */
     @PostMapping("/users")
     @AuditLog(operateType = "CREATE", module = "USER", description = "'创建用户: ' + #dto.userCode", targetType = "USER", targetId = "#result.data.id", recordParams = true)
+    @Operation(summary = "创建用户", description = "创建一个新用户，用户编码全局唯一")
     public ResultVO<UserDTO> createUser(@RequestBody CreateUserDTO dto, HttpServletRequest request) {
         Long creatorId = (Long) request.getAttribute("userId");
         if (creatorId == null) {
@@ -223,6 +231,7 @@ public class AuthController {
      */
     @PutMapping("/users/{id}")
     @AuditLog(operateType = "UPDATE", module = "USER", description = "'更新用户: ' + #dto.userCode", targetType = "USER", targetId = "#id", recordParams = true)
+    @Operation(summary = "更新用户", description = "根据ID更新用户信息")
     public ResultVO<UserDTO> updateUser(@PathVariable Long id, @RequestBody CreateUserDTO dto) {
         try {
             userService.update(id, dto);
@@ -242,6 +251,7 @@ public class AuthController {
      */
     @DeleteMapping("/users/{id}")
     @AuditLog(operateType = "DELETE", module = "USER", description = "'删除用户ID: ' + #id", targetType = "USER", targetId = "#id", recordParams = true)
+    @Operation(summary = "删除用户", description = "根据ID删除用户，不能删除当前登录用户")
     public ResultVO<Void> deleteUser(@PathVariable Long id, HttpServletRequest request) {
         Long currentUserId = (Long) request.getAttribute("userId");
         if (currentUserId != null && currentUserId.equals(id)) {
@@ -257,6 +267,7 @@ public class AuthController {
      */
     @GetMapping("/users")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户列表'", recordResult = false)
+    @Operation(summary = "分页查询用户列表", description = "支持关键词搜索的分页查询")
     public ResultVO<Page<UserDTO>> listUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
@@ -269,6 +280,7 @@ public class AuthController {
      */
     @GetMapping("/users/all")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询所有用户'", recordResult = false)
+    @Operation(summary = "获取所有用户", description = "返回全部用户列表（不分页），用于下拉选择框")
     public ResultVO<List<UserDTO>> listAllUsers() {
         return ResultVO.success(userService.listAll());
     }
@@ -278,6 +290,7 @@ public class AuthController {
      */
     @GetMapping("/users/{id}")
     @AuditLog(operateType = "QUERY", module = "USER", description = "'查询用户详情ID: ' + #id", targetType = "USER", targetId = "#id")
+    @Operation(summary = "获取用户详情", description = "根据ID获取用户的详细信息")
     public ResultVO<UserDTO> getUser(@PathVariable Long id) {
         return userService.getById(id)
                 .map(u -> ResultVO.success(userService.list("", 1, 10).getContent().stream()

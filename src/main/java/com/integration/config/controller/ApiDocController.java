@@ -36,6 +36,7 @@ public class ApiDocController {
     @GetMapping("/list")
     @RequirePermission("api:view")
     @AuditLog(operateType = "QUERY", module = "API_DOC", description = "'查看 API 文档列表'")
+    @Operation(summary = "获取所有接口文档（按分组）", description = "从 Swagger 解析所有接口文档，按分组聚合返回，用于文档页左侧导航")
     public ResultVO<List<ApiDocService.ApiDocGroup>> list() {
         return ResultVO.success(apiDocService.getAllGroupedDocs());
     }
@@ -46,6 +47,7 @@ public class ApiDocController {
     @GetMapping("/{id}")
     @RequirePermission("api:detail")
     @AuditLog(operateType = "QUERY", module = "API_DOC", description = "'查看接口文档: ' + #id", targetId = "#id")
+    @Operation(summary = "获取单个接口的完整文档", description = "根据接口 ID 获取完整的 Swagger 解析文档，含请求参数、响应结构、认证信息")
     public ResultVO<ApiDocService.ApiDocDetail> detail(@PathVariable Long id) {
         return ResultVO.success(apiDocService.getDocDetail(id));
     }

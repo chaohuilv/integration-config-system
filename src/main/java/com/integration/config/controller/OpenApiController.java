@@ -8,6 +8,8 @@ import com.integration.config.exception.BusinessException;
 import com.integration.config.service.ApiConfigService;
 import com.integration.config.service.OpenApiService;
 import com.integration.config.vo.ResultVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +19,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * OpenAPI / Swagger 导入导出 Controller
@@ -26,16 +27,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/openapi")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Tag(name = "OpenAPI 导入导出", description = "OpenAPI/Swagger JSON 解析、批量导入、导出为 OpenAPI 3.0 格式")
 public class OpenApiController {
 
     private final OpenApiService openApiService;
     private final ApiConfigService apiConfigService;
 
-    /**
-     * 解析 OpenAPI/Swagger JSON，返回预览列表
-     */
     @PostMapping("/parse")
     @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'OpenAPI导入预览，共 ' + (#list?.size() ?: 0) + ' 个接口'", recordResult = false)
+    @Operation(summary = "解析 OpenAPI JSON 预览", description = "传入 OpenAPI/Swagger JSON，返回解析后的接口列表预览（不保存到数据库）")
     public ResultVO<List<ApiConfigDTO>> parseOpenApi(@RequestBody Map<String, String> body) {
         String json = body.get("json");
         if (json == null || json.trim().isEmpty()) {
@@ -51,11 +51,9 @@ public class OpenApiController {
         }
     }
 
-    /**
-     * 上传文件解析（支持 JSON）
-     */
     @PostMapping("/upload")
     @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'上传文件解析 OpenAPI'", recordResult = false)
+    @Operation(summary = "上传文件解析 OpenAPI", description = "上传 .json 文件，自动解析 OpenAPI/Swagger 文档并返回接口预览")
     public ResultVO<List<ApiConfigDTO>> uploadOpenApi(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_PARAM, "请选择文件");
@@ -75,11 +73,9 @@ public class OpenApiController {
         }
     }
 
-    /**
-     * 批量导入（预览后确认）
-     */
     @PostMapping("/import")
     @AuditLog(operateType = "IMPORT", module = "API_CONFIG", description = "'批量导入 OpenAPI，共 ' + (#dtos?.size() ?: 0) + ' 个接口'", recordParams = true)
+    @Operation(summary = "批量导入接口", description = "将解析后的接口列表批量保存到数据库，编码冲突时自动追加时间戳后缀")
     public ResultVO<Map<String, Object>> batchImport(@RequestBody List<ApiConfigDTO> dtos, HttpServletRequest request) {
         if (dtos == null || dtos.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_PARAM, "没有要导入的接口");
@@ -94,7 +90,6 @@ public class OpenApiController {
         for (ApiConfigDTO dto : dtos) {
             try {
                 if (apiConfigService.existsByCode(dto.getCode())) {
-                    // 编码冲突：追加时间戳后缀
                     dto.setCode(dto.getCode() + "-" + (System.currentTimeMillis() % 100000));
                     skipped++;
                 }
@@ -113,11 +108,9 @@ public class OpenApiController {
         ));
     }
 
-    /**
-     * 导出全部启用接口为 OpenAPI 3.0 JSON
-     */
     @GetMapping("/export")
     @AuditLog(operateType = "EXPORT", module = "API_CONFIG", description = "'导出 OpenAPI 3.0（全部启用接口）'")
+    @Operation(summary = "导出全部接口为 OpenAPI 3.0", description = "将所有启用的接口导出为 OpenAPI 3.0 格式 JSON，可指定标题、版本、服务器 URL")
     public ResultVO<Map<String, String>> exportAll(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String version,
@@ -131,11 +124,9 @@ public class OpenApiController {
         }
     }
 
-    /**
-     * 批量导出指定接口为 OpenAPI 3.0 JSON
-     */
     @PostMapping("/export")
     @AuditLog(operateType = "EXPORT", module = "API_CONFIG", description = "'批量导出 OpenAPI（指定接口）'")
+    @Operation(summary = "批量导出指定接口为 OpenAPI 3.0", description = "根据传入的接口 ID 列表导出，生成 OpenAPI 3.0 JSON，ids 为空则导出全部")
     public ResultVO<Map<String, String>> exportSelected(@RequestBody Map<String, Object> body) {
         try {
             @SuppressWarnings("unchecked")

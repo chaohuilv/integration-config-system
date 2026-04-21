@@ -68,14 +68,20 @@ public final class AppConstants {
             "/api/version",
             "/h2-console",
             "/css/",
-            "/js/"
+            "/js/",
+            "/v3/api-docs",
+            "/swagger-ui",
+            "/swagger-resources"
     };
 
     /** 不需要 Token 认证的精确匹配路径 */
     public static final String[] AUTH_EXCLUDE_EXACTS = {
             "/",
             "/login.html",
-            "/favicon.ico"
+            "/favicon.ico",
+            "/v3/api-docs",
+            "/swagger-ui/index.html",
+            "/swagger-ui.html"
     };
 
     /** 静态资源后缀（自动放行） */

@@ -10,6 +10,8 @@ import com.integration.config.repository.log.AuditLogRepository;
 import com.integration.config.repository.log.InvokeLogRepository;
 import com.integration.config.vo.ResultVO;
 import com.sun.management.OperatingSystemMXBean;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.web.bind.annotation.*;
@@ -18,11 +20,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.management.RuntimeMXBean;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 实时大盘 Controller
@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Tag(name = "实时大盘", description = "系统总览、调用趋势、API排行、审计统计、系统资源监控")
 public class DashboardController {
 
     private final InvokeLogRepository invokeLogRepository;
@@ -41,11 +42,9 @@ public class DashboardController {
     private final RoleRepository roleRepository;
     private final RedisConnectionFactory redisConnectionFactory;
 
-    /**
-     * 总览数据（卡片）
-     */
     @GetMapping("/overview")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "总览数据", description = "返回系统总览卡片数据：接口数量、用户/角色数量、今日调用量及成功率、审计日志统计")
     public ResultVO<Map<String, Object>> getOverview() {
         Map<String, Object> data = new LinkedHashMap<>();
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -88,11 +87,9 @@ public class DashboardController {
         return ResultVO.success(data);
     }
 
-    /**
-     * 调用趋势（24小时）
-     */
     @GetMapping("/invoke-trend")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "调用趋势", description = "返回最近 N 小时每小时的成功/失败调用量，用于趋势图")
     public ResultVO<List<Map<String, Object>>> getInvokeTrend(@RequestParam(defaultValue = "24") Integer hours) {
         LocalDateTime start = LocalDateTime.now().minusHours(hours);
         List<Object[]> rows = invokeLogRepository.countHourlyTrend(start);
@@ -108,11 +105,9 @@ public class DashboardController {
         return ResultVO.success(result);
     }
 
-    /**
-     * 接口调用排行
-     */
     @GetMapping("/top-apis")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "接口调用排行", description = "返回今日调用量最高的接口列表，含调用次数、成功/失败数、平均耗时")
     public ResultVO<List<Map<String, Object>>> getTopApis(@RequestParam(defaultValue = "10") Integer limit) {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         List<Object[]> rows = invokeLogRepository.topApisByCalls(start);
@@ -131,11 +126,9 @@ public class DashboardController {
         return ResultVO.success(result);
     }
 
-    /**
-     * 审计活动分布
-     */
     @GetMapping("/audit-stats")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "审计统计", description = "返回今日审计日志的模块分布、操作类型分布、7天趋势")
     public ResultVO<Map<String, Object>> getAuditStats() {
         LocalDateTime start = LocalDate.now().atStartOfDay();
         Map<String, Object> data = new LinkedHashMap<>();
@@ -177,11 +170,9 @@ public class DashboardController {
         return ResultVO.success(data);
     }
 
-    /**
-     * 最近活动流
-     */
     @GetMapping("/recent-activity")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "最近活动流", description = "返回最近20条审计日志，按时间倒序，用于实时活动展示")
     public ResultVO<List<Map<String, Object>>> getRecentActivity() {
         List<com.integration.config.entity.log.AuditSysLog> logs = auditLogRepository.findTop20ByOrderByOperateTimeDesc();
         List<Map<String, Object>> result = new ArrayList<>();
@@ -201,11 +192,9 @@ public class DashboardController {
         return ResultVO.success(result);
     }
 
-    /**
-     * 系统健康状态
-     */
     @GetMapping("/health")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "系统健康检查", description = "检查 Redis 连接状态，返回服务时间戳")
     public ResultVO<Map<String, Object>> getHealth() {
         Map<String, Object> data = new LinkedHashMap<>();
 
@@ -222,11 +211,9 @@ public class DashboardController {
         return ResultVO.success(data);
     }
 
-    /**
-     * 系统硬件资源（CPU / 内存 / JVM）
-     */
     @GetMapping("/system-resources")
     @RequirePermission("dashboard:view")
+    @Operation(summary = "系统资源监控", description = "返回操作系统 CPU/内存、JVM 堆/非堆内存、运行时信息的完整监控数据")
     public ResultVO<Map<String, Object>> getSystemResources() {
         Map<String, Object> data = new LinkedHashMap<>();
 
