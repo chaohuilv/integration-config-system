@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口文档</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 仅定义左右分栏特有样式 */
+        .doc-layout { display: flex; gap: 16px; flex: 1; min-height: 0; }
+        
+        /* 左侧分组面板 */
+        .doc-aside { width: 200px; flex-shrink: 0; background: white; border-radius: 10px; display: flex; flex-direction: column; }
+        .doc-aside-head { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; font-weight: 600; color: #333; }
+        .doc-aside-body { flex: 1; overflow: auto; }
+        .group-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; border-left: 3px solid transparent; transition: all .15s; }
+        .group-item:hover { background: #f8f9fa; }
+        .group-item.active { background: #f0f5ff; border-left-color: #1677ff; }
+        .group-item.active .group-name { color: #1677ff; font-weight: 600; }
+        .group-name { font-size: 13px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .group-count { font-size: 11px; color: #999; background: #f0f0f0; padding: 1px 6px; border-radius: 8px; }
+        .group-item.active .group-count { background: #d6e8ff; color: #1677ff; }
+        
+        /* 右侧接口列表 */
+        .doc-main { flex: 1; background: white; border-radius: 10px; display: flex; flex-direction: column; min-width: 0; }
+        .doc-main-head { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 12px; }
+        .doc-main-title { font-size: 14px; font-weight: 600; color: #333; }
+        .doc-main-body { flex: 1; overflow: auto; padding: 12px; }
+        
+        /* 接口列表 */
+        .api-list { display: flex; flex-direction: column; gap: 6px; }
+        .api-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fafbfc; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: all .15s; }
+        .api-row:hover { background: #f0f5ff; border-color: #adc6ff; }
+        .api-row.deprecated { opacity: .6; }
+        .api-info { flex: 1; min-width: 0; }
+        .api-info-name { font-size: 13px; font-weight: 600; color: #222; }
+        .api-info-url { font-size: 11px; color: #888; font-family: 'Courier New', monospace; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .api-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .api-code { font-size: 10px; color: #bbb; font-family: 'Courier New', monospace; }
+        
+        /* 快捷入口条 */
+        .entry-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; flex-shrink: 0; }
+        .entry-link { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; background: white; border: 1px solid #e8e8e8; border-radius: 6px; font-size: 12px; color: #555; text-decoration: none; transition: all .15s; }
+        .entry-link:hover { border-color: #1677ff; color: #1677ff; }
+        
+        /* 详情弹窗 */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; border-radius: 14px; width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+        .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+        .modal-title { font-size: 16px; font-weight: 700; color: #222; }
+        .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #999; }
+        .modal-close:hover { color: #333; }
+        .modal-body { flex: 1; overflow: auto; padding: 20px; }
+        .modal-foot { padding: 14px 20px; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
+        
+        /* 详情区块 */
+        .detail-section { margin-bottom: 18px; }
+        .detail-label { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+        .url-display { background: #1e1e2e; color: #a9dc76; padding: 12px 16px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; }
+        .info-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .info-tag { display: inline-flex; align-items: center; gap: 4px; background: #f5f5f5; padding: 4px 10px; border-radius: 5px; font-size: 11px; }
+        .info-tag-label { color: #888; }
+        .info-tag-val { color: #333; font-weight: 600; }
+        
+        /* 参数表格 */
+        .params-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .params-table th { background: #f8f9fa; padding: 7px 10px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e8e8e8; }
+        .params-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; }
+        .params-table tr:last-child td { border-bottom: none; }
+        .param-name { font-family: 'Courier New', monospace; font-weight: 600; color: #333; }
+        .param-in { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #e8e8ff; color: #5050a0; }
+        .param-required { font-size: 10px; color: #e63d3f; margin-left: 3px; }
+        .param-type { color: #888; }
+        .param-example { color: #aaa; font-family: 'Courier New', monospace; }
+        .empty-params { color: #bbb; font-size: 12px; font-style: italic; padding: 8px 0; }
+        
+        /* 原始配置 */
+        .raw-config { background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px; font-size: 11px; }
+        .raw-config div { margin-top: 4px; }
+        .raw-config div:first-child { margin-top: 0; }
+        .raw-config code { background: #e8e8ff; padding: 1px 5px; border-radius: 3px; }
+        
+        /* 空状态 */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 20px; color: #bbb; flex: 1; }
+        .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state-text { font-size: 13px; }
+        
+
+    </style>
+</head>
+<body>
+<!-- 视图头部 -->
+<div class="view-header">
+    <div class="view-title">
+        <h2>📚 接口文档</h2>
+        <p class="view-sub">自动生成 · 实时同步 · 支持调试</p>
+    </div>
+    <div class="view-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadDocList()">🔄 刷新</button>
+        <button class="btn btn-primary btn-sm" onclick="exportWord()">📄 导出 Word</button>
+    </div>
+</div>
+
+<!-- 视图主体 -->
+<div class="view-body">
+    <!-- 快捷入口 -->
+    <div class="entry-bar">
+        <a class="entry-link" href="/swagger-ui.html" target="_blank">🔷 Swagger UI</a>
+        <a class="entry-link" href="/v3/api-docs" target="_blank">📄 OpenAPI JSON</a>
+        <div class="entry-link" onclick="loadQuickStats()">📊 <span id="quickStats">加载中…</span></div>
+    </div>
+
+    <!-- 左右分栏 -->
+    <div class="doc-layout">
+        <!-- 左侧分组 -->
+        <div class="doc-aside">
+            <div class="doc-aside-head">📂 接口分组</div>
+            <div class="doc-aside-body" id="groupList">
+                <div class="empty-state"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- 右侧接口列表 -->
+        <div class="doc-main">
+            <div class="doc-main-head">
+                <span class="doc-main-title" id="currentGroup">请选择分组</span>
+                <span id="groupCount" style="font-size:12px;color:#888;"></span>
+            </div>
+            <div class="doc-main-body" id="apiList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📁</div>
+                    <div class="empty-state-text">请从左侧选择分组</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span id="modalMethod" class="method"></span>
+                <span class="modal-title" id="modalTitle">接口名称</span>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-foot">
+            <button class="btn btn-default btn-sm" onclick="closeModal()">关闭</button>
+            <button class="btn btn-primary btn-sm" onclick="jumpToDebug()">🧪 去调试</button>
+        </div>
+    </div>
+</div>
+
+<script src="../js/vendor/jquery.min.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/components/permission.js"></script>
+<script>
+'use strict';
+
+let allGroups = [];
+let currentGroup = null;
+let currentDetail = null;
+
+$(function() {
+    Permission.init({
+        guard: true,
+        permissions: ['api:doc', 'api:export']
+    });
+    loadDocList();
+    loadQuickStats();
+});
+
+// ========== 加载文档列表 ==========
+async function loadDocList() {
+    const el = $('#groupList');
+    el.html('<div class="empty-state"><div class="spinner"></div></div>');
+    try {
+        const res = await API.doc.list();
+        if (res.code !== 200) throw new Error(res.message || '加载失败');
+        allGroups = res.data || [];
+        renderGroupList(allGroups);
+        if (allGroups.length > 0) {
+            selectGroup(allGroups[0].groupName);
+        }
+    } catch (e) {
+        el.html('<div style="padding:20px;text-align:center;color:#e63d3f;">加载失败: ' + esc(e.message) + '</div>');
+    }
+}
+
+// ========== 渲染分组列表 ==========
+function renderGroupList(groups) {
+    const el = $('#groupList');
+    if (!groups || groups.length === 0) {
+        el.html('<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">暂无分组</div></div>');
+        return;
+    }
+    let html = '';
+    groups.forEach(g => {
+        const count = (g.items || []).length;
+        html += '<div class="group-item" data-group="' + esc(g.groupName) + '" onclick="selectGroup(\'' + escJs(g.groupName) + '\')">' +
+            '<span class="group-name">' + esc(g.groupName || '未分组') + '</span>' +
+            '<span class="group-count">' + count + '</span>' +
+            '</div>';
+    });
+    el.html(html);
+}
+
+// ========== 选择分组 ==========
+function selectGroup(groupName) {
+    currentGroup = allGroups.find(g => g.groupName === groupName);
+    if (!currentGroup) return;
+
+    $('.group-item').removeClass('active');
+    $('.group-item[data-group="' + groupName + '"]').addClass('active');
+
+    $('#currentGroup').text(currentGroup.groupName || '未分组');
+    const count = (currentGroup.items || []).length;
+    $('#groupCount').text(count > 0 ? count + ' 个接口' : '');
+
+    renderApiList(currentGroup.items || []);
+}
+
+// ========== 渲染接口列表 ==========
+function renderApiList(apis) {
+    const el = $('#apiList');
+    if (!apis || apis.length === 0) {
+        el.html('<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">该分组暂无接口</div></div>');
+        return;
+    }
+    let html = '<div class="api-list">';
+    apis.forEach(api => {
+        const depCls = api.deprecated ? ' deprecated' : '';
+        const verCls = api.latestVersion ? 'version-latest' : 'version-old';
+        html += `<div class="api-row' + depCls + '" onclick="showDetail('${api.id}')">` +
+            '<span class="method method-' + (api.method || 'get').toLowerCase() + '">' + (api.method || 'GET') + '</span>' +
+            '<div class="api-info">' +
+            '<div class="api-info-name">' + esc(api.name || api.code) + '</div>' +
+            '<div class="api-info-url">' + esc(api.url || '') + '</div>' +
+            '</div>' +
+            '<div class="api-meta">' +
+            (api.version ? '<span class="version-tag ' + verCls + '">' + esc(api.version) + '</span>' : '') +
+            '<span class="api-code">' + esc(api.code) + '</span>' +
+            '</div>' +
+            '</div>';
+    });
+    html += '</div>';
+    el.html(html);
+}
+
+// ========== 加载统计 ==========
+async function loadQuickStats() {
+    try {
+        const res = await API.dashboard.getOverview();
+        if (res.code === 200 && res.data) {
+            const d = res.data;
+            $('#quickStats').text('总调用 ' + (d.totalInvokes || 0) + ' · 成功率 ' + ((d.successRate || 0) * 100).toFixed(1) + '%');
+        }
+    } catch (e) {
+        $('#quickStats').text('暂无数据');
+    }
+}
+
+// ========== 显示详情 ==========
+async function showDetail(id) {
+    const modal = $('#detailModal');
+    const body = $('#modalBody');
+    modal.addClass('active');
+    body.html('<div class="empty-state"><div class="spinner"></div></div>');
+
+    try {
+        const res = await API.doc.detail(id);
+        if (res.code !== 200) throw new Error(res.message || '加载失败');
+        currentDetail = res.data;
+        renderDetailModal(currentDetail);
+    } catch (e) {
+        body.html('<div style="color:#e63d3f;padding:16px;">加载失败: ' + esc(e.message) + '</div>');
+    }
+}
+
+function renderDetailModal(d) {
+    // Header
+    $('#modalMethod').attr('class', 'method method-' + (d.method || 'get').toLowerCase()).text(d.method || 'GET');
+    const verTag = d.version ? ' <span style="font-size:11px;color:#888;">· ' + (d.deprecated ? '<s>废弃</s> ' : '') + d.version + '</span>' : '';
+    $('#modalTitle').html(esc(d.name || d.code) + verTag);
+
+    let html = '';
+
+    if (d.description) {
+        html += '<div class="detail-section"><div class="detail-label">描述</div><div style="font-size:12px;color:#555;">' + esc(d.description) + '</div></div>';
+    }
+
+    html += '<div class="detail-section"><div class="detail-label">请求地址</div><div class="url-display">' + esc(d.method || 'GET') + ' ' + esc(d.url || '/') + '</div></div>';
+
+    html += '<div class="detail-section"><div class="detail-label">基本信息</div><div class="info-tags">' +
+        infoTag('Content-Type', d.contentType || '未指定') +
+        infoTag('认证', d.authType || 'NONE') +
+        infoTag('超时', d.timeout ? d.timeout + 'ms' : '30000ms') +
+        infoTag('重试', d.retryCount != null ? d.retryCount : 0) +
+        '</div></div>';
+
+    html += renderParamsSection('请求参数', d.queryParams, d.bodyParams, d.headers);
+
+    html += '<div class="detail-section"><div class="detail-label">原始配置</div><div class="raw-config">' +
+        '<div><strong>编码:</strong> ' + esc(d.code || '') + '</div>' +
+        '<div><strong>分组:</strong> ' + esc(d.groupName || '未分组') + '</div>' +
+        (d.requestParams ? '<div><strong>Query参数:</strong> <code>' + esc(d.requestParams) + '</code></div>' : '') +
+        (d.requestBody ? '<div><strong>请求体模板:</strong> <code>' + esc(d.requestBody) + '</code></div>' : '') +
+        '</div></div>';
+
+    $('#modalBody').html(html);
+}
+
+function infoTag(label, value) {
+    return '<span class="info-tag"><span class="info-tag-label">' + label + ':</span><span class="info-tag-val">' + esc(value) + '</span></span>';
+}
+
+function renderParamsSection(title, queryParams, bodyParams, headers) {
+    let html = '<div class="detail-section"><div class="detail-label">' + title + '</div>';
+    const hasQuery = queryParams && queryParams.length > 0;
+    const hasBody = bodyParams && bodyParams.length > 0;
+    const hasHeaders = headers && headers.length > 0;
+
+    if (!hasQuery && !hasBody && !hasHeaders) {
+        html += '<div class="empty-params">该接口无参数定义</div>';
+    } else {
+        if (hasQuery) html += '<div style="font-size:11px;font-weight:600;color:#555;margin-bottom:6px;">Query 参数</div>' + buildParamsTable(queryParams);
+        if (hasBody) html += '<div style="font-size:11px;font-weight:600;color:#555;margin:10px 0 6px;">Body 参数</div>' + buildParamsTable(bodyParams);
+        if (hasHeaders) html += '<div style="font-size:11px;font-weight:600;color:#555;margin:10px 0 6px;">请求头</div>' + buildParamsTable(headers);
+    }
+    html += '</div>';
+    return html;
+}
+
+function buildParamsTable(params) {
+    let html = '<table class="params-table"><thead><tr><th>参数名</th><th>位置</th><th>类型</th><th>示例</th></tr></thead><tbody>';
+    params.forEach(p => {
+        const inLabel = { query: 'Query', body: 'Body', header: 'Header', path: 'Path' }[p.in] || p.in;
+        html += '<tr>' +
+            '<td><span class="param-name">' + esc(p.name || '') + '</span> ' +
+            '<span class="param-in">' + inLabel + '</span>' +
+            (p.required ? '<span class="param-required">必填</span>' : '') + '</td>' +
+            '<td><span class="param-type">' + esc(p.type || 'string') + '</span></td>' +
+            '<td><span class="param-example">' + esc(p.example || '-') + '</span></td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+// ========== 调试跳转 ==========
+function jumpToDebug() {
+    if (!currentDetail) return;
+    closeModal();
+    setTimeout(() => {
+        parent.loadPage('debug', currentDetail.code);
+    }, 100);
+}
+
+// ========== 关闭弹窗 ==========
+function closeModal() {
+    $('#detailModal').removeClass('active');
+    currentDetail = null;
+}
+
+$('#detailModal').on('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+$(document).on('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+// ========== 工具函数 ==========
+function esc(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escJs(str) {
+    if (str == null) return '';
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+// ========== 导出 Word ==========
+function exportWord() {
+    var groupName = currentGroup ? currentGroup.groupName : null;
+    var label = groupName || '全部';
+    utils.toast('正在生成 Word 文档…', 'info');
+    API.doc.exportGroup(groupName);
+    setTimeout(function() { utils.toast('Word 文档已开始下载', 'success'); }, 500);
+}
+</script>
+</body>
+</html>
