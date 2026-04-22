@@ -1,8 +1,8 @@
 package com.integration.config.config;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import lombok.Data;
 
 /**
  * 全局配置
@@ -43,4 +43,11 @@ public class IntegrationConfig {
      * 是否启用环境配置功能
      */
     private boolean environmentEnabled = true;
+
+    // ========== 敏感字段加密 ==========
+
+    /**
+     * 敏感数据 AES-256 加密配置
+     */
+    private EncryptionConfig encryption = new EncryptionConfig();
 }

@@ -2,6 +2,7 @@ package com.integration.config.entity.config;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.integration.config.converter.EncryptedFieldConverter;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -45,11 +46,13 @@ public class User {
     @Column(name = "DISPLAY_NAME", length = 50)
     private String displayName;
 
-    /** 邮箱 */
+    /** 邮箱（AES 加密存储） */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "EMAIL", length = 100)
     private String email;
 
-    /** 手机号 */
+    /** 手机号（AES 加密存储） */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "PHONE", length = 20)
     private String phone;
 

@@ -109,6 +109,13 @@ integration:
     prefix: "integration:cache:"
     ttl: 300
 
+  # 敏感字段加密（AES-256-GCM）
+  # 密钥生成：openssl rand -base64 32
+  # 生产环境建议通过环境变量注入：INTEGRATION_ENCRYPTION_KEY=your-key
+  encryption:
+    enabled: true
+    key: "ZGV2LW9ubHktc2VjcmV0LWtleS1nZW5lcmF0ZWQ="
+
 # ===========================================
 # Nacos 配置（配置推送）
 # ===========================================

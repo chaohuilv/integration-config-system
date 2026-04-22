@@ -1,6 +1,7 @@
 package com.integration.config.entity.config;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.integration.config.converter.EncryptedFieldConverter;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.integration.config.enums.ContentType;
 import com.integration.config.enums.HttpMethod;
@@ -63,7 +64,8 @@ public class ApiConfig {
     @Column(name = "CONTENT_TYPE", length = 50)
     private ContentType contentType;
 
-    /** 请求头配置，格式：Key: Value（每行一个） */
+    /** 请求头配置（AES 加密存储，可能含 Authorization 等敏感头） */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "HEADERS", columnDefinition = "TEXT")
     private String headers;
 
@@ -71,7 +73,8 @@ public class ApiConfig {
     @Column(name = "REQUEST_PARAMS", columnDefinition = "TEXT")
     private String requestParams;
 
-    /** 请求体内容，支持{{paramName}}占位符替换 */
+    /** 请求体内容（AES 加密存储，可能含敏感模板数据） */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "REQUEST_BODY", columnDefinition = "TEXT")
     private String requestBody;
 
@@ -79,12 +82,14 @@ public class ApiConfig {
     @Column(name = "AUTH_TYPE", length = 20)
     private String authType;
 
-    /** 认证信息：
+    /**
+     * 认证信息（AES-256-GCM 加密存储，防泄露）：
      * BASIC: base64(username:password)
      * BEARER: Token值
      * API_KEY: key值或key:value格式
      * DYNAMIC: 空（动态Token由下方字段控制）
      */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "AUTH_INFO", length = 500)
     private String authInfo;
 

@@ -2,6 +2,7 @@ package com.integration.config.entity.token;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.integration.config.converter.EncryptedFieldConverter;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,8 +38,9 @@ public class TokenCacheEntry {
     private String apiCode;
 
     /**
-     * Token 值
+     * Token 值（AES-256-GCM 加密存储，防泄露）
      */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "TOKEN", nullable = false, columnDefinition = "TEXT")
     private String token;
 
