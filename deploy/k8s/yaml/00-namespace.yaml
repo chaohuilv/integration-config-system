@@ -1,0 +1,10 @@
+# ============================================================
+# 命名空间
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: integration-system
+  labels:
+    app.kubernetes.io/name: integration-config-system
+    app.kubernetes.io/managed-by: kubectl

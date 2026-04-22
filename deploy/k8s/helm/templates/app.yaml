@@ -1,0 +1,340 @@
+{{/*
+  Deployment + Service + HPA
+  包含：优雅关闭、存活/就绪探针、HPA、资源限制、滚动更新
+*/}}
+{{- $appName := include "app.fullname" . -}}
+{{- $ns := include "app.namespace" . -}}
+{{- $releaseName := .Release.Name -}}
+
+---
+# ============================================================
+# Deployment
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $appName }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/version:  {{ include "app.version" . }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "app.name" . }}
+      app.kubernetes.io/instance: {{ $releaseName | quote }}
+
+  # 滚动更新：maxUnavailable=0 确保零停机
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.app.rollingUpdate.maxUnavailable }}
+      maxSurge:       {{ .Values.app.rollingUpdate.maxSurge }}
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name:     {{ include "app.name" . }}
+        app.kubernetes.io/instance: {{ $releaseName | quote }}
+        app.kubernetes.io/version:  {{ include "app.version" . }}
+      annotations:
+        # 每次部署自动更新时间戳（触发滚动更新）
+        kubectl.kubernetes.io/restartedAt: "{{ now | date "20060102150405" }}"
+
+    spec:
+      # 优雅关闭总时间
+      terminationGracePeriodSeconds: {{ .Values.app.terminationGracePeriodSeconds }}
+
+      # Init Containers：等待 MySQL/Redis 就绪
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for MySQL..."
+              until nc -z {{ include "app.mysql.dsn" . }} 3306; do
+                sleep 5
+              done
+              echo "MySQL is ready."
+          resources:
+            requests: { cpu: "10m", memory: "16Mi" }
+            limits:   { cpu: "100m", memory: "64Mi" }
+
+        - name: wait-for-redis
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for Redis..."
+              until nc -z {{ ternary (printf "%s.%s.svc.cluster.local" $appName $ns) .Values.app.externalRedis.host .Values.redis.enabled }} 6379; do
+                sleep 3
+              done
+              echo "Redis is ready."
+          resources:
+            requests: { cpu: "10m", memory: "16Mi" }
+            limits:   { cpu: "100m", memory: "64Mi" }}
+
+      containers:
+        - name: app
+          image: {{ .Values.global.imageRegistry | default "registry.example.com" }}/{{ .Values.app.image.repository }}:{{ include "app.version" . }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # ================================================
+          # 环境变量
+          # ================================================
+          env:
+            # Spring Profile
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $appName }}
+                  key: SPRING_PROFILES_ACTIVE
+
+            # 三数据源 URL（从 ConfigMap）
+            {{- range $dbType := list "CONFIG" "LOG" "TOKEN" }}
+            {{- $key := printf "SPRING_DATASOURCE-%s_URL" $dbType }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $appName }}
+                  key: {{ $key }}
+            {{- end }}
+
+            # 三数据源 Driver
+            {{- range $dbType := list "CONFIG" "LOG" "TOKEN" }}
+            {{- $key := printf "SPRING_DATASOURCE-%s_DRIVER-CLASS-NAME" $dbType }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $appName }}
+                  key: {{ $key }}
+            {{- end }}
+
+            # MySQL 用户名/密码
+            {{- range $dbType := list "CONFIG" "LOG" "TOKEN" }}
+            {{- $userKey := printf "SPRING_DATASOURCE-%s_USERNAME" $dbType }}
+            {{- $pwdKey  := printf "SPRING_DATASOURCE-%s_PASSWORD" $dbType }}
+            - name: {{ $userKey }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "app.fullname" . }}-secrets
+                  key: {{ $userKey }}
+            - name: {{ $pwdKey }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "app.fullname" . }}-secrets
+                  key: {{ $pwdKey }}
+            {{- end }}
+
+            # Redis
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $appName }}
+                  key: SPRING_DATA_REDIS_HOST
+            - name: SPRING_DATA_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $appName }}
+                  key: SPRING_DATA_REDIS_PORT
+            - name: SPRING_DATA_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "app.fullname" . }}-secrets
+                  key: SPRING_DATA_REDIS_PASSWORD
+
+            # JVM 容器感知
+            - name: JDK_JAVA_OPTIONS
+              value: {{ .Values.app.jvmOptions | quote }}
+
+          # ================================================
+          # 健康检查
+          # ================================================
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.app.healthCheck.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.app.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds:       {{ .Values.app.healthCheck.liveness.periodSeconds }}
+            timeoutSeconds:      {{ .Values.app.healthCheck.liveness.timeoutSeconds }}
+            failureThreshold:     {{ .Values.app.healthCheck.liveness.failureThreshold }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.app.healthCheck.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.app.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds:       {{ .Values.app.healthCheck.readiness.periodSeconds }}
+            timeoutSeconds:      {{ .Values.app.healthCheck.readiness.timeoutSeconds }}
+            failureThreshold:     {{ .Values.app.healthCheck.readiness.failureThreshold }}
+
+          # ================================================
+          # 资源限制
+          # ================================================
+          resources:
+            requests:
+              cpu: {{ .Values.app.resources.requests.cpu | quote }}
+              memory: {{ .Values.app.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.app.resources.limits.cpu | quote }}
+              memory: {{ .Values.app.resources.limits.memory | quote }}
+
+          # ================================================
+          # 生命周期钩子 — 优雅关闭
+          # ================================================
+          lifecycle:
+            preStop:
+              exec:
+                # 1. 等待 kube-proxy 更新 Endpoint（默认同步时间约 5 秒）
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+          # 挂载
+          volumeMounts:
+            - name: app-data
+              mountPath: /app/data
+
+      volumes:
+        - name: app-data
+          {{- if .Values.app.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $appName }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+---
+# ============================================================
+# Service
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $appName }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+spec:
+  type: {{ .Values.app.service.type }}
+  selector:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+{{- if .Values.app.persistence.enabled }}
+---
+# PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $appName }}-data
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.app.persistence.size }}
+  {{- if .Values.app.persistence.storageClass }}
+  storageClassName: {{ .Values.app.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+
+{{- if and .Values.app.ingress.enabled .Values.app.ingress.className }}
+---
+# ============================================================
+# Ingress
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $appName }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect:   {{ .Values.app.ingress.annotations.sslRedirect | default "true" | quote }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.app.ingress.annotations.proxyReadTimeout | default "60" | quote }}
+spec:
+  ingressClassName: {{ .Values.app.ingress.className | quote }}
+  tls:
+    - hosts: [{{ .Values.app.ingress.host | quote }}]
+      {{- if .Values.app.ingress.tls.enabled }}
+      secretName: {{ .Values.app.ingress.tls.secretName }}
+      {{- end }}
+  rules:
+    - host: {{ .Values.app.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $appName }}
+                port:
+                  number: 80
+{{- end }}
+
+{{- if .Values.hpa.enabled }}
+---
+# ============================================================
+# HPA — HorizontalPodAutoscaler
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $appName }}-hpa
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name:     {{ include "app.name" . }}
+    app.kubernetes.io/instance: {{ $releaseName | quote }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $appName }}
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.cpuThreshold }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.memoryThreshold }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.hpa.scaleUpStabilization | default 0 }}
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.hpa.scaleDownStabilization | default 300 }}
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+{{- end }}

@@ -1,0 +1,43 @@
+# ============================================================
+# Ingress — 外部访问
+#
+# 前置条件：已安装 Ingress Controller
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.0/deploy/static/provider/cloud/deploy.yaml
+#
+# 域名解析：api.your-domain.com → Ingress Controller IP
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: integration-config-system
+  namespace: integration-system
+  annotations:
+    # 强制 HTTPS
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 代理超时
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # 代理缓冲
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    # 保留原始客户端 IP
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    # 访问日志格式
+    nginx.ingress.kubernetes.io/log-format-upstream: '{"time":"$time_iso8601","client_ip":"$remote_addr","scheme":"$scheme","method":"$request_method","host":"$host","uri":"$request_uri","status":$status,"request_time":$request_time,"response_time":$upstream_response_time,"upstream":"$upstream_addr"}'
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.your-domain.com
+      secretName: integration-tls
+  rules:
+    - host: api.your-domain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: integration-config-system
+                port:
+                  number: 80

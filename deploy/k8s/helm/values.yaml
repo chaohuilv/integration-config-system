@@ -1,0 +1,161 @@
+# ============================================================
+# Helm Chart — values.yaml（默认配置）
+#
+# 按需修改以下配置后执行：
+#   helm install integration ./deploy/k8s/helm \
+#     --namespace integration-system --create-namespace \
+#     --values ./deploy/k8s/helm/values.yaml
+#
+# 完全覆盖：
+#   helm install integration ./deploy/k8s/helm -f my-values.yaml
+# ============================================================
+
+# ---- 全局配置 ----
+global:
+  # 镜像仓库（推送镜像后替换）
+  imageRegistry: registry.example.com
+  # 镜像标签
+  imageTag: "1.0.0"
+
+# ---- 命名空间（默认关闭，helm CLI --create-namespace 自动创建）----
+namespace: integration-system
+
+# ---- MySQL 配置 ----
+mysql:
+  enabled: true                # false = 使用外部 MySQL
+  auth:
+    rootPassword: root-secret   # 请使用 --set 覆盖：helm install ... --set mysql.auth.rootPassword=xxx
+    database: integration_config
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""         # 指定 StorageClass：kubectl get storageclass
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    configuration: |
+      [mysqld]
+      character-set-server=utf8mb4
+      collation-server=utf8mb4_unicode_ci
+      lower_case_table_names=1
+      max_connections=200
+
+# ---- Redis 配置 ----
+redis:
+  enabled: true                # false = 使用外部 Redis
+  auth:
+    enabled: true
+    password: redis-secret    # helm install ... --set redis.auth.password=xxx
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  master:
+    configuration: |
+      maxmemory 256mb
+      maxmemory-policy allkeys-lru
+
+# ---- 应用配置 ----
+app:
+  replicaCount: 2
+
+  image:
+    repository: integration-config-system
+    pullPolicy: IfNotPresent
+
+  # 服务端口（Service 暴露）
+  service:
+    type: ClusterIP             # ClusterIP / LoadBalancer / NodePort
+    port: 80
+
+  # 就绪/存活探针
+  healthCheck:
+    liveness:
+      path: /api/health/session
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /api/health/session
+      initialDelaySeconds: 30
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+
+  # 资源限制
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  # JVM 参数
+  jvmOptions: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+  # 优雅关闭总时间（秒）
+  terminationGracePeriodSeconds: 60
+
+  # 滚动更新策略
+  rollingUpdate:
+    maxUnavailable: 0    # 始终保持全量
+    maxSurge: 1
+
+  # 外部 MySQL（mysql.enabled=false 时生效）
+  externalDatabase:
+    host: ""
+    port: 3306
+    username: root
+    password: ""         # 建议通过 --set 或 secrets 注入
+    configDbName:   integration_config
+    logDbName:      integration_log
+    tokenDbName:    integration_token
+
+  # 外部 Redis（redis.enabled=false 时生效）
+  externalRedis:
+    host: ""
+    port: 6379
+    password: ""         # 建议通过 --set 或 secrets 注入
+
+  # Ingress
+  ingress:
+    enabled: true
+    className: nginx
+    host: api.your-domain.com
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    tls:
+      enabled: true
+      secretName: integration-tls   # 提前创建：kubectl create secret tls integration-tls --cert=xxx.crt --key=xxx.key
+
+  # 持久化存储（PVC）
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    mountPath: /app/data
+
+# ---- HPA 自动扩缩 ----
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuThreshold: 70       # CPU 平均利用率 > 70% 扩容
+  memoryThreshold: 80    # 内存 > 80% 扩容
+  scaleUpStabilization: 0s     # 扩容稳定窗口
+  scaleDownStabilization: 300s # 缩容稳定窗口（5 分钟防抖动）

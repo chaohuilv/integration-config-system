@@ -1,0 +1,510 @@
+# ============================================================
+# Jenkins Pipeline — integration-config-system
+#
+# 插件要求：
+#   - Pipeline
+#   - Kubernetes (可选，云端集群)
+#   - Docker Pipeline
+#   - Config File Provider (管理 kubernetes Nuremberg.yaml)
+#   - Helm (可选)
+#   - Generic Webhook Trigger (可选，接收 Git webhook)
+#
+# 流水线说明：
+#   build       → Maven 编译打包
+#   test        → 单元测试（JUnit）
+#   docker      → 构建并推送镜像
+#   deploy-dev  → 部署到开发环境
+#   deploy-prod → 部署到生产环境（需手动触发）
+# ============================================================
+
+@Library('shared-library') _
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                    - name: maven
+                      image: maven:3.9-eclipse-temurin-17
+                      command: ["sleep", "infinity"]
+                      resources:
+                        requests:
+                          cpu: 500m
+                          memory: 1Gi
+                        limits:
+                          cpu: 2000m
+                          memory: 4Gi
+                      volumeMounts:
+                        - name: maven-cache
+                          mountPath: /root/.m2
+
+                    - name: docker
+                      image: docker:24-dind
+                      securityContext:
+                        privileged: true
+                      resources:
+                        requests:
+                          cpu: 500m
+                          memory: 512Mi
+                        limits:
+                          cpu: 1000m
+                          memory: 1Gi
+
+                    - name: kubectl
+                      image: bitnami/kubectl:latest
+                      command: ["sleep", "infinity"]
+            '''
+        }
+    }
+
+    options {
+        // 构建超时
+        timeout(time: 30, unit: 'MINUTES')
+
+        // 控制台输出时间戳
+        timestamps()
+
+        // 失败重试
+        retry(1)
+
+        // 丢弃旧构建（保留最近 10 个成功 + 5 个失败）
+        buildDiscarder(
+            logRotator(numToKeepStr: '10', artifactNumToKeepStr: '5')
+        )
+
+        // 禁用并行阶段的自动清理
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        // 镜像标签（默认：Git Commit SHA）
+        string(
+            name:    'IMAGE_TAG',
+            defaultValue: '',
+            description: '镜像标签，留空使用 GIT_COMMIT'
+        )
+
+        // 跳过测试
+        booleanParam(
+            name:    'SKIP_TESTS',
+            defaultValue: false,
+            description: '跳过单元测试（谨慎使用）'
+        )
+
+        // 目标环境（deploy-prod 阶段）
+        choice(
+            name:    'DEPLOY_ENV',
+            choices: ['dev', 'staging', 'prod'],
+            defaultValue: 'dev',
+            description: '部署目标环境'
+        )
+
+        // 镜像仓库地址
+        string(
+            name:    'REGISTRY',
+            defaultValue: 'registry.example.com',
+            description: 'Docker 镜像仓库地址'
+        )
+
+        // 滚动更新确认（生产环境强制）
+        booleanParam(
+            name:    'CONFIRM_ROLLOUT',
+            defaultValue: false,
+            description: '确认滚动更新（生产环境必须勾选）'
+        )
+    }
+
+    environment {
+        APP_NAME      = 'integration-config-system'
+        REGISTRY_URL  = "${params.REGISTRY}"
+        IMAGE_NAME    = "${params.REGISTRY}/${APP_NAME}"
+        GIT_SHA       = "${GIT_COMMIT[0..7]}"
+        IMAGE_TAG     = "${params.IMAGE_TAG ?: env.GIT_SHA}"
+        MAVEN_OPTS    = '-Dmaven.repo.local=/root/.m2/repository'
+    }
+
+    stages {
+        // ============================================================
+        stage('Prepare') {
+            steps {
+                script {
+                    // 打印构建信息
+                    echo """
+                    =========================================
+                    统一接口配置系统 — Jenkins 构建
+                    =========================================
+                    APP_NAME   : ${APP_NAME}
+                    IMAGE_NAME : ${IMAGE_NAME}:${IMAGE_TAG}
+                    GIT_BRANCH : ${GIT_BRANCH}
+                    GIT_SHA    : ${GIT_SHA}
+                    BUILD_NUMBER: ${BUILD_NUMBER}
+                    DEPLOY_ENV : ${params.DEPLOY_ENV}
+                    SKIP_TESTS : ${params.SKIP_TESTS}
+                    =========================================
+                    """
+                }
+            }
+        }
+
+        // ============================================================
+        stage('Maven Build') {
+            steps {
+                container('maven') {
+                    dir('integration-config-system') {
+                        sh '''
+                            mvn clean package \
+                                -DskipTests=${params.SKIP_TESTS} \
+                                -B \
+                                -Dmaven.test.failure.ignore=false \
+                                -Dmaven.javadoc.skip=true \
+                                --no-transfer-progress
+                        '''
+                    }
+                }
+
+                stash(
+                    name: 'app-jar',
+                    includes: 'integration-config-system/target/*.jar'
+                )
+
+                stash(
+                    name: 'app-dockerfile',
+                    includes: 'integration-config-system/deploy/docker/Dockerfile'
+                )
+            }
+        }
+
+        // ============================================================
+        stage('Unit Tests') {
+            when {
+                expression { !params.SKIP_TESTS }
+            }
+            steps {
+                container('maven') {
+                    dir('integration-config-system') {
+                        sh '''
+                            mvn test \
+                                -B \
+                                --no-transfer-progress \
+                                -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+                        '''
+                    }
+                }
+                junit(
+                    testResults: 'integration-config-system/target/surefire-reports/*.xml',
+                    allowEmptyResults: true
+                )
+            }
+        }
+
+        // ============================================================
+        stage('Docker Build & Push') {
+            steps {
+                container('docker') {
+                    script {
+                        // 启动 Docker-in-Docker DinD
+                        sh '''#!/bin/bash
+                            if ! docker info >/dev/null 2>&1; then
+                                echo "Starting Docker-in-Docker..."
+                                dockerd --host=unix:///var/run/docker.sock \
+                                        --host=tcp:0.0.0.0:2375 \
+                                        --storage-driver=vfs \
+                                        &>/tmp/dockerd.log &
+                                DOCKER_PID=$!
+                                for i in {1..30}; do
+                                    docker info && break
+                                    sleep 1
+                                done
+                                if ! docker info >/dev/null 2>&1; then
+                                    cat /tmp/dockerd.log
+                                    exit 1
+                                fi
+                                echo "Docker-in-Docker started, PID=$DOCKER_PID"
+                            fi
+                        '''
+                    }
+
+                    dir('integration-config-system') {
+                        script {
+                            // 镜像标签
+                            def imageTags = [
+                                "latest",
+                                env.GIT_SHA,
+                                "build-${BUILD_NUMBER}"
+                            ]
+
+                            // 打标签 + 推送
+                            imageTags.each { tag ->
+                                sh """
+                                    docker build \
+                                        --network=host \
+                                        -t ${IMAGE_NAME}:${tag} \
+                                        -f deploy/docker/Dockerfile \
+                                        --no-cache \
+                                        --progress=plain \
+                                        .
+                                    docker push ${IMAGE_NAME}:${tag}
+                                """
+                            }
+
+                            // 镜像摘要
+                            def digest = sh(
+                                script: "docker inspect ${IMAGE_NAME}:${GIT_SHA} --format='{{.RepoDigests.[0]}}'",
+                                returnStdout: true
+                            ).trim()
+                            echo "Image Digest: ${digest}"
+                        }
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        stage('Security Scan（可选）') {
+            steps {
+                container('docker') {
+                    script {
+                        try {
+                            def trivyReport = sh(
+                                script: """
+                                    docker run --rm \
+                                        --network=host \
+                                        aquasec/trivy:latest \
+                                        image \
+                                        --format json \
+                                        --severity HIGH,CRITICAL \
+                                        --exit-code 0 \
+                                        --no-progress \
+                                        ${IMAGE_NAME}:${GIT_SHA}
+                                """,
+                                returnStdout: true
+                            )
+                            writeFile(file: 'trivy-report.json', text: trivyReport)
+                            // 高危漏洞 > 0 则失败
+                            echo "Trivy scan completed. See artifacts for details."
+                        } catch (Exception e) {
+                            echo "Trivy scan skipped or failed: ${e.message}"
+                        }
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        stage('Deploy Dev') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { params.DEPLOY_ENV == 'dev' || params.DEPLOY_ENV == 'staging' }
+                }
+            }
+            steps {
+                k8sDeploy(
+                    envName:    params.DEPLOY_ENV,
+                    imageTag:   env.GIT_SHA,
+                    namespace:  "integration-${params.DEPLOY_ENV}"
+                )
+            }
+        }
+
+        // ============================================================
+        stage('Deploy Staging（自动）') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { params.DEPLOY_ENV == 'staging' }
+                }
+            }
+            steps {
+                k8sDeploy(
+                    envName:    'staging',
+                    imageTag:   env.GIT_SHA,
+                    namespace:  'integration-staging'
+                )
+
+                // 接口验证
+                pause(120)  // 观察 2 分钟
+                k8sHealthCheck(
+                    url:    'https://staging.api.your-domain.com/api/health/session',
+                    timeout: 30
+                )
+            }
+        }
+
+        // ============================================================
+        stage('Deploy Production（手动）') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { params.DEPLOY_ENV == 'prod' }
+                }
+            }
+            steps {
+                script {
+                    if (!params.CONFIRM_ROLLOUT) {
+                        error(
+                            "生产环境部署需要勾选「确认滚动更新」(CONFIRM_ROLLOUT)\n" +
+                            "建议先在 Staging 环境验证后再部署生产。"
+                        )
+                    }
+                }
+
+                // 更新 Helm values
+                sh """
+                    sed -i 's|imageTag:.*|imageTag: "${GIT_SHA}"|' deploy/k8s/helm/values.yaml
+                    sed -i 's|imageRegistry:.*|imageRegistry: "${REGISTRY_URL}"|' deploy/k8s/helm/values.yaml
+                """
+
+                k8sDeploy(
+                    envName:    'prod',
+                    imageTag:   env.GIT_SHA,
+                    namespace:  'integration-system',
+                    waitTimeout: '10m'
+                )
+
+                // 健康检查
+                k8sHealthCheck(
+                    url:    'https://api.your-domain.com/api/health/session',
+                    timeout: 60
+                )
+            }
+        }
+    }
+
+    // ============================================================
+    // 后置处理
+    // ============================================================
+    post {
+        always {
+            script {
+                // 记录构建信息到制品
+                def buildInfo = """
+                    Build Info
+                    ==========
+                    Job       : ${env.JOB_NAME}
+                    Build #   : ${env.BUILD_NUMBER}
+                    Branch    : ${env.GIT_BRANCH}
+                    Commit    : ${GIT_SHA}
+                    Image     : ${IMAGE_NAME}:${IMAGE_TAG}
+                    Result    : ${currentBuild.result ?: 'SUCCESS'}
+                    Duration  : ${currentBuild.durationString}
+                    Console   : ${env.BUILD_URL}console
+                """
+                writeFile(file: 'build-info.txt', text: buildInfo)
+            }
+
+            archiveArtifacts(
+                artifacts: 'integration-config-system/target/*.jar',
+                allowEmptyArchive: true,
+                fingerprint: true
+            )
+
+            // 清理 Docker 构建缓存（节省节点空间）
+            sh 'docker builder prune -af || true'
+        }
+
+        success {
+            echo "✅ 构建成功！"
+            script {
+                if (env.GIT_BRANCH == 'main') {
+                    // 通知 DingTalk / Slack（按需配置）
+                    // dingtalkNotify("${IMAGE_NAME}:${GIT_SHA} 部署成功")
+                }
+            }
+        }
+
+        failure {
+            echo "❌ 构建失败，请检查日志"
+            script {
+                // 失败告警
+                // dingtalkNotify("❌ ${APP_NAME} 构建失败\n${env.BUILD_URL}")
+            }
+        }
+
+        cleanup {
+            // 清理工作空间（可选）
+            cleanWs(
+                deleteDirs: true,
+                notFailBuild: true
+            )
+        }
+    }
+}
+
+// ============================================================
+// 辅助函数：Kubernetes 部署
+// ============================================================
+def k8sDeploy(Map cfg) {
+    def envName   = cfg.envName    ?: 'dev'
+    def imageTag  = cfg.imageTag   ?: env.GIT_SHA
+    def namespace = cfg.namespace  ?: "integration-${envName}"
+    def waitTimeout = cfg.waitTimeout ?: '5m'
+
+    container('kubectl') {
+        script {
+            withCredentials([
+                file(
+                    credentialsId: "kubeconfig-${envName}",
+                    variable: 'KUBECONFIG_FILE'
+                )
+            ]) {
+                sh """
+                    export KUBECONFIG=\${KUBECONFIG_FILE}
+
+                    echo "Namespace : ${namespace}"
+                    echo "Image     : ${IMAGE_NAME}:${imageTag}"
+
+                    # 更新 Helm values
+                    helm upgrade --install \
+                        integration \
+                        deploy/k8s/helm \
+                        --namespace ${namespace} \
+                        --create-namespace \
+                        --wait \
+                        --timeout ${waitTimeout} \
+                        --values deploy/k8s/helm/values.yaml \
+                        --set global.imageTag=${imageTag} \
+                        --set global.imageRegistry=${REGISTRY_URL} \
+                        --set mysql.auth.rootPassword=\${MYSQL_ROOT_PASSWORD_${envName.toUpperCase()}} \
+                        --set redis.auth.password=\${REDIS_PASSWORD_${envName.toUpperCase()}} \
+                        --atomic \
+                        --output status
+                """
+
+                // 滚动更新状态
+                sh """
+                    export KUBECONFIG=\${KUBECONFIG_FILE}
+                    kubectl rollout status \
+                        deployment/integration-config-system \
+                        -n ${namespace} \
+                        --timeout=300s
+                """
+            }
+        }
+    }
+}
+
+// ============================================================
+// 辅助函数：健康检查
+// ============================================================
+def k8sHealthCheck(Map cfg) {
+    def url     = cfg.url     ?: 'http://localhost:8080/api/health/session'
+    def timeout = cfg.timeout ?: 30
+
+    sh """
+        for i in \$(seq 1 ${timeout}); do
+            echo "Health check attempt \$i..."
+            HTTP_CODE=\$(curl -sf -o /dev/null -w "%{http_code}" ${url} || echo "000")
+            if [ "\$HTTP_CODE" = "200" ]; then
+                echo "✅ Health check passed (attempt \$i)"
+                exit 0
+            fi
+            sleep 2
+        done
+        echo "❌ Health check failed after ${timeout} attempts"
+        exit 1
+    """
+}

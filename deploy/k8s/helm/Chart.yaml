@@ -1,0 +1,45 @@
+# ============================================================
+# Helm Chart — integration-config-system
+#
+# 安装：
+#   helm install integration ./deploy/k8s/helm \
+#     --namespace integration-system \
+#     --create-namespace \
+#     --values ./deploy/k8s/helm/values.yaml
+#
+# 升级：
+#   helm upgrade integration ./deploy/k8s/helm \
+#     --namespace integration-system \
+#     --values ./deploy/k8s/helm/values.yaml
+#
+# 查看渲染后的模板（调试）：
+#   helm template integration ./deploy/k8s/helm --debug
+#
+# ============================================================
+
+apiVersion: v2
+name: integration-config-system
+description: 统一接口配置管理系统 — Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - integration
+  - api-management
+  - spring-boot
+
+maintainers:
+  - name: Your Team
+    email: dev@example.com
+
+dependencies:
+  # 如需外部托管 MySQL/Redis，可通过此方式引入 chart
+  # - name: mysql
+  #   version: 9.x
+  #   repository: https://charts.bitnami.com
+  #   condition: mysql.enabled
+  # - name: redis
+  #   version: 17.x
+  #   repository: https://charts.bitnami.com
+  #   condition: redis.enabled

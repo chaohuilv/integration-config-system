@@ -1,0 +1,90 @@
+# ============================================================
+# Redis 7 — 生产使用外部托管 Redis 时可删除此文件
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: integration-redis
+  namespace: integration-system
+spec:
+  serviceName: integration-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integration-redis
+  template:
+    metadata:
+      labels:
+        app: integration-redis
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command: ["redis-server"]
+          args:
+            - --requirepass
+            - $(REDIS_PASSWORD)
+            - --appendonly
+            - yes
+            - --maxmemory
+            - 256mb
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+              name: redis
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: integration-secrets
+                  key: SPRING_DATA_REDIS_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                # 优雅关闭：等待现有请求处理完成后再停止
+                command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "shutdown", "save", "quit"]
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: integration-redis
+  namespace: integration-system
+spec:
+  selector:
+    app: integration-redis
+  ports:
+    - port: 6379
+      targetPort: 6379

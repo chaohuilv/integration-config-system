@@ -1,0 +1,116 @@
+# ============================================================
+# Docker Compose — 本地开发 / 小规模生产环境
+#
+# 包含：MySQL 8 + Redis 7 + 应用
+#
+# 启动：
+#   docker compose up -d
+#
+# 查看日志：
+#   docker compose logs -f app
+#
+# 关闭并清除：
+#   docker compose down -v
+# ============================================================
+
+services:
+
+  # ---- MySQL 8 ----
+  mysql:
+    image: mysql:8.0
+    container_name: integration-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root-secret
+      MYSQL_DATABASE: integration_config
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 初始化脚本：建库 + 建三库
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --lower_case_table_names=1
+    ports:
+      - "3306:3306"
+    networks:
+      - integration-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Redis 7 ----
+  redis:
+    image: redis:7-alpine
+    container_name: integration-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis-secret --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - integration-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis-secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- 应用服务 ----
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: integration-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 激活生产配置
+      SPRING_PROFILES_ACTIVE: prod
+      # --- MySQL 数据源 ---
+      SPRING_DATASOURCE-CONFIG_URL: jdbc:mysql://mysql:3306/integration_config?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE-LOG_URL: jdbc:mysql://mysql:3306/integration_log?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE-TOKEN_URL: jdbc:mysql://mysql:3306/integration_token?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE-CONFIG_USERNAME: root
+      SPRING_DATASOURCE-CONFIG_PASSWORD: root-secret
+      SPRING_DATASOURCE-LOG_USERNAME: root
+      SPRING_DATASOURCE-LOG_PASSWORD: root-secret
+      SPRING_DATASOURCE-TOKEN_USERNAME: root
+      SPRING_DATASOURCE-TOKEN_PASSWORD: root-secret
+      # --- Redis ---
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: redis-secret
+      # --- Token 配置 ---
+      INTEGRATION_TOKEN_EXPIRE-HOURS: "168"
+      # --- 缓存配置 ---
+      INTEGRATION_CACHE_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-data:/app/data
+    networks:
+      - integration-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/health/session || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  mysql-data:
+  redis-data:
+  app-data:
+
+networks:
+  integration-net:
+    driver: bridge

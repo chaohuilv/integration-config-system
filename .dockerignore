@@ -1,0 +1,56 @@
+# ============================================================
+# .dockerignore — Docker 构建时忽略的文件
+# ============================================================
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Maven 构建产物（不复制进镜像，由多阶段构建从 target/ 复制）
+target/
+*.class
+*.jar
+*.war
+
+# Node.js / 前端（如果有）
+node_modules/
+npm-debug.log
+
+# 日志和数据
+*.log
+logs/
+data/
+*.db
+*.mv.db
+
+# 测试报告
+**/surefire-reports/
+**/test-output/
+**/failsafe-reports/
+
+# Docker 相关
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+deploy/docker/
+deploy/k8s/
+deploy/ci/
+deploy/README.md
+
+# 文档
+docs/
+README.md
+
+# 其他
+*.md
+*.txt
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db

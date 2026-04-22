@@ -1,0 +1,44 @@
+{{/*
+  ConfigMap — 应用配置
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "app.fullname" . }}
+  namespace: {{ include "app.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "app.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.app.profile | default "prod" | quote }}
+
+  {{- if .Values.mysql.enabled }}
+  SPRING_DATASOURCE-CONFIG_URL: {{ printf "jdbc:mysql://%s.%s.svc.cluster.local:3306/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" (include "app.fullname" .) (include "app.namespace" .) .Values.app.externalDatabase.configDbName | quote }}
+  SPRING_DATASOURCE-LOG_URL:     {{ printf "jdbc:mysql://%s.%s.svc.cluster.local:3306/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" (include "app.fullname" .) (include "app.namespace" .) .Values.app.externalDatabase.logDbName | quote }}
+  SPRING_DATASOURCE-TOKEN_URL:   {{ printf "jdbc:mysql://%s.%s.svc.cluster.local:3306/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" (include "app.fullname" .) (include "app.namespace" .) .Values.app.externalDatabase.tokenDbName | quote }}
+  {{- else }}
+  SPRING_DATASOURCE-CONFIG_URL: {{ printf "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" .Values.app.externalDatabase.host .Values.app.externalDatabase.port .Values.app.externalDatabase.configDbName | quote }}
+  SPRING_DATASOURCE-LOG_URL:     {{ printf "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" .Values.app.externalDatabase.host .Values.app.externalDatabase.port .Values.app.externalDatabase.logDbName | quote }}
+  SPRING_DATASOURCE-TOKEN_URL:   {{ printf "jdbc:mysql://%s:%d/%s?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" .Values.app.externalDatabase.host .Values.app.externalDatabase.port .Values.app.externalDatabase.tokenDbName | quote }}
+  {{- end }}
+
+  SPRING_DATASOURCE-CONFIG_DRIVER-CLASS-NAME: "com.mysql.cj.jdbc.Driver"
+  SPRING_DATASOURCE-LOG_DRIVER-CLASS-NAME:     "com.mysql.cj.jdbc.Driver"
+  SPRING_DATASOURCE-TOKEN_DRIVER-CLASS-NAME:   "com.mysql.cj.jdbc.Driver"
+
+  {{- if .Values.redis.enabled }}
+  SPRING_DATA_REDIS_HOST: {{ printf "%s.%s.svc.cluster.local" (include "app.fullname" .) (include "app.namespace" .) | quote }}
+  {{- else }}
+  SPRING_DATA_REDIS_HOST: {{ .Values.app.externalRedis.host | quote }}
+  {{- end }}
+  SPRING_DATA_REDIS_PORT: {{ .Values.app.externalRedis.port | default 6379 | quote }}
+  SPRING_DATA_REDIS_DATABASE: "2"
+
+  INTEGRATION_TOKEN_EXPIRE-HOURS: {{ .Values.app.tokenExpireHours | default 168 | quote }}
+  INTEGRATION_CACHE_ENABLED: "true"
+  INTEGRATION_CACHE_PREFIX: "\"integration:cache:\""
+  INTEGRATION_CACHE_TTL: {{ .Values.app.cacheTtl | default 300 | quote }}
+  INTEGRATION_ENVIRONMENT_ENABLED: "true"
+  INTEGRATION_HTTP-CONNECT-TIMEOUT: "10000"
+  INTEGRATION_HTTP-READ-TIMEOUT:   "30000"
+  INTEGRATION_MAX-RETRY: "3"

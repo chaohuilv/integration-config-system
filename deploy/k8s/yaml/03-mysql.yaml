@@ -1,0 +1,113 @@
+# ============================================================
+# MySQL 8 — 生产使用外部托管 MySQL 时可删除此文件
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: integration-mysql
+  namespace: integration-system
+spec:
+  serviceName: integration-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integration-mysql
+  template:
+    metadata:
+      labels:
+        app: integration-mysql
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: integration-secrets
+                  key: MYSQL_ROOT_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: integration-config
+          args:
+            - --default-authentication-plugin=mysql_native_password
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            - --lower_case_table_names=1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["mysql", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD", "-e", "SELECT 1"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                # 优雅关闭：停止接收新连接，等待现有连接完成
+                command: ["mysql", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD", "-e",
+                           "SET GLOBAL max_connections=0; FLUSH TABLES WITH READ LOCK;"]
+      volumes:
+        - name: mysql-init
+          configMap:
+            name: integration-mysql-init
+            optional: true
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+
+---
+# MySQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: integration-mysql
+  namespace: integration-system
+spec:
+  clusterIP: None          # Headless，供 StatefulSet 使用
+  selector:
+    app: integration-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+
+---
+# MySQL 初始化 ConfigMap（Init Container 执行一次）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: integration-mysql-init
+  namespace: integration-system
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS integration_config
+      DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS integration_log
+      DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS integration_token
+      DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
