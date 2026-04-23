@@ -139,6 +139,26 @@
       "pageType": "LIST"
     },
     {
+      "code": "alert-rules",
+      "name": "告警规则",
+      "icon": "🔔",
+      "path": "alert-rules",
+      "pageFile": "pages/alert_list.html",
+      "section": "系统管理",
+      "sortOrder": 54,
+      "pageType": "LIST"
+    },
+    {
+      "code": "alert-records",
+      "name": "告警记录",
+      "icon": "📋",
+      "path": "alert-records",
+      "pageFile": "pages/alert_record_list.html",
+      "section": "系统管理",
+      "sortOrder": 55,
+      "pageType": "LIST"
+    },
+    {
       "code": "api-doc",
       "name": "接口文档",
       "icon": "📚",

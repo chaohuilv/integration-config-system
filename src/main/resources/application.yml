@@ -83,6 +83,26 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
+  # ========== 邮件配置（用于告警通知） ==========
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: 1907361806@qq.com
+    password: biyaasyagmcheddc
+    properties:
+      mail:
+        smtp:
+          auth: true
+          # 显式指定 Socket 工厂
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+            port: 465
+        smtps:
+          ssl:
+            enable: true
+        from: 1907361806@qq.com
+
   # 不再使用 Spring Session Redis，改用 Bearer Token 认证
   # Token 存放在 Redis database 2，前缀使用 integration:token:
 
@@ -115,6 +135,12 @@ integration:
   encryption:
     enabled: true
     key: "ZGV2LW9ubHktc2VjcmV0LWtleS1nZW5lcmF0ZWQ="
+
+  # 告警配置
+  alert:
+    enabled: true
+    evaluate-interval: 60000  # 告警评估间隔（毫秒），默认每分钟评估一次
+    retention-days: 30         # 告警记录保留天数
 
 # ===========================================
 # Nacos 配置（配置推送）

@@ -2,7 +2,10 @@ package com.integration.config.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.fasterxml.jackson.databind.type.LogicalType;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +34,10 @@ public class JacksonConfig {
                 .addSerializer(long.class, ToStringSerializer.instance)
                 .addSerializer(BigDecimal.class, new com.fasterxml.jackson.databind.ser.std.ToStringSerializer())
         );
+
+        // 空字符串 "" → 空集合 []（List / Set 等 Collection 类型）
+        objectMapper.coercionConfigFor(LogicalType.Collection)
+                .setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsEmpty);
 
         return objectMapper;
     }

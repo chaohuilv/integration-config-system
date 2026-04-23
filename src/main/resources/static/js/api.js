@@ -530,6 +530,60 @@ const API = {
             };
             req.send();
         }
+    },
+
+    // 告警管理
+    alert: {
+        // 分页查询告警规则
+        pageRules: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/alert/rules?${query}`);
+        },
+        // 所有启用的规则
+        getActiveRules: () => request('/alert/rules/active'),
+        // 规则详情
+        getRule: (id) => request(`/alert/rules/${id}`),
+        // 创建规则
+        createRule: (data) => request('/alert/rules', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新规则
+        updateRule: (id, data) => request(`/alert/rules/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除规则
+        deleteRule: (id) => request(`/alert/rules/${id}`, {
+            method: 'DELETE'
+        }),
+        // 启用/停用
+        toggleRule: (id) => request(`/alert/rules/${id}/toggle`, {
+            method: 'POST'
+        }),
+        // 测试告警
+        testAlert: (id) => request(`/alert/rules/${id}/test`, {
+            method: 'POST'
+        }),
+        // 手动触发评估
+        evaluateNow: (id) => request(`/alert/rules/${id}/evaluate`, {
+            method: 'POST'
+        }),
+        // 告警概览
+        overview: () => request('/alert/overview'),
+        // 分页查询告警记录
+        pageRecords: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/alert/records?${query}`);
+        },
+        // 确认告警
+        acknowledge: (id) => request(`/alert/records/${id}/acknowledge`, {
+            method: 'POST'
+        }),
+        // 标记已解决
+        resolve: (id) => request(`/alert/records/${id}/resolve`, {
+            method: 'POST'
+        })
     }
 };
 

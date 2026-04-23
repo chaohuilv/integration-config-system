@@ -237,6 +237,34 @@
       "description": "配置系统权限",
       "module": "system",
       "sortOrder": 51
+    },
+    {
+      "code": "alert:view",
+      "name": "查看告警",
+      "description": "查看告警规则和告警记录",
+      "module": "alert",
+      "sortOrder": 60
+    },
+    {
+      "code": "alert:add",
+      "name": "创建告警规则",
+      "description": "创建新的告警规则",
+      "module": "alert",
+      "sortOrder": 61
+    },
+    {
+      "code": "alert:edit",
+      "name": "编辑告警规则",
+      "description": "编辑、启用/停用、确认告警记录",
+      "module": "alert",
+      "sortOrder": 62
+    },
+    {
+      "code": "alert:delete",
+      "name": "删除告警规则",
+      "description": "删除告警规则",
+      "module": "alert",
+      "sortOrder": 63
     }
   ]
 }

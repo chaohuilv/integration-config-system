@@ -91,4 +91,34 @@ public interface InvokeLogRepository extends JpaRepository<InvokeLog, Long> {
            "GROUP BY FORMATDATETIME(INVOKE_TIME, 'yyyy-MM-dd') " +
            "ORDER BY 1", nativeQuery = true)
     List<Object[]> countDailyTrend(@Param("start") LocalDateTime start);
+
+    // ========== 告警评估所需聚合查询 ==========
+
+    /** 窗口内全局总调用数 */
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.invokeTime >= :start AND l.invokeTime <= :end")
+    Long countAllInWindow(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 窗口内全局失败数 */
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.invokeTime >= :start AND l.invokeTime <= :end AND l.success = false")
+    Long countFailInWindow(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 窗口内指定接口总调用数 */
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.apiCode = :apiCode AND l.invokeTime >= :start AND l.invokeTime <= :end")
+    Long countByApiCodeInWindow(@Param("apiCode") String apiCode, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 窗口内指定接口失败数 */
+    @Query("SELECT COUNT(l) FROM InvokeLog l WHERE l.apiCode = :apiCode AND l.invokeTime >= :start AND l.invokeTime <= :end AND l.success = false")
+    Long countFailByApiCodeInWindow(@Param("apiCode") String apiCode, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 窗口内全局平均延迟 */
+    @Query("SELECT COALESCE(AVG(l.costTime), 0) FROM InvokeLog l WHERE l.invokeTime >= :start AND l.invokeTime <= :end")
+    Double avgCostTimeInWindow(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 窗口内指定接口平均延迟 */
+    @Query("SELECT COALESCE(AVG(l.costTime), 0) FROM InvokeLog l WHERE l.apiCode = :apiCode AND l.invokeTime >= :start AND l.invokeTime <= :end")
+    Double avgCostTimeByApiCodeInWindow(@Param("apiCode") String apiCode, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 查询最近 N 秒内的调用日志（按时间倒序），用于计算连续失败数 */
+    @Query("SELECT l FROM InvokeLog l WHERE l.apiCode = :apiCode AND l.invokeTime >= :since ORDER BY l.invokeTime DESC")
+    List<InvokeLog> findRecentByApiCode(@Param("apiCode") String apiCode, @Param("since") LocalDateTime since);
 }

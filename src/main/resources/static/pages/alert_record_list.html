@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>告警记录</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .search-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .search-bar select, .search-bar input { min-width: 140px; }
+        .search-bar .col-full { flex: 1; min-width: 200px; }
+        .search-bar .date-range { display: flex; align-items: center; gap: 4px; }
+        .search-bar .date-range span { color: #999; font-size: 12px; }
+        .search-bar .date-range input { width: 160px; }
+
+        .table-wrap { overflow-x: auto; }
+        .table { min-width: 1000px; }
+
+        /* 列宽 */
+        .col-time { width: 160px; }
+        .col-rule { min-width: 140px; }
+        .col-type { width: 100px; }
+        .col-api { width: 120px; }
+        .col-value { width: 120px; }
+        .col-channel { width: 90px; }
+        .col-status { width: 80px; }
+        .col-ops { width: 130px; }
+
+        /* 标签 */
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .tag-firing { background: #fee2e2; color: #b91c1c; }
+        .tag-resolved { background: #dcfce7; color: #15803d; }
+        .tag-acknowledged { background: #fef9c3; color: #854d0e; }
+        .tag-error-rate { background: #fee2e2; color: #b91c1c; }
+        .tag-latency { background: #ffedd5; color: #c2410c; }
+        .tag-rate-limit { background: #fef9c3; color: #854d0e; }
+        .tag-consecutive-fail { background: #ede9fe; color: #6d28d9; }
+
+        /* 阈值对比 */
+        .metric-compare { font-family: monospace; font-size: 13px; }
+        .metric-actual { color: #ef4444; font-weight: 600; }
+        .metric-threshold { color: #6b7280; }
+
+        /* 操作 */
+        .ops { display: flex; gap: 4px; }
+        .ops .btn { padding: 3px 8px; font-size: 12px; }
+
+        /* 全选 */
+        .col-check { width: 36px; text-align: center; }
+        .row-check { cursor: pointer; }
+
+        /* 详情弹层 */
+        .detail-panel {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #fff; border-radius: 10px; width: 560px; max-width: 95vw;
+            max-height: 80vh; overflow-y: auto; z-index: 1001;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2); display: none;
+        }
+        .detail-panel.show { display: block; }
+        .detail-panel .panel-header {
+            padding: 14px 20px; border-bottom: 1px solid #e5e7eb;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .detail-panel .panel-header h3 { margin: 0; font-size: 15px; }
+        .detail-panel .panel-body { padding: 16px 20px; }
+        .detail-row { display: flex; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { width: 100px; color: #6b7280; flex-shrink: 0; }
+        .detail-value { color: #1f2937; flex: 1; word-break: break-all; font-family: monospace; font-size: 12px; }
+
+        /* 遮罩 */
+        .遮罩 {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4); z-index: 1000; display: none;
+        }
+        .遮罩.show { display: block; }
+
+        /* 概览 */
+        .overview-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .overview-stat {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 10px 16px; min-width: 100px; flex: 1;
+        }
+        .overview-stat .stat-num { font-size: 22px; font-weight: 700; }
+        .overview-stat .stat-label { font-size: 12px; color: #6b7280; }
+        .overview-stat.firing { border-left: 3px solid #ef4444; }
+        .overview-stat.firing .stat-num { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>📋 告警记录</h2>
+            <p class="view-sub">查看历史告警事件、确认处理状态、追踪告警恢复情况</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" id="btnRules" data-permission="alert:view">🔔 告警规则</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 概览 -->
+        <div class="overview-bar">
+            <div class="overview-stat firing">
+                <div class="stat-num" id="firingCount">-</div>
+                <div class="stat-label">🔥 告警中</div>
+            </div>
+            <div class="overview-stat">
+                <div class="stat-num" id="todayCount">-</div>
+                <div class="stat-label">📅 今日告警</div>
+            </div>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="search-input col-full" id="sKeyword" placeholder="规则名称 / 接口编码...">
+            <select id="sAlertType">
+                <option value="">告警类型</option>
+                <option value="ERROR_RATE">错误率</option>
+                <option value="LATENCY">延迟</option>
+                <option value="RATE_LIMIT">限流</option>
+                <option value="CONSECUTIVE_FAIL">连续失败</option>
+            </select>
+            <select id="sStatus">
+                <option value="">状态</option>
+                <option value="FIRING">告警中</option>
+                <option value="ACKNOWLEDGED">已确认</option>
+                <option value="RESOLVED">已解决</option>
+            </select>
+            <div class="date-range">
+                <input type="datetime-local" id="sStartTime" class="search-input">
+                <span>至</span>
+                <input type="datetime-local" id="sEndTime" class="search-input">
+            </div>
+            <button class="btn btn-ghost" id="btnSearch">🔍 搜索</button>
+            <button class="btn btn-ghost" id="btnReset">重置</button>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-time">告警时间</th>
+                        <th>规则名称</th>
+                        <th>类型</th>
+                        <th>接口</th>
+                        <th>实际值 / 阈值</th>
+                        <th>渠道</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"><tr><td colspan="8" style="text-align:center;padding:40px;color:#999;">加载中...</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 详情面板 -->
+    <div class="遮罩" id="遮罩" onclick="this.classList.remove('show');document.getElementById('detailPanel').classList.remove('show');"></div>
+    <div class="detail-panel" id="detailPanel">
+        <div class="panel-header">
+            <h3>告警详情</h3>
+            <button class="btn-close" onclick="document.getElementById('遮罩').classList.remove('show');this.closest('.detail-panel').classList.remove('show');">✕</button>
+        </div>
+        <div class="panel-body" id="detailBody"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    (function() {
+        var pager;
+        let pageSize = 10;
+        $(function() {
+            Permission.init({ guard: true }).then(function() {
+                if (Permission.isDenied()) return;
+                loadOverview();
+                pager = new Pagination('#pagination', {
+                    pageSize: pageSize,
+                    showTotal: true,
+                    onPageChange: function(page) { loadTable(page); }
+                });
+                loadTable(1);
+            });
+
+            $('#btnSearch').click(function() { pager && pager.render({ total: 0 }); loadTable(1); });
+            $('#btnReset').click(function() {
+                $('#sKeyword, #sAlertType, #sStatus, #sStartTime, #sEndTime').val('');
+                pager && pager.render({ total: 0 });
+                loadTable(1);
+            });
+            $('#btnRules').click(function() { location.href = 'alert_list.html'; });
+        });
+
+        function loadOverview() {
+            API.alert.overview().then(function(res) {
+                if (res.code === 200) {
+                    $('#firingCount').text(res.data.firingCount || 0);
+                }
+            }).catch(function() {});
+            // 今日告警数
+            var today = new Date();
+            today.setHours(0,0,0,0);
+            var todayStr = today.toISOString().replace('T', ' ').slice(0,19);
+            API.alert.pageRecords({ startTime: todayStr, size: 1 }).then(function(res) {
+                if (res.code === 200) $('#todayCount').text(res.data.totalElements || 0);
+            }).catch(function() {});
+        }
+
+        function loadTable(page) {
+            // Pagination 组件回调 page 从 1 开始，后端 API 用 0 开始；无参数调用保留当前页
+            if (page !== undefined) {
+                currentPage = (typeof page === 'number') ? page - 1 : page;
+            }
+            var startTime = $('#sStartTime').val();
+            var endTime = $('#sEndTime').val();
+            var params = {
+                page: currentPage,
+                size: pageSize,
+                keyword: $('#sKeyword').val() || undefined,
+                alertType: $('#sAlertType').val() || undefined,
+                status: $('#sStatus').val() || undefined,
+                startTime: startTime ? startTime.replace('T', ' ') + ':00' : undefined,
+                endTime: endTime ? endTime.replace('T', ' ') + ':00' : undefined
+            };
+            // URLSearchParams 会把 undefined 序列化为 'undefined'，需要 delete 移除空值
+            Object.keys(params).forEach(function(k) {
+                if (params[k] === undefined) delete params[k];
+            });
+            $('#tableBody').html('<tr><td colspan="8" style="text-align:center;padding:40px;color:#999;">加载中...</td></tr>');
+
+            API.alert.pageRecords(params).then(function(res) {
+                if (res.code === 200) {
+                    renderTable(res.data);
+                    pager.render(res.data);
+                    loadOverview();
+                } else {
+                    toast(res.message || '加载失败');
+                }
+            }).catch(function(e) { toast('加载失败: ' + e.message); });
+        }
+
+        function renderTable(data) {
+            var list = data.content || [];
+            if (list.length === 0) {
+                $('#tableBody').html('<tr><td colspan="8" class="empty-cell">暂无数据</td></tr>');
+                return;
+            }
+            var html = '';
+            list.forEach(function(item) {
+                var statusTag = {
+                    FIRING: '<span class="tag tag-firing">告警中</span>',
+                    ACKNOWLEDGED: '<span class="tag tag-acknowledged">已确认</span>',
+                    RESOLVED: '<span class="tag tag-resolved">已解决</span>'
+                }[item.status] || '<span class="tag">' + escHtml(item.status) + '</span>';
+                var typeTag = {
+                    ERROR_RATE: '<span class="tag tag-error-rate">错误率</span>',
+                    LATENCY: '<span class="tag tag-latency">延迟</span>',
+                    RATE_LIMIT: '<span class="tag tag-rate-limit">限流</span>',
+                    CONSECUTIVE_FAIL: '<span class="tag tag-consecutive-fail">连续失败</span>'
+                }[item.alertType] || '<span class="tag">' + escHtml(item.alertType) + '</span>';
+                var channelNames = (item.channels || '').split(',').map(function(c) {
+                    return { DINGTALK: '钉钉', WECOM: '企微', EMAIL: '邮件' }[c.trim()] || c.trim();
+                }).filter(Boolean).join(', ') || '-';
+                html += '<tr>'
+                    + '<td class="col-time">' + fmtTime(item.alertTime) + '</td>'
+                    + '<td class="col-rule">' + escHtml(item.ruleName) + '</td>'
+                    + '<td>' + typeTag + '</td>'
+                    + '<td>' + escHtml(item.apiCode || '全局') + '</td>'
+                    + '<td class="metric-compare"><span class="metric-actual">' + escHtml(item.actualValue) + '</span> / <span class="metric-threshold">' + escHtml(item.thresholdValue) + '</span></td>'
+                    + '<td>' + escHtml(channelNames) + '</td>'
+                    + '<td>' + statusTag + '</td>'
+                    + '<td><div class="ops">'
+                    + '<button class="btn btn-ghost btn-sm" data-record="' + escHtml(JSON.stringify(item).replace(/"/g, '&quot;')) + '" onclick="window._showDetail(this)">详情</button>'
+                    + (item.status === 'FIRING' ? '<button class="btn btn-ghost btn-sm" data-permission="alert:edit" onclick="window._ack(\'' + item.id + '\')">确认</button>' : '')
+                    + (item.status !== 'RESOLVED' ? '<button class="btn btn-ghost btn-sm" data-permission="alert:edit" onclick="window._resolve(\'' + item.id + '\')">解决</button>' : '')
+                    + '</div></td></tr>';
+            });
+            $('#tableBody').html(html);
+            Permission.apply('#tableBody');
+        }
+
+        // ========== 操作 ==========
+        window._showDetail = function(btn) {
+            var record = JSON.parse(btn.getAttribute('data-record').replaceAll('&quot;','"') || '{}');
+            showDetailPanel({
+                ruleName: record.ruleName || '',
+                alertType: record.alertType || '',
+                apiCode: record.apiCode || '',
+                actualValue: record.actualValue || '',
+                thresholdValue: record.thresholdValue || '',
+                channels: typeof(record.channels) == "string" ? record.channels : (record.channels || []).join(', '),
+                status: record.status || '',
+                alertTime: record.alertTime || ''
+            });
+        };
+
+        function showDetailPanel(record) {
+            var html = ''
+                + '<div class="detail-row"><div class="detail-label">规则名称</div><div class="detail-value">' + escHtml(record.ruleName) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">告警类型</div><div class="detail-value">' + escHtml(record.alertType) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">接口</div><div class="detail-value">' + escHtml(record.apiCode) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">实际值</div><div class="detail-value" style="color:#ef4444;font-weight:600;">' + escHtml(record.actualValue) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">阈值</div><div class="detail-value">' + escHtml(record.thresholdValue) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">通知渠道</div><div class="detail-value">' + escHtml(record.channels) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">状态</div><div class="detail-value">' + escHtml(record.status) + '</div></div>'
+                + '<div class="detail-row"><div class="detail-label">触发时间</div><div class="detail-value">' + escHtml(record.alertTime) + '</div></div>';
+            $('#detailBody').html(html);
+            $('#遮罩').addClass('show');
+            $('#detailPanel').addClass('show');
+        }
+
+        window._ack = function(id) {
+            API.alert.acknowledge(String(id)).then(function() {
+                toast('已确认', 'success');
+                loadTable();
+            }).catch(function(e) { toast(e.message, 'error'); });
+        };
+
+        window._resolve = function(id) {
+            API.alert.resolve(String(id)).then(function() {
+                toast('已标记为解决', 'success');
+                loadTable();
+            }).catch(function(e) { toast(e.message, 'error'); });
+        };
+
+        // ========== 工具 ==========
+        // 统一使用 utils.toast（自动处理 warn→warning 映射）
+        function toast(msg, type) { utils.toast(msg, type); }
+
+        function fmtTime(t) {
+            if (!t) return '-';
+            return t.replace('T', ' ').slice(0, 19);
+        }
+
+        function escHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    })();
+    </script>
+</body>
+</html>
