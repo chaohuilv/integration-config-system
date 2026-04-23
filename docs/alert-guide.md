@@ -162,6 +162,10 @@ spring:
       mail:
         smtp:
           auth: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+            port: 465
           ssl:
             enable: true
         from: your-email@qq.com  # 发件人地址
