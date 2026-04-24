@@ -164,6 +164,8 @@ public class ApiConfigService {
                 .tokenParamName(src.getTokenParamName())
                 .tokenPrefix(src.getTokenPrefix())
                 .tokenCacheTime(src.getTokenCacheTime())
+                .enableTokenCache(src.getEnableTokenCache())
+                .tokenCacheSeconds(src.getTokenCacheSeconds())
                 .build();
     }
 
@@ -408,9 +410,10 @@ public class ApiConfigService {
                 .authInfo(parsed.getAuthValue())
                 .timeout(30000)
                 .retryCount(0)
-                .status(Status.ACTIVE)
                 .groupName(parsed.getGroupName())
                 .enableDynamicToken(false)
+                .enableTokenCache(null)
+                .tokenCacheSeconds(null)
                 .build();
 
         // 保存
@@ -463,7 +466,8 @@ public class ApiConfigService {
                 .tokenPosition(dto.getTokenPosition())
                 .tokenParamName(dto.getTokenParamName())
                 .tokenPrefix(dto.getTokenPrefix())
-                .tokenCacheTime(dto.getTokenCacheTime())
+                .enableTokenCache(dto.getEnableTokenCache())
+                .tokenCacheSeconds(dto.getTokenCacheSeconds())
                 .build();
     }
 

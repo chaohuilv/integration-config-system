@@ -4,6 +4,8 @@ import com.integration.config.dto.EnvironmentDTO;
 import com.integration.config.entity.config.Environment;
 import com.integration.config.repository.config.EnvironmentRepository;
 import com.integration.config.enums.AppConstants;
+import com.integration.config.repository.token.ScenarioCacheRepository;
+import com.integration.config.repository.token.TokenCacheRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,11 @@ import java.util.stream.Collectors;
 public class EnvironmentService {
 
     private final EnvironmentRepository environmentRepository;
+
+    private final TokenCacheRepository tokenCacheRepository;
+
+    private final ScenarioCacheRepository scenarioCacheRepository;
+
 
     /**
      * 创建环境配置
@@ -104,6 +111,8 @@ public class EnvironmentService {
         }
         environmentRepository.deleteById(id);
         log.info("删除环境配置: id={}", id);
+        tokenCacheRepository.deleteAll();
+        scenarioCacheRepository.deleteAll();
     }
 
     /**
@@ -154,6 +163,9 @@ public class EnvironmentService {
      */
     private void deactivateSameSystem(String systemName) {
         deactivateSameSystem(systemName, null);
+        //删除缓存token库中所有表记录
+        tokenCacheRepository.deleteAll();
+        scenarioCacheRepository.deleteAll();
     }
 
     private void deactivateSameSystem(String systemName, Long excludeId) {
@@ -165,6 +177,8 @@ public class EnvironmentService {
                 log.info("自动停用同系统环境: 系统={}, 环境={}", systemName, env.getEnvName());
             }
         }
+        tokenCacheRepository.deleteAll();
+        scenarioCacheRepository.deleteAll();
     }
 
     private EnvironmentDTO toDTO(Environment entity) {

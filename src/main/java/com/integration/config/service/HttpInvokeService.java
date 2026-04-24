@@ -166,7 +166,7 @@ public class HttpInvokeService {
         String tokenApiCode = config.getTokenApiCode();
 
         // 1. 先尝试从缓存获取
-        String cachedToken = tokenCacheManager.getCachedToken(apiCode);
+        String cachedToken = tokenCacheManager.getCachedToken(tokenApiCode);
         if (cachedToken != null) {
             log.info("[{}] 使用缓存的动态Token", traceId);
             return cachedToken;
