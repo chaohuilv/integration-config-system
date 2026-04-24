@@ -228,34 +228,53 @@
                 </div>
             </div>
 
-            <div class="form-section" id="dynamicTokenSection" style="display:none">
-                <h3>动态Token配置</h3>
+            <div class="form-section">
+                <h3>🔑 Token 自动缓存 <small style="color:#999;font-weight:400">（Token来源接口启用后自动提取并持久化，其他接口引用时无需重复配置提取路径）</small></h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Token接口编码</label>
-                        <input type="text" name="tokenApiCode" placeholder="引用系统中已有的接口编码">
+                        <label>启用 Token 自动缓存</label>
+                        <select name="enableTokenCache" id="fEnableTokenCache">
+                            <option value="false">⛔ 禁用</option>
+                            <option value="true">✅ 启用</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="tokenExtractPathGroup" style="display:none;">
+                        <label>Token 提取路径 <span class="required">*</span></label>
+                        <input type="text" name="tokenExtractPath" id="fTokenExtractPath" placeholder="如：$.data.token 或 data.access_token">
+                        <div class="hint">从接口响应 JSON 中提取 Token 的 JsonPath 路径</div>
                     </div>
                     <div class="form-group">
-                        <label>Token提取路径</label>
-                        <input type="text" name="tokenExtractPath" placeholder="如：$.data.token 或 data.access_token">
+                        <label>缓存时长（秒）</label>
+                        <input type="number" name="tokenCacheSeconds" value="3600" placeholder="3600" min="60">
+                        <div class="hint">过期后下次调用时自动重新获取</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="dynamicTokenSection" style="display:none">
+                <h3>🔄 动态 Token 引用 <small style="color:#999;font-weight:400">（引用其他接口的 Token，无需配置提取路径）</small></h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Token 来源接口编码</label>
+                        <input type="text" name="tokenApiCode" id="fTokenApiCode" placeholder="引用系统中已有的接口编码（该接口需启用Token自动缓存）">
                     </div>
                     <div class="form-group">
-                        <label>Token参数位置</label>
+                        <label>Token 参数位置</label>
                         <select name="tokenPosition">
                             <option value="header">📋 请求头</option>
                             <option value="url">🔗 URL参数</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Token请求头参数名</label>
+                        <label>Token 请求头参数名</label>
                         <input type="text" name="tokenParamName" placeholder="如：Authorization">
                     </div>
                     <div class="form-group">
-                        <label>Token前缀</label>
+                        <label>Token 前缀</label>
                         <input type="text" name="tokenPrefix" placeholder="如：Bearer （不含空格）">
                     </div>
                     <div class="form-group">
-                        <label>动态Token是否启用</label>
+                        <label>动态 Token 是否启用</label>
                         <select name="enableDynamicToken">
                             <option value="true">✅ 启用</option>
                             <option value="false">⛔ 禁用</option>
@@ -390,8 +409,23 @@
             }
         }
 
+        // 切换 Token 自动缓存：提取路径仅在启用时显示
+        function toggleTokenCache() {
+            const enabled = $('#fEnableTokenCache').val() === 'true';
+            if (enabled) {
+                $('#tokenExtractPathGroup').slideDown(200);
+            } else {
+                $('#tokenExtractPathGroup').slideUp(200);
+                // 禁用时清空提取路径，避免误解
+                $('#fTokenExtractPath').val('');
+            }
+        }
+
         // 绑定认证类型切换事件
         $('#fAuthType').on('change', toggleAuth);
+
+        // 绑定 Token 自动缓存切换事件
+        $('#fEnableTokenCache').on('change', toggleTokenCache);
 
         // 加载系统名称列表
         loadSystemNames();
@@ -411,7 +445,8 @@
                     // 填充普通字段
                     const fields = ['name', 'code', 'groupName', 'url', 'requestParams', 'requestBody',
                         'authParamName', 'authInfo', 'description',
-                        'tokenApiCode', 'tokenExtractPath', 'tokenParamName', 'tokenPrefix'];
+                        'tokenApiCode', 'tokenExtractPath', 'tokenParamName', 'tokenPrefix',
+                        'tokenCacheSeconds'];
                     
                     fields.forEach(k => {
                         if (d[k] && form[k]) {
@@ -431,6 +466,11 @@
                     if (d.enableRateLimit) {
                         form.enableRateLimit.value = 'true';
                     }
+
+                    // 填充Token自动缓存字段
+                    if (d.enableTokenCache) {
+                        form.enableTokenCache.value = 'true';
+                    }
                     if (d.rateLimitWindow) form.rateLimitWindow.value = d.rateLimitWindow;
                     if (d.rateLimitMax) form.rateLimitMax.value = d.rateLimitMax;
 
@@ -445,6 +485,8 @@
 
                     // 更新动态Token区域显示状态
                     toggleAuth();
+                    // 更新Token自动缓存提取路径显示状态
+                    toggleTokenCache();
 
                     // 填充版本信息
                     if (d.version) {
@@ -518,6 +560,9 @@
             }
             if (payload.retryCount) {
                 payload.retryCount = parseInt(payload.retryCount);
+            }
+            if (payload.tokenCacheSeconds) {
+                payload.tokenCacheSeconds = parseInt(payload.tokenCacheSeconds);
             }
 
             // 编辑模式添加 ID

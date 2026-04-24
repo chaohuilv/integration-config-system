@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>场景编辑</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .form-card {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+            padding: 20px; margin-bottom: 16px;
+        }
+        .form-card h3 {
+            font-size: 15px; font-weight: 600; color: #1f2937;
+            margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .form-row .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-row .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-size: 13px; font-weight: 500; color: #374151; }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 13px; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 60px; font-family: monospace; }
+        .form-hint { font-size: 11px; color: #9ca3af; }
+
+        /* 步骤编排 */
+        .steps-container { position: relative; }
+        .step-item {
+            background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 14px 16px; margin-bottom: 12px; position: relative;
+            transition: all 0.2s;
+        }
+        .step-item:hover { border-color: #8b5cf6; box-shadow: 0 2px 8px rgba(139,92,246,0.1); }
+        .step-item.active { border-color: #8b5cf6; background: #faf5ff; }
+        .step-header {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        }
+        .step-order {
+            width: 28px; height: 28px; border-radius: 50%; background: #8b5cf6; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; flex-shrink: 0;
+        }
+        .step-title { font-weight: 600; font-size: 14px; color: #1f2937; flex: 1; }
+        .step-code { font-size: 12px; color: #6b7280; font-family: monospace; }
+        .step-ops { display: flex; gap: 4px; }
+        .step-ops .btn { padding: 2px 8px; font-size: 11px; }
+
+        .step-body { display: none; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+        .step-item.active .step-body { display: block; }
+
+        .step-arrow {
+            text-align: center; color: #8b5cf6; font-size: 18px; margin: -6px 0;
+            position: relative; z-index: 1;
+        }
+
+        .btn-add-step {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            width: 100%; padding: 10px; border: 2px dashed #d1d5db; border-radius: 8px;
+            background: transparent; cursor: pointer; color: #6b7280;
+            font-size: 13px; transition: all 0.2s;
+        }
+        .btn-add-step:hover { border-color: #8b5cf6; color: #8b5cf6; background: #faf5ff; }
+
+        /* 映射表格 */
+        .mapping-table {
+            width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+        }
+        .mapping-table th { background: #f3f4f6; padding: 4px 8px; text-align: left; font-weight: 500; }
+        .mapping-table td { padding: 4px 6px; border-bottom: 1px solid #f3f4f6; }
+        .mapping-table input, .mapping-table select {
+            width: 100%; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px;
+        }
+
+        .action-bar {
+            position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb;
+            padding: 12px 0; display: flex; gap: 8px; justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">🔀 新建场景</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" id="btnBack">← 返回列表</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 基本信息 -->
+        <div class="form-card">
+            <h3>📝 基本信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label><span class="required">*</span>场景名称</label>
+                    <input type="text" id="name" placeholder="如：用户注册流程">
+                </div>
+                <div class="form-group">
+                    <label><span class="required">*</span>场景编码</label>
+                    <input type="text" id="code" placeholder="如：user-register-flow">
+                    <span class="form-hint">唯一标识，支持字母/数字/下划线/中划线</span>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>分组</label>
+                    <input type="text" id="groupName" placeholder="如：用户管理" list="groupList">
+                    <datalist id="groupList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>失败策略</label>
+                    <select id="failureStrategy">
+                        <option value="STOP">终止（遇错停止）</option>
+                        <option value="CONTINUE">继续（遇错跳过）</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>超时时间（秒）</label>
+                    <input type="number" id="timeoutSeconds" value="300" min="10" max="3600">
+                    <span class="form-hint">整个场景执行的超时上限</span>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="status">
+                        <option value="ACTIVE">启用</option>
+                        <option value="INACTIVE">停用</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>描述</label>
+                    <textarea id="description" placeholder="场景用途描述（可选）" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步骤编排 -->
+        <div class="form-card">
+            <h3>🔗 步骤编排</h3>
+            <div id="stepsContainer" class="steps-container"></div>
+            <button class="btn-add-step" id="btnAddStep">+ 添加步骤</button>
+        </div>
+
+        <!-- 操作栏 -->
+        <div class="action-bar">
+            <button class="btn btn-ghost" id="btnCancel">取消</button>
+            <button class="btn btn-primary" id="btnSave">💾 保存场景</button>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    (function() {
+        var scenarioId = new URLSearchParams(location.search).get('id');
+        var steps = [];
+        var apiList = [];
+
+        function toast(msg, type) { utils.toast(msg, type); }
+
+        // ========== 初始化 ==========
+        $(function() {
+            Permission.init({ guard: true }).then(function() {
+                loadApiList();
+                loadGroups();
+                if (scenarioId) {
+                    $('#pageTitle').text('🔀 编辑场景');
+                    loadScenario(scenarioId);
+                }
+            });
+
+            $('#btnBack, #btnCancel').click(function() { location.href = 'scenario_list.html'; });
+            $('#btnSave').click(function() { saveScenario(); });
+            $('#btnAddStep').click(function() { addStep(); });
+        });
+
+        // ========== 加载接口列表 ==========
+        function loadApiList() {
+            API.config.list({
+                keyword: "",
+                status: "latest",
+                version: "",
+                page: 1,
+                size: 200
+            }).then(function(res) {
+                if (res.code === 200) {
+                    apiList = res.data.records || [];
+                    // 如果已经有步骤数据，重新渲染
+                    if (steps.length > 0) {
+                        renderSteps();
+                    }
+                }
+            });
+        }
+
+        // ========== 加载分组 ==========
+        function loadGroups() {
+            API.scenario.getGroups().then(function(res) {
+                if (res.code === 200 && res.data) {
+                    var html = '';
+                    (res.data || []).forEach(function(g) {
+                        html += '<option value="' + escHtml(g) + '">';
+                    });
+                    $('#groupList').html(html);
+                }
+            });
+        }
+
+        // ========== 加载场景 ==========
+        function loadScenario(id) {
+            API.scenario.getDetail(id).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    var d = res.data;
+                    $('#name').val(d.name || '');
+                    $('#code').val(d.code || '');
+                    $('#groupName').val(d.groupName || '');
+                    $('#failureStrategy').val(d.failureStrategy || 'STOP');
+                    $('#timeoutSeconds').val(d.timeoutSeconds || 300);
+                    $('#status').val(d.status || 'ACTIVE');
+                    $('#description').val(d.description || '');
+                }
+            }).catch(function(e) { toast('加载失败: ' + e.message, 'error'); });
+
+            API.scenario.getSteps(id).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    steps = res.data || [];
+                    renderSteps();
+                }
+            }).catch(function(e) { toast('加载步骤失败: ' + e.message, 'error'); });
+        }
+
+        // ========== 步骤管理 ==========
+        function addStep() {
+            var order = steps.length + 1;
+            steps.push({
+                stepCode: 'step' + order,
+                stepName: '步骤 ' + order,
+                stepOrder: order,
+                apiCode: '',
+                inputMapping: '{}',
+                outputMapping: '{}',
+                conditionExpr: '',
+                skipOnError: 0,
+                retryCount: 0,
+                cacheSeconds: null,
+                cacheKeys: ''
+            });
+            renderSteps();
+            // 自动展开新增步骤
+            setTimeout(function() {
+                $('.step-item').last().addClass('active');
+            }, 50);
+        }
+
+        function removeStep(index) {
+            steps.splice(index, 1);
+            // 重新排序
+            steps.forEach(function(s, i) { s.stepOrder = i + 1; });
+            renderSteps();
+        }
+
+        function moveStep(index, direction) {
+            var newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= steps.length) return;
+            var temp = steps[index];
+            steps[index] = steps[newIndex];
+            steps[newIndex] = temp;
+            steps.forEach(function(s, i) { s.stepOrder = i + 1; });
+            renderSteps();
+        }
+
+        function renderSteps() {
+            var container = $('#stepsContainer');
+            if (steps.length === 0) {
+                container.html('<div style="text-align:center;padding:30px;color:#9ca3af;">暂无步骤，点击下方按钮添加</div>');
+                return;
+            }
+            var html = '';
+            steps.forEach(function(step, i) {
+                var apiName = getApiName(step.apiCode);
+                html += '<div class="step-item" data-index="' + i + '">'
+                    + '<div class="step-header">'
+                    + '<div class="step-order">' + (i + 1) + '</div>'
+                    + '<span class="step-title">' + escHtml(step.stepName || '未命名步骤') + '</span>'
+                    + '<span class="step-code">' + escHtml(step.stepCode || '') + '</span>'
+                    + (apiName ? '<span class="tag tag-active" style="font-size:11px;">' + escHtml(apiName) + '</span>' : '')
+                    + '<div class="step-ops">'
+                    + '<button class="btn btn-ghost" onclick="window._moveStep(' + i + ',-1)" title="上移"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
+                    + '<button class="btn btn-ghost" onclick="window._moveStep(' + i + ',1)" title="下移"' + (i === steps.length - 1 ? ' disabled' : '') + '>↓</button>'
+                    + '<button class="btn btn-danger" onclick="window._removeStep(' + i + ')">✕</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div class="step-body">'
+                    + buildStepForm(step, i)
+                    + '</div>'
+                    + '</div>';
+                // 箭头
+                if (i < steps.length - 1) {
+                    html += '<div class="step-arrow">↓</div>';
+                }
+            });
+            container.html(html);
+
+            // 点击展开/折叠
+            container.find('.step-header').click(function() {
+                var item = $(this).closest('.step-item');
+                var wasActive = item.hasClass('active');
+                container.find('.step-item').removeClass('active');
+                if (!wasActive) item.addClass('active');
+            });
+
+            // 绑定输入事件
+            container.find('[data-field]').change(function() {
+                var idx = parseInt($(this).closest('.step-item').data('index'));
+                var field = $(this).data('field');
+                steps[idx][field] = $(this).val();
+            });
+        }
+
+        function buildStepForm(step, index) {
+            var apiOptions = '<option value="">请选择接口</option>';
+            apiList.forEach(function(a) {
+                apiOptions += '<option value="' + escHtml(a.code) + '"' + (a.code === step.apiCode ? ' selected' : '') + '>' + escHtml(a.name) + ' (' + escHtml(a.code) + ')</option>';
+            });
+
+            // 格式化 JSON 显示
+            var inputMappingDisplay = '{}';
+            var outputMappingDisplay = '{}';
+            try {
+                if (step.inputMapping && step.inputMapping.trim()) {
+                    inputMappingDisplay = JSON.stringify(JSON.parse(step.inputMapping), null, 2);
+                }
+            } catch(e) {
+                inputMappingDisplay = step.inputMapping || '{}';
+            }
+            try {
+                if (step.outputMapping && step.outputMapping.trim()) {
+                    outputMappingDisplay = JSON.stringify(JSON.parse(step.outputMapping), null, 2);
+                }
+            } catch(e) {
+                outputMappingDisplay = step.outputMapping || '{}';
+            }
+
+            return '<div class="form-row">'
+                + '<div class="form-group">'
+                + '<label><span class="required">*</span>步骤编码</label>'
+                + '<input type="text" data-field="stepCode" value="' + escHtml(step.stepCode || '') + '" placeholder="如：step1">'
+                + '</div>'
+                + '<div class="form-group">'
+                + '<label><span class="required">*</span>步骤名称</label>'
+                + '<input type="text" data-field="stepName" value="' + escHtml(step.stepName || '') + '" placeholder="如：获取Token">'
+                + '</div>'
+                + '</div>'
+                + '<div class="form-row">'
+                + '<div class="form-group">'
+                + '<label><span class="required">*</span>调用接口</label>'
+                + '<select data-field="apiCode">' + apiOptions + '</select>'
+                + '</div>'
+                + '<div class="form-group">'
+                + '<label>条件表达式</label>'
+                + '<input type="text" data-field="conditionExpr" value="' + escHtml(step.conditionExpr || '') + '" placeholder="如：{{step:login._status}} == \'SUCCESS\'">'
+                + '<span class="form-hint">为空则无条件执行</span>'
+                + '</div>'
+                + '</div>'
+                + '<div class="form-row">'
+                + '<div class="form-group">'
+                + '<label>输入映射 (JSON)</label>'
+                + '<textarea data-field="inputMapping" rows="4" placeholder=\'{"params":{"userId":{"type":"input","value":"userId"}}}\'>' + escHtml(inputMappingDisplay) + '</textarea>'
+                + '<span class="form-hint">type: input/static/step(前置输出)/cache(场景缓存)/token(Token缓存)</span>'
+                + '</div>'
+                + '<div class="form-group">'
+                + '<label>输出映射 (JSON)</label>'
+                + '<textarea data-field="outputMapping" rows="4" placeholder=\'{"outputs":{"token":"$.data.token"}}\'>' + escHtml(outputMappingDisplay) + '</textarea>'
+                + '<span class="form-hint">JsonPath 表达式提取响应字段</span>'
+                + '</div>'
+                + '</div>'
+                + '<div class="form-row">'
+                + '<div class="form-group">'
+                + '<label>跳过错误</label>'
+                + '<select data-field="skipOnError">'
+                + '<option value="0"' + (step.skipOnError === 0 ? ' selected' : '') + '>不跳过</option>'
+                + '<option value="1"' + (step.skipOnError === 1 ? ' selected' : '') + '>跳过继续</option>'
+                + '</select>'
+                + '</div>'
+                + '<div class="form-group">'
+                + '<label>缓存时长（秒）</label>'
+                + '<input type="number" data-field="cacheSeconds" value="' + (step.cacheSeconds || '') + '" min="0" placeholder="如：3600">'
+                + '<span class="form-hint">>0 时将输出写入缓存，供下次执行读取（跨执行共享）</span>'
+                + '</div>'
+                + '<div class="form-group">'
+                + '<label>缓存字段</label>'
+                + '<input type="text" data-field="cacheKeys" value="' + escHtml(step.cacheKeys || '') + '" placeholder="如：access_token,refresh_token">'
+                + '<span class="form-hint">逗号分隔，空则缓存全部输出字段</span>'
+                + '</div>'
+                + '</div>';
+        }
+
+        function getApiName(code) {
+            if (!code) return '';
+            for (var i = 0; i < apiList.length; i++) {
+                if (apiList[i].code === code) return apiList[i].name;
+            }
+            return '';
+        }
+
+        // ========== 保存 ==========
+        function saveScenario() {
+            var name = $('#name').val().trim();
+            var code = $('#code').val().trim();
+            if (!name) { toast('请输入场景名称', 'warn'); return; }
+            if (!code) { toast('请输入场景编码', 'warn'); return; }
+
+            // 同步 textarea 内容（change 事件在某些场景不触发）
+            $('#stepsContainer .step-item').each(function() {
+                var idx = parseInt($(this).data('index'));
+                $(this).find('[data-field]').each(function() {
+                    var field = $(this).data('field');
+                    steps[idx][field] = $(this).val();
+                });
+            });
+
+            // 验证步骤
+            for (var i = 0; i < steps.length; i++) {
+                if (!steps[i].stepCode) { toast('步骤 ' + (i + 1) + ' 缺少编码', 'warn'); return; }
+                if (!steps[i].apiCode) { toast('步骤 ' + (i + 1) + ' 未选择接口', 'warn'); return; }
+            }
+
+            var payload = {
+                name: name,
+                code: code,
+                groupName: $('#groupName').val().trim() || null,
+                failureStrategy: $('#failureStrategy').val(),
+                timeoutSeconds: parseInt($('#timeoutSeconds').val()) || 300,
+                status: $('#status').val(),
+                description: $('#description').val().trim(),
+                steps: steps.map(function(s) {
+                    // 解析 inputMapping/outputMapping，确保是有效的 JSON 对象
+                    var inputMapping = {};
+                    var outputMapping = {};
+                    try {
+                        if (s.inputMapping && s.inputMapping.trim()) {
+                            inputMapping = JSON.parse(s.inputMapping);
+                        }
+                    } catch(e) {
+                        console.warn('inputMapping JSON 解析失败:', e);
+                    }
+                    try {
+                        if (s.outputMapping && s.outputMapping.trim()) {
+                            outputMapping = JSON.parse(s.outputMapping);
+                        }
+                    } catch(e) {
+                        console.warn('outputMapping JSON 解析失败:', e);
+                    }
+                    return {
+                        stepCode: s.stepCode,
+                        stepName: s.stepName,
+                        stepOrder: s.stepOrder,
+                        apiCode: s.apiCode,
+                        inputMapping: inputMapping,
+                        outputMapping: outputMapping,
+                        conditionExpr: s.conditionExpr || null,
+                        skipOnError: parseInt(s.skipOnError) || 0,
+                        retryCount: parseInt(s.retryCount) || 0,
+                        cacheSeconds: s.cacheSeconds ? parseInt(s.cacheSeconds) : null,
+                        cacheKeys: s.cacheKeys || null
+                    };
+                })
+            };
+
+            var promise = scenarioId
+                ? API.scenario.update(String(scenarioId), payload)
+                : API.scenario.create(payload);
+
+            promise.then(function(res) {
+                if (res.code === 200) {
+                    toast(scenarioId ? '更新成功' : '创建成功', 'success');
+                    if (!scenarioId && res.data && res.data.id) {
+                        scenarioId = res.data.id;
+                        history.replaceState(null, '', '?id=' + scenarioId);
+                        $('#pageTitle').text('🔀 编辑场景');
+                    }
+                } else {
+                    toast(res.message || '保存失败', 'error');
+                }
+            }).catch(function(e) { toast('保存失败: ' + e.message, 'error'); });
+        }
+
+        // ========== 全局暴露 ==========
+        window._removeStep = function(index) { removeStep(index); };
+        window._moveStep = function(index, dir) { moveStep(index, dir); };
+
+        function escHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    })();
+    </script>
+</body>
+</html>

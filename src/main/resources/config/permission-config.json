@@ -78,6 +78,41 @@
       "sortOrder": 10
     },
     {
+      "code": "scenario:view",
+      "name": "查看场景",
+      "description": "查看场景编排列表和详情",
+      "module": "scenario",
+      "sortOrder": 15
+    },
+    {
+      "code": "scenario:add",
+      "name": "创建场景",
+      "description": "创建新的场景编排",
+      "module": "scenario",
+      "sortOrder": 16
+    },
+    {
+      "code": "scenario:edit",
+      "name": "编辑场景",
+      "description": "编辑场景配置和步骤",
+      "module": "scenario",
+      "sortOrder": 17
+    },
+    {
+      "code": "scenario:delete",
+      "name": "删除场景",
+      "description": "删除场景编排",
+      "module": "scenario",
+      "sortOrder": 18
+    },
+    {
+      "code": "scenario:execute",
+      "name": "执行场景",
+      "description": "手动触发场景执行",
+      "module": "scenario",
+      "sortOrder": 19
+    },
+    {
       "code": "env:view",
       "name": "查看环境",
       "description": "查看环境配置",

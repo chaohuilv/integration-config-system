@@ -127,6 +127,11 @@ public class HttpInvokeService {
                 redisCacheService.put(cacheKey, response.getData(), ttl);
             }
 
+            // 7. Token自动缓存：调用成功后自动提取响应中的token并写入缓存表
+            if (Boolean.TRUE.equals(config.getEnableTokenCache()) && response.getSuccess()) {
+                extractAndCacheToken(config, response, traceId);
+            }
+
         } catch (Exception e) {
             log.error("[{}] 接口调用异常: {}", traceId, e.getMessage(), e);
             response = InvokeResponseDTO.builder()
@@ -743,6 +748,8 @@ public class HttpInvokeService {
                 .tokenParamName(config.getTokenParamName())
                 .tokenPrefix(config.getTokenPrefix())
                 .tokenCacheTime(config.getTokenCacheTime())
+                .enableTokenCache(config.getEnableTokenCache())
+                .tokenCacheSeconds(config.getTokenCacheSeconds())
                 .build();
     }
 
@@ -892,6 +899,39 @@ public class HttpInvokeService {
         } catch (Exception e) {
             log.warn("获取客户端IP异常: {}", e.getMessage());
             return getLocalIp();
+        }
+    }
+
+    /**
+     * 提取响应中的Token并写入缓存表
+     * 复用 tokenExtractPath（为空则默认取 $.data.accessToken）
+     */
+    private void extractAndCacheToken(ApiConfig config, InvokeResponseDTO response, String traceId) {
+        try {
+            // 默认提取路径：$.data.accessToken
+            String extractPath = config.getTokenExtractPath();
+            if (extractPath == null || extractPath.isEmpty()) {
+                extractPath = "$.data.accessToken";
+            }
+
+            String responseJson = JsonUtil.toJson(response.getData());
+            String token = JsonPathUtil.extract(responseJson, extractPath);
+
+            if (token == null || token.isEmpty()) {
+                log.debug("[{}] Token自动缓存：响应中未找到token，path={}", traceId, extractPath);
+                return;
+            }
+
+            int cacheSeconds = config.getTokenCacheSeconds() != null && config.getTokenCacheSeconds() > 0
+                    ? config.getTokenCacheSeconds() : 3600;
+
+            // 写入Token缓存表（apiCode=当前接口本身，tokenApiCode=null表示自主缓存）
+            tokenCacheManager.cacheToken(config.getCode(), token, cacheSeconds, null);
+            log.info("[{}] Token自动缓存成功: apiCode={}, cacheSeconds={}, path={}",
+                    traceId, config.getCode(), cacheSeconds, extractPath);
+
+        } catch (Exception e) {
+            log.warn("[{}] Token自动缓存失败: {}", traceId, e.getMessage());
         }
     }
 

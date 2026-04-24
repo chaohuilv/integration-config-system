@@ -1,5 +1,6 @@
 package com.integration.config.controller;
 
+import com.integration.config.annotation.AuditLog;
 import com.integration.config.annotation.RequirePermission;
 import com.integration.config.dto.AlertRuleDTO;
 import com.integration.config.entity.config.AlertRecord;
@@ -39,6 +40,7 @@ public class AlertController {
     @GetMapping("/rules")
     @Operation(summary = "分页查询告警规则")
     @RequirePermission("alert:view")
+    @AuditLog(operateType = "QUERY", module = "ALERT_RULE", description = "'分页查询告警规则'", recordResult = false)
     public ResultVO<Page<AlertRule>> pageRules(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String alertType,
@@ -52,6 +54,7 @@ public class AlertController {
     @GetMapping("/rules/active")
     @Operation(summary = "查询所有启用的告警规则")
     @RequirePermission("alert:view")
+    @AuditLog(operateType = "QUERY", module = "ALERT_RULE", description = "'查询所有启用的告警规则'", recordResult = false)
     public ResultVO<List<AlertRule>> getActiveRules() {
         return ResultVO.success(alertRuleService.getAllActive());
     }
@@ -59,6 +62,7 @@ public class AlertController {
     @GetMapping("/rules/{id}")
     @Operation(summary = "查询告警规则详情")
     @RequirePermission("alert:view")
+    @AuditLog(operateType = "QUERY", module = "ALERT_RULE", description = "'查询告警规则详情ID: ' + #id", targetType = "ALERT_RULE", targetId = "#id", recordResult = false)
     public ResultVO<AlertRule> getRule(@PathVariable Long id) {
         return ResultVO.success(alertRuleService.getById(id));
     }
@@ -66,6 +70,7 @@ public class AlertController {
     @PostMapping("/rules")
     @Operation(summary = "创建告警规则")
     @RequirePermission("alert:add")
+    @AuditLog(operateType = "CREATE", module = "ALERT_RULE", description = "'创建告警规则: ' + #dto.ruleName", targetType = "ALERT_RULE", targetId = "#result.data.id", recordParams = true)
     public ResultVO<AlertRule> createRule(@RequestBody AlertRuleDTO dto,
                                           @RequestAttribute(AppConstants.REQ_ATTR_USER_ID) Long userId) {
         log.info("[AlertController] 创建告警规则: {}", dto.getRuleName());
@@ -76,6 +81,7 @@ public class AlertController {
     @PutMapping("/rules/{id}")
     @Operation(summary = "更新告警规则")
     @RequirePermission("alert:edit")
+    @AuditLog(operateType = "UPDATE", module = "ALERT_RULE", description = "'更新告警规则ID: ' + #id", targetType = "ALERT_RULE", targetId = "#id", recordParams = true)
     public ResultVO<AlertRule> updateRule(@PathVariable Long id, @RequestBody AlertRuleDTO dto) {
         return ResultVO.success(alertRuleService.update(id, dto));
     }
@@ -83,6 +89,7 @@ public class AlertController {
     @DeleteMapping("/rules/{id}")
     @Operation(summary = "删除告警规则")
     @RequirePermission("alert:delete")
+    @AuditLog(operateType = "DELETE", module = "ALERT_RULE", description = "'删除告警规则ID: ' + #id", targetType = "ALERT_RULE", targetId = "#id", recordParams = false)
     public ResultVO<Void> deleteRule(@PathVariable Long id) {
         alertRuleService.delete(id);
         return ResultVO.success();
@@ -91,6 +98,7 @@ public class AlertController {
     @PostMapping("/rules/{id}/toggle")
     @Operation(summary = "启用/停用告警规则")
     @RequirePermission("alert:edit")
+    @AuditLog(operateType = "UPDATE", module = "ALERT_RULE", description = "'切换告警规则状态: ' + #id", targetType = "ALERT_RULE", targetId = "#id", recordParams = false)
     public ResultVO<AlertRule> toggleRule(@PathVariable Long id) {
         return ResultVO.success(alertRuleService.toggleStatus(id));
     }
@@ -120,6 +128,7 @@ public class AlertController {
     @GetMapping("/records")
     @Operation(summary = "分页查询告警记录")
     @RequirePermission("alert:view")
+    @AuditLog(operateType = "QUERY", module = "ALERT_RULE", description = "'分页查询告警记录'", recordResult = false)
     public ResultVO<Page<AlertRecord>> pageRecords(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
@@ -154,6 +163,7 @@ public class AlertController {
     @GetMapping("/overview")
     @Operation(summary = "告警概览统计")
     @RequirePermission("alert:view")
+    @AuditLog(operateType = "QUERY", module = "ALERT_RULE", description = "'查询告警概览统计'", recordResult = false)
     public ResultVO<Map<String, Object>> overview() {
         Map<String, Object> data = new HashMap<>();
         data.put("firingCount", alertRuleService.countFiring());

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>场景执行</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .form-card {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+            padding: 20px; margin-bottom: 16px;
+        }
+        .form-card h3 {
+            font-size: 15px; font-weight: 600; color: #1f2937;
+            margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .form-row .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-row .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-size: 13px; font-weight: 500; color: #374151; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 13px; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; font-family: monospace; }
+        .form-hint { font-size: 11px; color: #9ca3af; }
+
+        /* 执行结果 */
+        .exec-result {
+            border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 16px;
+        }
+        .exec-result-header {
+            padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .exec-status { font-size: 18px; font-weight: 700; }
+        .exec-status.success { color: #15803d; }
+        .exec-status.failed { color: #b91c1c; }
+        .exec-status.running { color: #2563eb; }
+        .exec-status.partial { color: #d97706; }
+        .exec-time { font-size: 13px; color: #6b7280; }
+
+        /* 步骤时间线 */
+        .step-timeline { padding: 16px; }
+        .timeline-item {
+            display: flex; gap: 12px; padding: 10px 0; position: relative;
+        }
+        .timeline-dot {
+            width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+            border: 2px solid #d1d5db; background: #fff;
+        }
+        .timeline-dot.success { border-color: #15803d; background: #dcfce7; }
+        .timeline-dot.failed { border-color: #b91c1c; background: #fee2e2; }
+        .timeline-dot.skipped { border-color: #d97706; background: #fef9c3; }
+        .timeline-dot.running { border-color: #2563eb; background: #dbeafe; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .timeline-line {
+            position: absolute; left: 5px; top: 24px; bottom: -10px;
+            width: 2px; background: #e5e7eb;
+        }
+        .timeline-item:last-child .timeline-line { display: none; }
+
+        .timeline-content { flex: 1; min-width: 0; }
+        .timeline-title { font-weight: 600; font-size: 13px; color: #1f2937; }
+        .timeline-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .timeline-detail {
+            margin-top: 6px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+            padding: 8px 10px; font-size: 12px; font-family: monospace; white-space: pre-wrap;
+            word-break: break-all; max-height: 200px; overflow-y: auto;
+        }
+        .timeline-detail.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+        /* 上下文变量 */
+        .context-box {
+            margin-top: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;
+            padding: 10px; font-size: 12px; font-family: monospace; white-space: pre-wrap;
+            word-break: break-all; max-height: 200px; overflow-y: auto;
+        }
+
+        /* 执行历史 */
+        .history-list { margin-top: 16px; }
+        .history-item {
+            display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+            border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .history-item:hover { background: #f9fafb; border-color: #8b5cf6; }
+        .history-status { font-size: 12px; }
+        .history-time { font-size: 12px; color: #6b7280; flex: 1; }
+        .history-duration { font-size: 12px; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">▶️ 场景执行</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" id="btnBack">← 返回列表</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 场景信息 -->
+        <div class="form-card">
+            <h3>📝 场景信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>场景名称</label>
+                    <input type="text" id="scenarioName" readonly style="background:#f9fafb;">
+                </div>
+                <div class="form-group">
+                    <label>场景编码</label>
+                    <input type="text" id="scenarioCode" readonly style="background:#f9fafb;">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>失败策略</label>
+                    <input type="text" id="strategy" readonly style="background:#f9fafb;">
+                </div>
+                <div class="form-group">
+                    <label>步骤数</label>
+                    <input type="text" id="stepCount" readonly style="background:#f9fafb;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 执行参数 -->
+        <div class="form-card">
+            <h3>⚙️ 执行参数</h3>
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>输入参数 (JSON)</label>
+                    <textarea id="inputParams" rows="5" placeholder='{"userId": "12345", "env": "prod"}'></textarea>
+                    <span class="form-hint">步骤中 type=input 的映射将从此处取值</span>
+                </div>
+            </div>
+            <div style="margin-top: 8px;">
+                <button class="btn btn-primary" id="btnExecute" data-permission="scenario:execute">▶️ 执行场景</button>
+                <button class="btn btn-ghost" id="btnCancelExec" style="display:none;">⏹ 取消</button>
+            </div>
+        </div>
+
+        <!-- 执行结果 -->
+        <div class="form-card" id="resultCard" style="display:none;">
+            <h3>📊 执行结果</h3>
+            <div class="exec-result">
+                <div class="exec-result-header">
+                    <span class="exec-status" id="execStatus">-</span>
+                    <span class="exec-time" id="execTime">-</span>
+                </div>
+                <div class="step-timeline" id="stepTimeline"></div>
+            </div>
+            <div id="contextSection" style="display:none;">
+                <h4 style="font-size:13px;font-weight:600;color:#374151;margin:12px 0 4px;">执行上下文</h4>
+                <div class="context-box" id="contextBox"></div>
+            </div>
+        </div>
+
+        <!-- 执行历史 -->
+        <div class="form-card">
+            <h3>📜 最近执行记录</h3>
+            <div class="history-list" id="historyList">
+                <div style="text-align:center;padding:20px;color:#9ca3af;">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    (function() {
+        var scenarioId = new URLSearchParams(location.search).get('id');
+        var scenarioCode = '';
+        var executing = false;
+
+        function toast(msg, type) { utils.toast(msg, type); }
+
+        // ========== 初始化 ==========
+        $(function() {
+            Permission.init({ guard: true }).then(function() {
+                if (Permission.isDenied()) return;
+                if (scenarioId) {
+                    loadScenario();
+                    loadHistory();
+                }
+            });
+
+            $('#btnBack').click(function() { location.href = 'scenario_list.html'; });
+            $('#btnExecute').click(function() { executeScenario(); });
+        });
+
+        // ========== 加载场景信息 ==========
+        function loadScenario() {
+            API.scenario.getDetail(scenarioId).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    var d = res.data;
+                    scenarioCode = d.code || '';
+                    $('#scenarioName').val(d.name || '');
+                    $('#scenarioCode').val(d.code || '');
+                    $('#strategy').val(d.failureStrategy === 'CONTINUE' ? '继续（遇错跳过）' : '终止（遇错停止）');
+                    $('#stepCount').val(d.stepCount || 0);
+                    $('#pageTitle').text('▶️ ' + (d.name || '场景执行'));
+                }
+            }).catch(function(e) { toast('加载失败: ' + e.message, 'error'); });
+        }
+
+        // ========== 执行 ==========
+        function executeScenario() {
+            if (executing) return;
+
+            var params = {};
+            var inputText = $('#inputParams').val().trim();
+            if (inputText) {
+                try { params = JSON.parse(inputText); }
+                catch (e) { toast('输入参数 JSON 格式错误', 'warn'); return; }
+            }
+
+            executing = true;
+            $('#btnExecute').prop('disabled', true).text('⏳ 执行中...');
+            $('#btnCancelExec').show();
+            $('#resultCard').show();
+            $('#execStatus').text('RUNNING').attr('class', 'exec-status running');
+            $('#execTime').text('执行中...');
+            $('#stepTimeline').html('<div style="text-align:center;padding:20px;color:#6b7280;">⏳ 场景执行中，请稍候...</div>');
+
+            var payload = {
+                scenarioId: scenarioId,
+                params: params
+            };
+
+            API.scenario.execute(payload).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    renderResult(res.data);
+                    toast('场景执行完成', 'success');
+                } else {
+                    $('#execStatus').text('FAILED').attr('class', 'exec-status failed');
+                    $('#execTime').text(res.message || '执行失败');
+                    toast(res.message || '执行失败', 'error');
+                }
+            }).catch(function(e) {
+                $('#execStatus').text('ERROR').attr('class', 'exec-status failed');
+                $('#execTime').text(e.message);
+                toast('执行异常: ' + e.message, 'error');
+            }).finally(function() {
+                executing = false;
+                $('#btnExecute').prop('disabled', false).text('▶️ 执行场景');
+                $('#btnCancelExec').hide();
+                loadHistory();
+            });
+        }
+
+        // ========== 渲染结果 ==========
+        function renderResult(data) {
+            var status = data.status || 'UNKNOWN';
+            var statusMap = {
+                SUCCESS: { text: '✅ 执行成功', cls: 'success' },
+                FAILED: { text: '❌ 执行失败', cls: 'failed' },
+                RUNNING: { text: '⏳ 执行中', cls: 'running' },
+                PARTIAL: { text: '⚠️ 部分成功', cls: 'partial' }
+            };
+            var s = statusMap[status] || { text: status, cls: '' };
+            $('#execStatus').text(s.text).attr('class', 'exec-status ' + s.cls);
+
+            var timeText = '';
+            if (data.costTimeMs !== undefined) timeText = '耗时 ' + data.costTimeMs + 'ms';
+            if (data.startTime) timeText += (timeText ? ' | ' : '') + data.startTime;
+            $('#execTime').text(timeText);
+
+            // 步骤时间线
+            var stepResults = data.steps || [];
+            if (stepResults.length === 0) {
+                $('#stepTimeline').html('<div style="text-align:center;padding:20px;color:#9ca3af;">无步骤执行记录</div>');
+                return;
+            }
+
+            var html = '';
+            stepResults.forEach(function(step, i) {
+                var dotCls = step.status === 'SUCCESS' ? 'success'
+                    : step.status === 'FAILED' ? 'failed'
+                    : step.status === 'SKIPPED' ? 'skipped'
+                    : 'running';
+                html += '<div class="timeline-item">'
+                    + '<div class="timeline-dot ' + dotCls + '"></div>'
+                    + (i < stepResults.length - 1 ? '<div class="timeline-line"></div>' : '')
+                    + '<div class="timeline-content">'
+                    + '<div class="timeline-title">' + escHtml(step.stepName || step.stepCode || '步骤 ' + (i + 1)) + '</div>'
+                    + '<div class="timeline-meta">'
+                    + '<span class="tag tag-' + (step.status === 'SUCCESS' ? 'active' : step.status === 'FAILED' ? 'inactive' : 'continue') + '">' + escHtml(step.status || '-') + '</span>'
+                    + (step.costTimeMs !== undefined ? ' · ' + step.costTimeMs + 'ms' : '')
+                    + '</div>';
+                if (step.output) {
+                    html += '<div class="timeline-detail">' + escHtml(formatJson(step.output)) + '</div>';
+                }
+                if (step.errorMessage) {
+                    html += '<div class="timeline-detail error">' + escHtml(step.errorMessage) + '</div>';
+                }
+                html += '</div></div>';
+            });
+            $('#stepTimeline').html(html);
+
+            // 上下文
+            if (data.context) {
+                $('#contextSection').show();
+                $('#contextBox').text(formatJson(data.context));
+            }
+        }
+
+        // ========== 执行历史 ==========
+        function loadHistory() {
+            API.scenario.pageExecutions({ scenarioId: scenarioId, page: 0, size: 10 }).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    renderHistory(res.data.content || []);
+                }
+            }).catch(function() {});
+        }
+
+        function renderHistory(list) {
+            if (list.length === 0) {
+                $('#historyList').html('<div style="text-align:center;padding:20px;color:#9ca3af;">暂无执行记录</div>');
+                return;
+            }
+            var html = '';
+            list.forEach(function(item) {
+                var statusIcon = item.status === 'SUCCESS' ? '✅' : item.status === 'FAILED' ? '❌' : item.status === 'PARTIAL' ? '⚠️' : '⏳';
+                html += '<div class="history-item" onclick="window._viewExec(\'' + item.id + '\')">'
+                    + '<span class="history-status">' + statusIcon + '</span>'
+                    + '<span class="history-time">' + escHtml(item.startTime || '-') + '</span>'
+                    + '<span class="history-duration">' + (item.costTimeMs !== undefined ? item.costTimeMs + 'ms' : '-') + '</span>'
+                    + '</div>';
+            });
+            $('#historyList').html(html);
+        }
+
+        window._viewExec = function(execId) {
+            API.scenario.getExecution(execId).then(function(res) {
+                if (res.code === 200 && res.data) {
+                    $('#resultCard').show();
+                    // 查执行步骤
+                    API.scenario.getExecutionSteps(execId).then(function(stepRes) {
+                        var data = res.data;
+                        var resultData = {
+                            status: data.status,
+                            costTimeMs: data.costTimeMs,
+                            startTime: data.startTime,
+                            steps: (stepRes.code === 200 && stepRes.data) ? stepRes.data : [],
+                            context: data.context ? (typeof data.context === 'string' ? JSON.parse(data.context) : data.context) : null
+                        };
+                        renderResult(resultData);
+                    });
+                }
+            }).catch(function(e) { toast('加载失败: ' + e.message, 'error'); });
+        };
+
+        function formatJson(obj) {
+            if (!obj) return '';
+            if (typeof obj === 'string') {
+                try { obj = JSON.parse(obj); } catch(e) { return obj; }
+            }
+            try { return JSON.stringify(obj, null, 2); } catch(e) { return String(obj); }
+        }
+
+        function escHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    })();
+    </script>
+</body>
+</html>

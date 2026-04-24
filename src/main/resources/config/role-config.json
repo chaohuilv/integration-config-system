@@ -13,10 +13,11 @@
       "description": "集成管理全部权限 + SDK文档",
       "isSystem": true,
       "sortOrder": 2,
-      "menus": ["list", "import", "debug", "logs", "environments", "sdk"],
+      "menus": ["list", "import", "debug", "logs", "environments", "scenario", "sdk"],
       "permissions": [
         "api:view", "api:detail", "api:add", "api:edit", "api:delete", "api:invoke",
         "env:view", "env:detail", "env:add", "env:edit", "env:delete",
+        "scenario:view", "scenario:add", "scenario:edit", "scenario:delete", "scenario:execute",
         "log:view", "invoke-log:detail"
       ]
     },

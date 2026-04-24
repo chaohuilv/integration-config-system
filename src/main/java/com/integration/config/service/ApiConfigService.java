@@ -495,6 +495,9 @@ public class ApiConfigService {
         entity.setTokenParamName(dto.getTokenParamName());
         entity.setTokenPrefix(dto.getTokenPrefix());
         entity.setTokenCacheTime(dto.getTokenCacheTime());
+        entity.setEnableTokenCache(dto.getEnableTokenCache());
+        entity.setTokenCacheSeconds(dto.getTokenCacheSeconds());
+
         // 频率限制
         entity.setEnableRateLimit(dto.getEnableRateLimit());
         entity.setRateLimitWindow(dto.getRateLimitWindow());

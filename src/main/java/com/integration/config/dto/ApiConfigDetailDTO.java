@@ -64,6 +64,15 @@ public class ApiConfigDetailDTO {
     private String tokenPrefix;
     private Integer tokenCacheTime;
 
+    // ========== Token自动缓存 ==========
+    private Boolean enableTokenCache;
+    private Integer tokenCacheSeconds;
+
+    // ========== 频率限制 ==========
+    private Boolean enableRateLimit;
+    private Integer rateLimitWindow;
+    private Integer rateLimitMax;
+
     /**
      * 调用统计
      */
@@ -105,6 +114,11 @@ public class ApiConfigDetailDTO {
                 .tokenParamName(entity.getTokenParamName())
                 .tokenPrefix(entity.getTokenPrefix())
                 .tokenCacheTime(entity.getTokenCacheTime())
+                .enableTokenCache(entity.getEnableTokenCache())
+                .tokenCacheSeconds(entity.getTokenCacheSeconds())
+                .enableRateLimit(entity.getEnableRateLimit())
+                .rateLimitWindow(entity.getRateLimitWindow())
+                .rateLimitMax(entity.getRateLimitMax())
                 .version(entity.getVersion())
                 .baseCode(entity.getBaseCode())
                 .latestVersion(entity.getLatestVersion())

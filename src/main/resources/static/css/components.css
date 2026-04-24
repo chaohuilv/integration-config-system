@@ -35,6 +35,27 @@
     box-shadow: 0 1px 4px rgba(102,126,234,0.3);
 }
 
+
+.btn-close {
+    background: linear-gradient(135deg, #5fe1f8 0%, #3a61ec 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.35);
+    width: 25px;
+    height: 25px;
+    border: 0px;
+}
+
+.btn-close:hover {
+    background:  linear-gradient(135deg, #5fe1f8 0%, #3a61ec 100%);
+    box-shadow: 0 4px 14px rgba(102,126,234,0.45);
+    transform: translateY(-1px);
+}
+
+.btn-close:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(102,126,234,0.3);
+}
+
 .btn-success {
     background: linear-gradient(135deg, #52c41a 0%, #3ba310 100%);
     color: white;

@@ -181,6 +181,16 @@ public class ApiConfig {
     @Column(name = "TOKEN_CACHE_TIME")
     private Integer tokenCacheTime;
 
+    // ==================== Token自动缓存（新机制，无需配置tokenApiCode） ====================
+
+    /** 是否启用Token自动缓存：调用成功后自动提取响应中的token并写入缓存表 */
+    @Column(name = "ENABLE_TOKEN_CACHE")
+    private Boolean enableTokenCache;
+
+    /** Token自动缓存时长（秒），默认3600 */
+    @Column(name = "TOKEN_CACHE_SECONDS")
+    private Integer tokenCacheSeconds;
+
     // ==================== 审计字段 ====================
 
     /** 记录创建时间 */

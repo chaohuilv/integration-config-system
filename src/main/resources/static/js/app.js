@@ -331,7 +331,8 @@ const App = (function() {
         hasMenuAccess,
         getUserPermissions: () => userPermissions,
         getUserMenus: () => userMenus,
-        getPageMap: () => pageMap
+        getPageMap: () => pageMap,
+        toggleSection
     };
 })();
 

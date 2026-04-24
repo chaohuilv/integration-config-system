@@ -28,7 +28,7 @@ public class TokenCacheManager {
      */
     @Transactional(value = "tokenTransactionManager", readOnly = true)
     public String getCachedToken(String apiCode) {
-        TokenCacheEntry entry = tokenCacheRepository.findValidByApiCode(apiCode, LocalDateTime.now());
+        TokenCacheEntry entry = tokenCacheRepository.findValidByApiCode(apiCode, LocalDateTime.now()).orElse(null);
         if (entry != null) {
             log.debug("Token缓存命中: apiCode={}", apiCode);
             return entry.getToken();

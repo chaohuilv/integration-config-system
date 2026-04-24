@@ -10,33 +10,39 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-/**
- * Token缓存 Repository（Token 数据库）
- */
 @Repository
 public interface TokenCacheRepository extends JpaRepository<TokenCacheEntry, Long> {
 
     /**
-     * 根据业务接口编码查询Token
+     * 根据接口编码查找Token（未过期）
+     */
+    @Query("SELECT t FROM TokenCacheEntry t WHERE t.apiCode = :apiCode AND t.expireTime > :now")
+    Optional<TokenCacheEntry> findValidByApiCode(@Param("apiCode") String apiCode, @Param("now") LocalDateTime now);
+
+    /**
+     * 根据接口编码查找（不含过期检查）
      */
     Optional<TokenCacheEntry> findByApiCode(String apiCode);
 
     /**
-     * 根据业务接口编码查询未过期的Token
-     */
-    @Query("SELECT t FROM TokenCacheEntry t WHERE t.apiCode = :apiCode AND t.expireTime > :now")
-    TokenCacheEntry findValidByApiCode(@Param("apiCode") String apiCode, @Param("now") LocalDateTime now);
-
-    /**
-     * 删除指定Token接口关联的所有缓存
+     * 删除所有过期缓存
      */
     @Modifying
+    @Query("DELETE FROM TokenCacheEntry t WHERE t.expireTime < :now")
+    int deleteExpired(@Param("now") LocalDateTime now);
+
+    /**
+     * 删除指定接口的Token
+     */
+    void deleteByApiCode(String apiCode);
+
+    /**
+     * 删除指定Token来源接口的Token
+     */
     void deleteByTokenApiCode(String tokenApiCode);
 
     /**
-     * 清除所有过期Token
+     * 删除所有
      */
-    @Modifying
-    @Query("DELETE FROM TokenCacheEntry t WHERE t.expireTime <= :now")
-    int deleteExpired(@Param("now") LocalDateTime now);
+    void deleteAll();
 }

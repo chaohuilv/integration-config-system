@@ -172,6 +172,14 @@ public class ApiConfigDTO {
      */
     private Integer tokenCacheTime;
 
+    // ========== Token自动缓存 ==========
+
+    /** 是否启用Token自动缓存 */
+    private Boolean enableTokenCache;
+
+    /** Token自动缓存时长（秒） */
+    private Integer tokenCacheSeconds;
+
     // ========== 审计字段（只读，由服务层填充） ==========
 
     /** 创建人ID */

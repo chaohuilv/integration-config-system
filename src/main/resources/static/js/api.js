@@ -532,6 +532,69 @@ const API = {
         }
     },
 
+    // 场景编排
+    scenario: {
+        // 分页查询场景列表
+        pageList: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/scenario/list?${query}`);
+        },
+        // 场景详情
+        getDetail: (id) => request(`/scenario/${id}`),
+        // 分组名称
+        getGroups: () => request('/scenario/groups'),
+        // 启用的场景
+        getActive: () => request('/scenario/active'),
+        // 创建场景
+        create: (data) => request('/scenario', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新场景
+        update: (id, data) => request(`/scenario/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 切换状态
+        toggle: (id) => request(`/scenario/${id}/toggle`, {
+            method: 'PUT'
+        }),
+        // 删除场景
+        delete: (id) => request(`/scenario/${id}`, {
+            method: 'DELETE'
+        }),
+        // 场景步骤
+        getSteps: (scenarioId) => request(`/scenario/${scenarioId}/steps`),
+        // 添加步骤
+        addStep: (scenarioId, data) => request(`/scenario/${scenarioId}/steps`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新步骤
+        updateStep: (stepId, data) => request(`/scenario/steps/${stepId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除步骤
+        deleteStep: (stepId) => request(`/scenario/steps/${stepId}`, {
+            method: 'DELETE'
+        }),
+        // 执行场景
+        execute: (data) => request('/scenario/execute', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 执行记录
+        pageExecutions: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/scenario/executions?${query}`);
+        },
+        // 执行详情
+        getExecution: (id) => request(`/scenario/executions/${id}`),
+        // 执行步骤日志
+        getExecutionSteps: (id) => request(`/scenario/executions/${id}/steps`)
+    },
+
     // 告警管理
     alert: {
         // 分页查询告警规则
