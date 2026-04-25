@@ -332,7 +332,7 @@ public class ScenarioExecutionService {
     private InvokeRequestDTO buildInvokeRequest(ScenarioStep step, ExecutionContext context, String scenarioCode) {
         InvokeRequestDTO.InvokeRequestDTOBuilder builder = InvokeRequestDTO.builder()
                 .apiCode(step.getApiCode())
-                .source("SCENARIO:" + step.getScenarioId());
+                .source("SCENARIO:" + scenarioCode);
 
         // 解析输入映射
         if (step.getInputMapping() != null && !step.getInputMapping().isEmpty()) {

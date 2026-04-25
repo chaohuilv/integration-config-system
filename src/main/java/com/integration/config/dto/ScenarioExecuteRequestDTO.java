@@ -17,12 +17,12 @@ import java.util.Map;
 public class ScenarioExecuteRequestDTO {
 
     /**
-     * 场景编码（可选，如果传了 scenarioId 则不需要）
+     * 场景编码（推荐，优先使用编码调用）
      */
     private String scenarioCode;
 
     /**
-     * 场景ID（可选，如果传了 scenarioCode 则不需要）
+     * 场景ID（兼容旧调用方式，不推荐）
      */
     private Long scenarioId;
 

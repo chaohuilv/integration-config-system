@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -61,6 +62,14 @@ public class ScenarioService {
         List<ScenarioStep> steps = scenarioStepRepository.findByScenarioIdOrderByStepOrder(id);
         dto.setStepCount(steps.size());
         return dto;
+    }
+
+    /**
+     * 根据编码查询场景（供内部业务逻辑调用）
+     */
+    public Scenario getByCode(String code) {
+        return scenarioRepository.findByCode(code)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "场景不存在: " + code));
     }
 
     /**
@@ -119,12 +128,9 @@ public class ScenarioService {
         Scenario scenario = scenarioRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "场景不存在"));
 
-        // 检查编码唯一性（排除自身）
+        // 禁止修改编码（编码是场景调用的唯一标识，修改会导致基于编码的调用失效）
         if (dto.getCode() != null && !dto.getCode().equals(scenario.getCode())) {
-            if (scenarioRepository.existsByCode(dto.getCode())) {
-                throw new BusinessException(ErrorCode.ALREADY_EXISTS, "场景编码已存在: " + dto.getCode());
-            }
-            scenario.setCode(dto.getCode());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "场景编码创建后不可修改: " + scenario.getCode());
         }
 
         if (dto.getName() != null) scenario.setName(dto.getName());
@@ -297,6 +303,14 @@ public class ScenarioService {
     // ==================== 私有方法 ====================
 
     private void saveSteps(Long scenarioId, List<ScenarioStepDTO> stepDTOs) {
+        // 校验步骤编码唯一性（同场景内不能重复）
+        Set<String> stepCodes = new java.util.HashSet<>();
+        for (ScenarioStepDTO dto : stepDTOs) {
+            if (dto.getStepCode() != null && !stepCodes.add(dto.getStepCode())) {
+                throw new BusinessException(ErrorCode.ALREADY_EXISTS, "步骤编码重复: " + dto.getStepCode());
+            }
+        }
+
         for (int i = 0; i < stepDTOs.size(); i++) {
             ScenarioStepDTO dto = stepDTOs.get(i);
             ScenarioStep step = ScenarioStep.builder()

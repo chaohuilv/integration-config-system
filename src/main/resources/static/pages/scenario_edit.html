@@ -243,7 +243,7 @@
                 if (res.code === 200 && res.data) {
                     var d = res.data;
                     $('#name').val(d.name || '');
-                    $('#code').val(d.code || '');
+                    $('#code').val(d.code || '').prop('disabled', true); // 编辑时禁用编码，防止修改后导致基于编码的调用失效
                     $('#groupName').val(d.groupName || '');
                     $('#failureStrategy').val(d.failureStrategy || 'STOP');
                     $('#timeoutSeconds').val(d.timeoutSeconds || 300);
