@@ -1,5 +1,6 @@
 package com.integration.config.entity.config;
 
+import com.integration.config.converter.EncryptedFieldConverter;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -65,18 +66,22 @@ public class AlertRule {
     private String channels;
 
     /** 钉钉群 Webhook URL */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "DINGTALK_WEBHOOK", columnDefinition = "TEXT")
     private String dingtalkWebhook;
 
     /** 钉钉签名密钥（可选，用于加签模式） */
-    @Column(name = "DINGTALK_SECRET", length = 100)
+    @Convert(converter = EncryptedFieldConverter.class)
+    @Column(name = "DINGTALK_SECRET",columnDefinition = "TEXT")
     private String dingtalkSecret;
 
     /** 企业微信群 Webhook URL */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "WECOM_WEBHOOK", columnDefinition = "TEXT")
     private String wecomWebhook;
 
     /** 邮件收件人列表（逗号分隔） */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "EMAIL_RECIPIENTS", columnDefinition = "TEXT")
     private String emailRecipients;
 

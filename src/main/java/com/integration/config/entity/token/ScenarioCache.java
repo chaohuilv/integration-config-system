@@ -2,6 +2,7 @@ package com.integration.config.entity.token;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.integration.config.converter.EncryptedFieldConverter;
 import com.integration.config.util.SnowflakeUtil;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -68,6 +69,7 @@ public class ScenarioCache {
     /**
      * 缓存值（JSON 字符串）
      */
+    @Convert(converter = EncryptedFieldConverter.class)
     @Column(name = "CACHE_VALUE", nullable = false, columnDefinition = "TEXT")
     private String cacheValue;
 
