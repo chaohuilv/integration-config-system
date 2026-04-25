@@ -95,8 +95,8 @@
                         <div class="dl-icon java-color">☕</div>
                         <div class="dl-info">
                             <div class="dl-name">Java SDK</div>
-                            <div class="dl-files">IntegrationClient.java <br />
-                                IntegrationException.java <br /> AuthResult</div>
+                            <div class="dl-files">IntegrationClient + ScenarioClient<br />
+                                IntegrationException + AuthResult</div>
                         </div>
                         <div class="dl-btn">⬇ 下载</div>
                     </a>
@@ -104,9 +104,8 @@
                         <div class="dl-icon csharp-color">🔷</div>
                         <div class="dl-info">
                             <div class="dl-name">C# SDK</div>
-                            <div class="dl-files">IntegrationClient.cs <br />
-                                IntegrationException.cs <br />
-                                AuthResult</div>
+                            <div class="dl-files">IntegrationClient + ScenarioClient<br />
+                                IntegrationException + AuthResult</div>
                         </div>
                         <div class="dl-btn">⬇ 下载</div>
                     </a>
@@ -114,7 +113,7 @@
                         <div class="dl-icon python-color">🐍</div>
                         <div class="dl-info">
                             <div class="dl-name">Python SDK</div>
-                            <div class="dl-files">integration_sdk.py <br />
+                            <div class="dl-files">integration_sdk + scenario_sdk<br />
                                 （含 IntegrationException）</div>
                         </div>
                         <div class="dl-btn">⬇ 下载</div>
@@ -526,6 +525,396 @@ results = client.batch_invoke([
     ("user-get",    {"id": 1002}, None, None),
     ("user-create", {}, "{\"name\":\"李四\"}", None),
 ])</div>
+
+        </div>
+    </div>
+
+    <!-- 场景编排 SDK 文档 -->
+    <div class="view-header" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid #e9ecef;">
+        <div class="view-title">
+            <h2>🔄 场景编排 SDK</h2>
+            <p class="view-sub">通过 SDK 编排多个接口调用，支持步骤依赖、缓存和失败策略</p>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="sdk-content">
+
+            <h3>1. 概述</h3>
+            <p style="color:#666;line-height:1.8;">
+                场景编排 SDK（ScenarioClient）复用 IntegrationClient 的登录状态，用于执行已配置的场景。
+                场景由多个步骤组成，每个步骤调用一个接口配置，支持步骤间参数传递、缓存和失败策略。<br>
+                <strong>推荐使用场景编码（scenarioCode）调用</strong>，与业务解耦，不受数据库主键变化影响。
+            </p>
+
+            <div class="tip-box">
+                <strong>🔑 核心概念：</strong>
+                场景（Scenario）= 一组有序步骤（Step），每个步骤调用一个接口配置（ApiConfig）。
+                步骤间通过 <code>${step.步骤编码.字段名}</code> 引用上一步输出，支持缓存命中跳过、失败策略（STOP / CONTINUE）。
+            </div>
+
+            <h3>2. Java 场景 SDK</h3>
+            <h4>2.1 快速开始</h4>
+            <div class="response-box">import com.integration.sdk.IntegrationClient;
+import com.integration.sdk.ScenarioClient;
+import com.integration.sdk.ScenarioClient.ScenarioResult;
+
+// 1️⃣ 先登录 IntegrationClient
+IntegrationClient client = new IntegrationClient("http://localhost:8080");
+client.login("admin", "123456");
+
+// 2️⃣ 用已登录的 client 创建 ScenarioClient
+ScenarioClient scenario = new ScenarioClient(client);
+
+// 3️⃣ 按场景编码执行（推荐）
+ScenarioResult result = scenario.execute("order-sync",
+    Map.of("orderId", "20260425001"));
+
+System.out.println("执行状态: " + result.getStatus());     // SUCCESS / FAILED / PARTIAL
+System.out.println("执行耗时: " + result.getCostTimeMs() + "ms");
+System.out.println("执行记录ID: " + result.getExecutionId());
+
+// 异步执行（立即返回执行记录ID，后台继续执行）
+ScenarioResult asyncResult = scenario.execute("order-sync",
+    Map.of("orderId", "20260425001"),
+    true,   // asyncExec = true
+    "API"   // triggerSource
+);</div>
+
+            <h4>2.2 完整示例</h4>
+            <div class="response-box">import com.integration.sdk.IntegrationClient;
+import com.integration.sdk.ScenarioClient;
+import com.integration.sdk.ScenarioClient.ScenarioResult;
+import java.util.Map;
+
+public class ScenarioExample {
+    public static void main(String[] args) {
+        IntegrationClient client = new IntegrationClient("http://localhost:8080");
+        try {
+            client.login("admin", "123456");
+            ScenarioClient scenario = new ScenarioClient(client);
+
+            // 查询所有启用的场景
+            String activeList = scenario.getActiveScenarios();
+            System.out.println("启用场景: " + activeList);
+
+            // 按编码执行（推荐）
+            ScenarioResult result = scenario.execute("order-flow",
+                Map.of("orderId", 12345, "userId", "U001"));
+
+            if (result.getSuccess()) {
+                System.out.println("✅ 执行成功");
+                System.out.println("场景: " + result.getScenarioName());
+                System.out.println("耗时: " + result.getCostTimeMs() + "ms");
+            } else {
+                System.err.println("❌ 执行失败: " + result.getErrorMessage());
+            }
+
+            // 按 ID 执行（兼容旧方式）
+            ScenarioResult result2 = scenario.executeById(1L, Map.of());
+
+            // 查询场景详情
+            String detail = scenario.getDetail(1L);
+
+            // 查询步骤列表
+            String steps = scenario.getSteps(1L);
+
+            // 分页查询执行记录
+            String executions = scenario.listExecutions(
+                null, "order-flow", "SUCCESS", 0, 20);
+
+            // 查询执行记录详情
+            String execDetail = scenario.getExecution(100L);
+
+            // 查询执行步骤日志
+            String execSteps = scenario.getExecutionSteps(100L);
+
+            // 查询分组名称
+            String groups = scenario.getGroupNames();
+
+            // 分页搜索场景
+            String list = scenario.listScenarios(
+                "订单组", null, "order", 0, 10);
+
+        } catch (Exception e) {
+            System.err.println("错误: " + e.getMessage());
+        } finally {
+            client.logout();
+        }
+    }
+}</div>
+
+            <h4>2.3 ScenarioResult 执行结果</h4>
+            <div class="response-box">ScenarioResult result = scenario.execute("order-sync", params);
+
+result.getSuccess();        // Boolean — 是否全部成功
+result.getExecutionId();    // Long — 执行记录ID
+result.getScenarioCode();   // String — 场景编码
+result.getScenarioName();   // String — 场景名称
+result.getStatus();         // String — 执行状态
+                            //   SUCCESS  — 全部步骤成功
+                            //   FAILED   — 有步骤失败且策略为 STOP
+                            //   PARTIAL  — 有步骤失败但策略为 CONTINUE
+                            //   RUNNING  — 异步执行中
+result.getCostTimeMs();     // Long — 耗时（毫秒）
+result.getErrorMessage();   // String — 失败原因
+result.getRawResponse();    // String — 原始响应JSON</div>
+
+            <h3>3. C# 场景 SDK</h3>
+            <h4>3.1 快速开始</h4>
+            <div class="response-box">using IntegrationSDK;
+
+// 1️⃣ 先登录 IntegrationClient
+var client = new IntegrationClient("http://localhost:8080");
+client.Login("admin", "123456");
+
+// 2️⃣ 用已登录的 client 创建 ScenarioClient
+var scenario = new ScenarioClient(client);
+
+// 3️⃣ 按场景编码执行（推荐）
+var result = scenario.Execute("order-sync",
+    new Dictionary<string, object> { { "orderId", "20260425001" } });
+
+Console.WriteLine($"执行状态: {result.Status}");     // SUCCESS / FAILED / PARTIAL
+Console.WriteLine($"执行耗时: {result.CostTimeMs}ms");
+Console.WriteLine($"执行记录ID: {result.ExecutionId}");
+
+// 异步执行
+var asyncResult = scenario.Execute("order-sync",
+    new Dictionary<string, object> { { "orderId", "20260425001" } },
+    asyncExec: true, triggerSource: "API");</div>
+
+            <h4>3.2 完整示例</h4>
+            <div class="response-box">using IntegrationSDK;
+using System;
+using System.Collections.Generic;
+
+public class ScenarioExample
+{
+    public static void Main(string[] args)
+    {
+        var client = new IntegrationClient("http://localhost:8080");
+        try
+        {
+            client.Login("admin", "123456");
+            var scenario = new ScenarioClient(client);
+
+            // 查询所有启用的场景
+            string activeList = scenario.GetActiveScenarios();
+            Console.WriteLine("启用场景: " + activeList);
+
+            // 按编码执行（推荐）
+            var result = scenario.Execute("order-flow",
+                new Dictionary<string, object> {
+                    { "orderId", 12345 },
+                    { "userId", "U001" }
+                });
+
+            if (result.Success == true)
+            {
+                Console.WriteLine($"✅ 执行成功 - {result.ScenarioName}, 耗时{result.CostTimeMs}ms");
+            }
+            else
+            {
+                Console.WriteLine($"❌ 执行失败: {result.ErrorMessage}");
+            }
+
+            // 按 ID 执行（兼容旧方式）
+            var result2 = scenario.ExecuteById(1, new Dictionary<string, object>());
+
+            // 查询场景详情
+            string detail = scenario.GetDetail(1);
+
+            // 查询步骤列表
+            string steps = scenario.GetSteps(1);
+
+            // 分页查询执行记录
+            string executions = scenario.ListExecutions(
+                scenarioCode: "order-flow", status: "SUCCESS", page: 0, size: 20);
+
+            // 查询执行记录详情
+            string execDetail = scenario.GetExecution(100);
+
+            // 查询执行步骤日志
+            string execSteps = scenario.GetExecutionSteps(100);
+
+            // 查询分组名称
+            string groups = scenario.GetGroupNames();
+
+            // 分页搜索场景
+            string list = scenario.ListScenarios(
+                groupName: "订单组", keyword: "order", page: 0, size: 10);
+
+        }
+        catch (IntegrationException ex)
+        {
+            Console.Error.WriteLine("错误: " + ex.Message);
+        }
+        finally
+        {
+            client.Logout();
+        }
+    }
+}</div>
+
+            <h4>3.3 ScenarioResult 执行结果</h4>
+            <div class="response-box">var result = scenario.Execute("order-sync", parameters);
+
+result.Success;          // bool? — 是否全部成功
+result.ExecutionId;      // long? — 执行记录ID
+result.ScenarioCode;     // string — 场景编码
+result.ScenarioName;     // string — 场景名称
+result.Status;           // string — SUCCESS / FAILED / PARTIAL / RUNNING
+result.CostTimeMs;       // long? — 耗时（毫秒）
+result.ErrorMessage;     // string — 失败原因
+result.RawResponse;      // string — 原始响应JSON</div>
+
+            <h3>4. Python 场景 SDK</h3>
+            <h4>4.1 快速开始</h4>
+            <div class="response-box">from integration_sdk import IntegrationClient
+from scenario_sdk import ScenarioClient
+
+# 1️⃣ 先登录 IntegrationClient
+client = IntegrationClient("http://localhost:8080")
+client.login("admin", "123456")
+
+# 2️⃣ 用已登录的 client 创建 ScenarioClient
+scenario = ScenarioClient(client)
+
+# 3️⃣ 按场景编码执行（推荐）
+result = scenario.execute("order-sync", params={"orderId": "20260425001"})
+
+print(f"执行状态: {result['status']}")      # SUCCESS / FAILED / PARTIAL
+print(f"执行耗时: {result['cost_time_ms']}ms")
+print(f"执行记录ID: {result['execution_id']}")
+
+# 异步执行
+result = scenario.execute("order-sync",
+    params={"orderId": "20260425001"},
+    async_mode=True, trigger_source="API")</div>
+
+            <h4>4.2 完整示例</h4>
+            <div class="response-box">from integration_sdk import IntegrationClient
+from scenario_sdk import ScenarioClient, ScenarioException
+
+client = IntegrationClient("http://localhost:8080")
+try:
+    client.login("admin", "123456")
+    scenario = ScenarioClient(client)
+
+    # 查询所有启用的场景
+    active_list = scenario.get_active_scenarios()
+    print(f"启用场景: {active_list}")
+
+    # 按编码执行（推荐）
+    result = scenario.execute("order-flow",
+        params={"orderId": 12345, "userId": "U001"})
+
+    if result["success"]:
+        print(f"✅ 执行成功 - {result['scenario_name']}, 耗时{result['cost_time_ms']}ms")
+    else:
+        print(f"❌ 执行失败: {result['error_message']}")
+
+    # 按 ID 执行（兼容旧方式）
+    result2 = scenario.execute_by_id(1, params={})
+
+    # 查询场景详情
+    detail = scenario.get_detail(1)
+
+    # 查询步骤列表
+    steps = scenario.get_steps(1)
+
+    # 分页查询执行记录
+    executions = scenario.list_executions(
+        scenario_code="order-flow", status="SUCCESS", page=0, size=20)
+
+    # 查询执行记录详情
+    exec_detail = scenario.get_execution(100)
+
+    # 查询执行步骤日志
+    exec_steps = scenario.get_execution_steps(100)
+
+    # 查询分组名称
+    groups = scenario.get_group_names()
+
+    # 分页搜索场景
+    list_result = scenario.list_scenarios(
+        group_name="订单组", keyword="order", page=0, size=10)
+
+except ScenarioException as e:
+    print(f"场景错误: {e.message}")
+finally:
+    client.logout()</div>
+
+            <h4>4.3 执行结果字典</h4>
+            <div class="response-box">result = scenario.execute("order-sync", params={...})
+
+result["success"]          # bool — 是否全部成功
+result["execution_id"]     # int — 执行记录ID
+result["scenario_code"]    # str — 场景编码
+result["scenario_name"]    # str — 场景名称
+result["status"]           # str — SUCCESS / FAILED / PARTIAL / RUNNING
+result["cost_time_ms"]     # int — 耗时（毫秒）
+result["error_message"]    # str — 失败原因</div>
+
+            <h3>5. 方法参考</h3>
+            <table class="table" style="max-width:900px;">
+                <thead><tr><th style="width:28;">分类</th><th style="width:40%;">方法</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td rowspan="2">🚀 执行</td><td><code>execute(scenarioCode, params)</code></td><td><strong>按编码执行场景</strong>（推荐）</td></tr>
+                    <tr><td><code>executeById(scenarioId, params)</code> / <code>execute_by_id(...)</code></td><td>按 ID 执行（兼容旧方式）</td></tr>
+                    <tr><td rowspan="5">📋 管理</td><td><code>listScenarios(...)</code> / <code>list_scenarios(...)</code></td><td>分页查询场景列表，支持分组/状态/关键字筛选</td></tr>
+                    <tr><td><code>getDetail(id)</code> / <code>get_detail(id)</code></td><td>查询场景详情</td></tr>
+                    <tr><td><code>getGroupNames()</code> / <code>get_group_names()</code></td><td>查询所有分组名称</td></tr>
+                    <tr><td><code>getActiveScenarios()</code> / <code>get_active_scenarios()</code></td><td>查询所有启用的场景</td></tr>
+                    <tr><td><code>getSteps(scenarioId)</code> / <code>get_steps(scenarioId)</code></td><td>查询场景步骤列表</td></tr>
+                    <tr><td rowspan="3">📊 记录</td><td><code>listExecutions(...)</code> / <code>list_executions(...)</code></td><td>分页查询执行记录，支持场景/状态筛选</td></tr>
+                    <tr><td><code>getExecution(id)</code> / <code>get_execution(id)</code></td><td>查询执行记录详情</td></tr>
+                    <tr><td><code>getExecutionSteps(id)</code> / <code>get_execution_steps(id)</code></td><td>查询执行步骤日志</td></tr>
+                </tbody>
+            </table>
+
+            <h3>6. 执行状态说明</h3>
+            <table class="table" style="max-width:700px;">
+                <thead><tr><th style="width:140px;">状态</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="color:#28a745;">SUCCESS</code></td><td>所有步骤执行成功</td></tr>
+                    <tr><td><code style="color:#dc3545;">FAILED</code></td><td>有步骤失败，且场景失败策略为 <strong>STOP</strong>（停止执行）</td></tr>
+                    <tr><td><code style="color:#e67e22;">PARTIAL</code></td><td>有步骤失败，但场景失败策略为 <strong>CONTINUE</strong>（继续执行）</td></tr>
+                    <tr><td><code style="color:#667eea;">RUNNING</code></td><td>异步执行中，尚未完成</td></tr>
+                </tbody>
+            </table>
+
+            <h3>7. 执行参数与步骤间引用</h3>
+            <div class="tip-box">
+                <strong>💡 步骤间参数传递：</strong>
+                通过 <code>${step.步骤编码.字段路径}</code> 引用上一步输出。
+                例如步骤2引用步骤1的orderId：<code>${step.query-order.orderId}</code>。<br>
+                也支持输入参数引用：<code>${input.orderId}</code>，即 execute() 传入的 params。
+            </div>
+            <div class="response-box" style="background:#f8f9fa;border:1px solid #e9ecef;padding:16px;border-radius:8px;font-size:13px;">
+                <p style="margin:0 0 8px;font-weight:500;color:#495057;">📌 参数引用语法：</p>
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:8px 12px;color:#666;width:220px;"><code>${input.xxx}</code></td><td style="padding:8px 12px;">引用 execute() 传入的输入参数</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;"><code>${step.步骤编码.字段路径}</code></td><td style="padding:8px 12px;">引用上一步输出结果的字段</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;"><code>${token.接口编码}</code></td><td style="padding:8px 12px;">引用动态 Token 缓存值</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;"><code>${cache.缓存键}</code></td><td style="padding:8px 12px;">引用场景缓存数据</td></tr>
+                    <tr><td style="padding:8px 12px;color:#666;"><code>static:固定值</code></td><td style="padding:8px 12px;">静态值，不进行变量替换</td></tr>
+                </table>
+            </div>
+
+            <h3>8. 场景缓存</h3>
+            <p style="color:#666;line-height:1.8;">
+                当步骤启用缓存（<code>enableCache = true</code>）且设置了缓存秒数（<code>cacheSeconds &gt; 0</code>）时，
+                该步骤首次执行后会将结果缓存；后续执行时若缓存未过期则直接返回缓存结果，跳过实际 API 调用。
+            </p>
+            <div class="response-box"># Python 示例：启用缓存的场景，相同参数在缓存期内不会重复调用
+result1 = scenario.execute("order-flow", params={"orderId": "A001"})  # 实际调用 API
+result2 = scenario.execute("order-flow", params={"orderId": "A001"})  # 缓存命中，跳过 API 调用
+
+# Java 示例
+ScenarioResult r1 = scenario.execute("order-flow", Map.of("orderId", "A001"));
+ScenarioResult r2 = scenario.execute("order-flow", Map.of("orderId", "A001"));  // 缓存命中</div>
 
         </div>
     </div>

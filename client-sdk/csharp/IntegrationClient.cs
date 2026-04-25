@@ -263,7 +263,7 @@ namespace IntegrationSDK
 
         // ==================== 内部方法 ====================
 
-        private string RawRequest(string method,
+        internal string RawRequest(string method,
                                    string path,
                                    Dictionary<string, object> parameters,
                                    string body,

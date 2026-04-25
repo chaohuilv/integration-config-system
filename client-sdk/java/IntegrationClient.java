@@ -218,7 +218,7 @@ public class IntegrationClient {
     /**
      * 核心请求方法，统一处理认证、自动重试、响应解析
      */
-    private String rawRequest(String method,
+    String rawRequest(String method,
                                String path,
                                Map<String, Object> params,
                                String body,
