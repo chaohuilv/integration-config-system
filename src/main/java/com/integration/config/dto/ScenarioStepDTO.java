@@ -27,6 +27,9 @@ public class ScenarioStepDTO {
     private String conditionExpr;
     private Integer skipOnError;
     private Integer retryCount;
+    private Boolean enableCache;
+    private Integer cacheSeconds;
+    private String cacheKeys;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

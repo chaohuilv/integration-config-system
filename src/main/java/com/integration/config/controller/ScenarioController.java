@@ -274,6 +274,9 @@ public class ScenarioController {
                     .conditionExpr((String) s.get("conditionExpr"))
                     .skipOnError(s.get("skipOnError") != null ? ((Number) s.get("skipOnError")).intValue() : 0)
                     .retryCount(s.get("retryCount") != null ? ((Number) s.get("retryCount")).intValue() : 0)
+                    .enableCache(s.get("enableCache") != null ? (Boolean) s.get("enableCache") : false)
+                    .cacheSeconds(s.get("cacheSeconds") != null ? ((Number) s.get("cacheSeconds")).intValue() : null)
+                    .cacheKeys((String) s.get("cacheKeys"))
                     .build());
         }
 

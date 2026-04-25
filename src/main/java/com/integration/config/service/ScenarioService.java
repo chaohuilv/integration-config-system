@@ -246,6 +246,9 @@ public class ScenarioService {
                 .conditionExpr(dto.getConditionExpr())
                 .skipOnError(dto.getSkipOnError() != null ? dto.getSkipOnError() : 0)
                 .retryCount(dto.getRetryCount() != null ? dto.getRetryCount() : 0)
+                .enableCache(dto.getEnableCache() != null ? dto.getEnableCache() : false)
+                .cacheSeconds(dto.getCacheSeconds())
+                .cacheKeys(dto.getCacheKeys())
                 .build();
 
         step = scenarioStepRepository.save(step);
@@ -270,6 +273,9 @@ public class ScenarioService {
         step.setConditionExpr(dto.getConditionExpr()); // 允许置空
         if (dto.getSkipOnError() != null) step.setSkipOnError(dto.getSkipOnError());
         if (dto.getRetryCount() != null) step.setRetryCount(dto.getRetryCount());
+        if (dto.getEnableCache() != null) step.setEnableCache(dto.getEnableCache());
+        if (dto.getCacheSeconds() != null) step.setCacheSeconds(dto.getCacheSeconds());
+        step.setCacheKeys(dto.getCacheKeys()); // 允许置空
 
         step = scenarioStepRepository.save(step);
         log.info("[ScenarioService] 更新步骤: {}", step.getStepCode());
@@ -304,6 +310,9 @@ public class ScenarioService {
                     .conditionExpr(dto.getConditionExpr())
                     .skipOnError(dto.getSkipOnError() != null ? dto.getSkipOnError() : 0)
                     .retryCount(dto.getRetryCount() != null ? dto.getRetryCount() : 0)
+                    .enableCache(dto.getEnableCache() != null ? dto.getEnableCache() : false)
+                    .cacheSeconds(dto.getCacheSeconds())
+                    .cacheKeys(dto.getCacheKeys())
                     .build();
             scenarioStepRepository.save(step);
         }
@@ -340,6 +349,9 @@ public class ScenarioService {
                 .conditionExpr(step.getConditionExpr())
                 .skipOnError(step.getSkipOnError())
                 .retryCount(step.getRetryCount())
+                .enableCache(step.getEnableCache())
+                .cacheSeconds(step.getCacheSeconds())
+                .cacheKeys(step.getCacheKeys())
                 .createdAt(step.getCreatedAt())
                 .updatedAt(step.getUpdatedAt())
                 .build();

@@ -70,7 +70,11 @@ public class ScenarioStep {
     @Column(name = "RETRY_COUNT")
     private Integer retryCount;
 
-    /** 缓存时长（秒），>0 时将输出写入场景缓存表 */
+    /** 是否启用缓存写入（独立开关，只有开启才写入缓存） */
+    @Column(name = "ENABLE_CACHE")
+    private Boolean enableCache;
+
+    /** 缓存时长（秒），>0 且 enableCache=true 时将输出写入场景缓存表 */
     @Column(name = "CACHE_SECONDS")
     private Integer cacheSeconds;
 
@@ -102,6 +106,9 @@ public class ScenarioStep {
         }
         if (this.retryCount == null) {
             this.retryCount = 0;
+        }
+        if (this.enableCache == null) {
+            this.enableCache = false;
         }
     }
 

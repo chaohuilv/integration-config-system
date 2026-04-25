@@ -88,7 +88,9 @@ public class ScenarioCacheService {
             return;
         }
         String cacheKey = buildCacheKey(scenarioCode, stepCode, outputKey);
-        String cacheValue = value instanceof String ? (String) value : JsonUtil.toJson(value);
+        // 统一用 JsonUtil.toJson 序列化，确保存储的都是合法 JSON
+        // 纯字符串如 JWT 会被序列化为 "eyJ0eXAi..."（带引号），fromJson 时能正确还原为 String
+        String cacheValue = JsonUtil.toJson(value);
 
         LocalDateTime expireTime = LocalDateTime.now().plusSeconds(cacheSeconds);
 

@@ -30,6 +30,23 @@
         .form-group textarea { resize: vertical; min-height: 60px; font-family: monospace; }
         .form-hint { font-size: 11px; color: #9ca3af; }
 
+        /* 缓存开关 */
+        .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .toggle-switch { position: relative; width: 40px; height: 20px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background-color: #d1d5db; transition: 0.2s; border-radius: 20px;
+        }
+        .toggle-slider:before {
+            position: absolute; content: ""; height: 14px; width: 14px;
+            left: 3px; bottom: 3px; background-color: white;
+            transition: 0.2s; border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider { background-color: #8b5cf6; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .toggle-label { font-size: 12px; color: #374151; font-weight: 500; }
+
         /* 步骤编排 */
         .steps-container { position: relative; }
         .step-item {
@@ -192,8 +209,8 @@
         function loadApiList() {
             API.config.list({
                 keyword: "",
-                status: "latest",
-                version: "",
+                status: "",
+                version: "latest",
                 page: 1,
                 size: 200
             }).then(function(res) {
@@ -238,6 +255,7 @@
             API.scenario.getSteps(id).then(function(res) {
                 if (res.code === 200 && res.data) {
                     steps = res.data || [];
+                    normalizeEnableCache();
                     renderSteps();
                 }
             }).catch(function(e) { toast('加载步骤失败: ' + e.message, 'error'); });
@@ -257,7 +275,8 @@
                 skipOnError: 0,
                 retryCount: 0,
                 cacheSeconds: null,
-                cacheKeys: ''
+                cacheKeys: '',
+                enableCache: false
             });
             renderSteps();
             // 自动展开新增步骤
@@ -329,6 +348,29 @@
                 var field = $(this).data('field');
                 steps[idx][field] = $(this).val();
             });
+
+            // 缓存开关事件
+            container.find('.cache-toggle').change(function() {
+                var idx = parseInt($(this).closest('.step-item').data('index'));
+                var enabled = $(this).prop('checked');
+                steps[idx].enableCache = enabled;
+                $(this).closest('.form-group').closest('.form-row').siblings('.cache-fields').toggle(enabled);
+            });
+
+            // 初始化缓存字段显隐（兼容旧数据：null/undefined 均视为 false）
+            container.find('.cache-toggle').each(function() {
+                var idx = parseInt($(this).closest('.step-item').data('index'));
+                var enabled = steps[idx].enableCache === true;
+                $(this).prop('checked', enabled);
+                $(this).closest('.form-group').closest('.form-row').siblings('.cache-fields').toggle(enabled);
+            });
+        }
+
+        // 归一化所有步骤的 enableCache（兼容旧数据：null/undefined → false）
+        function normalizeEnableCache() {
+            steps.forEach(function(s) {
+                if (s.enableCache !== true) s.enableCache = false;
+            });
         }
 
         function buildStepForm(step, index) {
@@ -397,9 +439,22 @@
                 + '</select>'
                 + '</div>'
                 + '<div class="form-group">'
+                + '<label>输出缓存</label>'
+                + '<div class="toggle-row">'
+                + '<label class="toggle-switch">'
+                + '<input type="checkbox" class="cache-toggle">'
+                + '<span class="toggle-slider"></span>'
+                + '</label>'
+                + '<span class="toggle-label">启用</span>'
+                + '</div>'
+                + '<span class="form-hint">开启后优先读取缓存，命中则跳过接口调用；未命中则调用并写入缓存</span>'
+                + '</div>'
+                + '</div>'
+                + '<div class="form-row cache-fields" style="display:none;">'
+                + '<div class="form-group">'
                 + '<label>缓存时长（秒）</label>'
                 + '<input type="number" data-field="cacheSeconds" value="' + (step.cacheSeconds || '') + '" min="0" placeholder="如：3600">'
-                + '<span class="form-hint">>0 时将输出写入缓存，供下次执行读取（跨执行共享）</span>'
+                + '<span class="form-hint">缓存有效时长</span>'
                 + '</div>'
                 + '<div class="form-group">'
                 + '<label>缓存字段</label>'
@@ -476,7 +531,8 @@
                         skipOnError: parseInt(s.skipOnError) || 0,
                         retryCount: parseInt(s.retryCount) || 0,
                         cacheSeconds: s.cacheSeconds ? parseInt(s.cacheSeconds) : null,
-                        cacheKeys: s.cacheKeys || null
+                        cacheKeys: s.cacheKeys || null,
+                        enableCache: s.enableCache === true
                     };
                 })
             };

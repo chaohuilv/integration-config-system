@@ -8,6 +8,7 @@ import com.integration.config.entity.config.Scenario;
 import com.integration.config.entity.config.ScenarioStep;
 import com.integration.config.entity.log.ScenarioExecution;
 import com.integration.config.entity.log.ScenarioStepLog;
+import com.integration.config.entity.token.ScenarioCache;
 import com.integration.config.enums.ErrorCode;
 import com.integration.config.exception.BusinessException;
 import com.integration.config.repository.config.ScenarioRepository;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -199,6 +201,33 @@ public class ScenarioExecutionService {
         // 2. 构建输入参数
         InvokeRequestDTO invokeRequest = buildInvokeRequest(step, context, scenarioCode);
 
+        // 2.1 缓存读取：若开启缓存且缓存命中，跳过API调用，直接从缓存构建输出
+        if (Boolean.TRUE.equals(step.getEnableCache()) && step.getCacheSeconds() != null && step.getCacheSeconds() > 0) {
+            Map<String, Object> cachedOutput = readStepCache(scenarioCode, step);
+            if (cachedOutput != null && !cachedOutput.isEmpty()) {
+                log.info("[{}] 步骤 {} 缓存命中，跳过API调用", traceId, step.getStepCode());
+                context.getSteps().put(step.getStepCode(), cachedOutput);
+
+                // 记录步骤日志（缓存命中）
+                ScenarioStepLog cacheLog = ScenarioStepLog.builder()
+                        .executionId(executionId)
+                        .stepId(step.getId())
+                        .stepCode(step.getStepCode())
+                        .stepName(step.getStepName())
+                        .stepOrder(step.getStepOrder())
+                        .status("SUCCESS")
+                        .startTime(LocalDateTime.now())
+                        .endTime(LocalDateTime.now())
+                        .costTimeMs(System.currentTimeMillis() - startTime)
+                        .requestParams("(cache hit)")
+                        .responseData(truncate(JsonUtil.toJson(cachedOutput), 5000))
+                        .build();
+                scenarioStepLogRepository.save(cacheLog);
+
+                return buildCacheHitResult(step, cachedOutput, startTime);
+            }
+        }
+
         // 3. 记录步骤日志（开始）
         ScenarioStepLog stepLog = ScenarioStepLog.builder()
                 .executionId(executionId)
@@ -219,8 +248,10 @@ public class ScenarioExecutionService {
             Map<String, Object> output = extractOutput(step, response);
             context.getSteps().put(step.getStepCode(), output);
 
-            // 5.1 写入场景缓存（如果配置了缓存时长）
-            if (step.getCacheSeconds() != null && step.getCacheSeconds() > 0 && !output.isEmpty()) {
+            // 5.1 写入场景缓存（只有 enableCache=true 且配置了缓存时长时才写入）
+            if (Boolean.TRUE.equals(step.getEnableCache())
+                    && step.getCacheSeconds() != null && step.getCacheSeconds() > 0
+                    && !output.isEmpty()) {
                 cacheStepOutput(scenarioCode, scenarioId, step, output);
             }
 
@@ -536,6 +567,90 @@ public class ScenarioExecutionService {
             log.warn("条件表达式评估失败: {} - {}", expr, e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 从缓存读取步骤输出
+     * 逐个 key 通过 scenarioCacheService.get() 读取，确保：
+     * 1. 只读取未过期的缓存
+     * 2. 如果指定了 cacheKeys 则只读指定字段，否则读全部 outputMapping 的 key
+     * 3. 反序列化后的数据结构与 extractOutput() 输出一致
+     */
+    private Map<String, Object> readStepCache(String scenarioCode, ScenarioStep step) {
+        Map<String, Object> output = new HashMap<>();
+        try {
+            // 确定要读取哪些 key
+            List<String> keysToRead = resolveCacheKeys(step);
+            if (keysToRead.isEmpty()) {
+                log.debug("[cache] 步骤 {} 无缓存字段定义，跳过读取", step.getStepCode());
+                return output;
+            }
+
+            for (String key : keysToRead) {
+                Object value = scenarioCacheService.get(scenarioCode, step.getStepCode(), key);
+                if (value != null) {
+                    output.put(key, value);
+                }
+            }
+
+            if (output.isEmpty()) {
+                log.debug("[cache] 步骤 {} 缓存全部未命中", step.getStepCode());
+            } else {
+                log.info("[cache] 步骤 {} 缓存命中 {} 个字段", step.getStepCode(), output.size());
+            }
+        } catch (Exception e) {
+            log.warn("[cache] 读取场景缓存失败: {}", e.getMessage());
+        }
+        return output;
+    }
+
+    /**
+     * 解析步骤需要缓存的字段列表
+     * 1. 如果指定了 cacheKeys（逗号分隔），按指定字段
+     * 2. 否则从 outputMapping 的 outputs 中提取所有 key
+     */
+    private List<String> resolveCacheKeys(ScenarioStep step) {
+        // 优先使用显式指定的 cacheKeys
+        if (step.getCacheKeys() != null && !step.getCacheKeys().trim().isEmpty()) {
+            List<String> keys = new ArrayList<>();
+            for (String k : step.getCacheKeys().split(",")) {
+                String trimmed = k.trim();
+                if (!trimmed.isEmpty()) {
+                    keys.add(trimmed);
+                }
+            }
+            return keys;
+        }
+
+        // 未指定 cacheKeys，从 outputMapping 的 outputs 提取所有 key
+        if (step.getOutputMapping() != null && !step.getOutputMapping().isEmpty()) {
+            try {
+                JSONObject mapping = JSONUtil.parseObj(step.getOutputMapping());
+                JSONObject outputs = mapping.getJSONObject("outputs");
+                if (outputs != null && !outputs.isEmpty()) {
+                    return new ArrayList<>(outputs.keySet());
+                }
+            } catch (Exception e) {
+                log.warn("[cache] 解析 outputMapping 失败: {}", e.getMessage());
+            }
+        }
+
+        return Collections.emptyList();
+    }
+
+    /**
+     * 构建缓存命中时的步骤结果
+     */
+    private ScenarioExecuteResultDTO.StepResultDTO buildCacheHitResult(ScenarioStep step, Map<String, Object> output, long startTime) {
+        return ScenarioExecuteResultDTO.StepResultDTO.builder()
+                .stepCode(step.getStepCode())
+                .stepName(step.getStepName())
+                .stepOrder(step.getStepOrder())
+                .status("SUCCESS")
+                .output(output)
+                .errorMessage(null)
+                .costTimeMs(System.currentTimeMillis() - startTime)
+                .build();
     }
 
     /**
