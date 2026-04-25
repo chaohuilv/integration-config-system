@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -32,6 +33,14 @@ import java.util.Base64;
 @Slf4j
 @Component
 public class AesEncryptor {
+
+    /**
+     * 加密数据格式标识前缀
+     * <p>加密输出统一添加此前缀，解密时据此识别是否为密文，
+     * 避免依赖启发式字符判断导致密文被当明文返回。
+     * <p>格式：ENC:aes_gcm:<Base64密文>
+     */
+    public static final String ENC_PREFIX = "ENC:aes_gcm:";
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;        // GCM 推荐 IV 长度
@@ -57,8 +66,13 @@ public class AesEncryptor {
         if (encryptedValue == null || encryptedValue.isEmpty()) {
             return null;
         }
+        // 兼容无前缀的旧密文（向后兼容）
+        String base64Payload = encryptedValue;
+        if (encryptedValue.startsWith(ENC_PREFIX)) {
+            base64Payload = encryptedValue.substring(ENC_PREFIX.length());
+        }
         try {
-            byte[] decoded = Base64.getDecoder().decode(encryptedValue);
+            byte[] decoded = Base64.getDecoder().decode(base64Payload);
             // 格式：IV(12) + 密文 + 认证标签
             System.arraycopy(decoded, 0, ivBuffer, 0, GCM_IV_LENGTH);
 
@@ -104,7 +118,7 @@ public class AesEncryptor {
             System.arraycopy(ivBuffer, 0, combined, 0, GCM_IV_LENGTH);
             System.arraycopy(ciphertext, 0, combined, GCM_IV_LENGTH, ciphertext.length);
 
-            return Base64.getEncoder().encodeToString(combined);
+            return ENC_PREFIX + Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
             log.error("AES 加密失败，字段将保持明文。错误: {}", e.getMessage(), e);
             return plaintext;

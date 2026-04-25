@@ -5,11 +5,7 @@ import com.integration.config.util.AesEncryptor;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 敏感字段 JPA 加密转换器
@@ -45,10 +41,12 @@ public class EncryptedFieldConverter implements AttributeConverter<String, Strin
     /** 延迟初始化：等待 Spring 上下文就绪 */
     private static volatile AesEncryptor encryptorInstance;
     private static volatile EncryptionConfig configInstance;
-    private static final AtomicBoolean initAttempted = new AtomicBoolean(false);
 
     /** 明文字段标识前缀（用于识别已加密数据格式） */
     private static final String PLAINTEXT_PREFIX = "PLAINTEXT:";
+
+    /** 密文标识前缀（AesEncryptor.ENC_PREFIX 的副本，避免循环依赖） */
+    private static final String ENC_PREFIX = "ENC:aes_gcm:";
 
     /**
      * 写入数据库：明文 → 密文
@@ -62,7 +60,7 @@ public class EncryptedFieldConverter implements AttributeConverter<String, Strin
             return plaintext;
         }
         // 已加密数据不再重复加密
-        if (plaintext.startsWith(PLAINTEXT_PREFIX)) {
+        if (plaintext.startsWith(PLAINTEXT_PREFIX) || plaintext.startsWith(ENC_PREFIX)) {
             return plaintext;
         }
         return getEncryptor().encrypt(plaintext);
@@ -79,13 +77,18 @@ public class EncryptedFieldConverter implements AttributeConverter<String, Strin
         if (ciphertext == null || ciphertext.isEmpty()) {
             return ciphertext;
         }
-        // 非密文格式：直接返回（兼容旧数据：明文数据库内容）
-        if (!looksEncrypted(ciphertext)) {
-            return ciphertext;
+        // 新格式：有前缀标识，直接解密
+        if (ciphertext.startsWith(ENC_PREFIX)) {
+            String decrypted = getEncryptor().decrypt(ciphertext);
+            return decrypted != null ? decrypted : ciphertext;
         }
-        String decrypted = getEncryptor().decrypt(ciphertext);
-        // 解密失败（密钥不匹配或数据损坏）：回退为原文，避免业务崩溃
-        return decrypted != null ? decrypted : ciphertext;
+        // 旧格式：尝试启发式识别密文（向后兼容修复前写入的数据）
+        if (looksEncrypted(ciphertext)) {
+            String decrypted = getEncryptor().decrypt(ciphertext);
+            return decrypted != null ? decrypted : ciphertext;
+        }
+        // 明文数据（兼容无加密的历史记录）
+        return ciphertext;
     }
 
     /**
@@ -105,15 +108,17 @@ public class EncryptedFieldConverter implements AttributeConverter<String, Strin
 
     /**
      * 从 Spring 上下文延迟初始化
-     * （AttributeConverter 实例化早于 Spring 上下文，需手动获取 Bean）
+     *
+     * <p>JPA AttributeConverter 由 Hibernate 实例化，早于 Spring Bean 初始化完成。
+     * 因此采用「重试直到成功」策略：每次 convert 调用时检查上下文是否已就绪，
+     * 一旦拿到 Bean 就缓存到静态字段，后续不再查询上下文。
      */
     private static synchronized void initFromSpring() {
-        if (initAttempted.get()) {
+        // 已成功初始化，直接返回
+        if (encryptorInstance != null) {
             return;
         }
-        initAttempted.set(true);
         try {
-            // 手动从 ApplicationContext 获取 Bean
             var ctx = ApplicationContextProvider.getContext();
             if (ctx != null) {
                 encryptorInstance = ctx.getBean(AesEncryptor.class);
@@ -121,19 +126,32 @@ public class EncryptedFieldConverter implements AttributeConverter<String, Strin
                 log.info("EncryptedFieldConverter 初始化完成，encryption.enabled={}",
                         configInstance.isEnabled());
             }
+            // ctx == null → 上下文尚未就绪，下次 convert 调用时重试
         } catch (Exception e) {
-            log.warn("EncryptedFieldConverter 初始化失败（Spring 上下文可能未就绪），加密功能暂不生效: {}", e.getMessage());
+            // 获取 Bean 失败（上下文不完整），下次重试
+            log.trace("EncryptedFieldConverter 等待 Spring 上下文就绪: {}", e.getMessage());
         }
     }
 
     /**
-     * 简单启发式判断：是否为密文格式
-     * 规则：包含 Base64 特征字符且长度 > 20
+     * 启发式判断：是否为旧格式密文（无前缀标识的 AES-GCM Base64）
+     * 规则：长度 >= 40（12字节IV + 16字节Tag 最小 28字节 → Base64 ≥ 40字符）
+     *       且符合 Base64 字符集（仅含 A-Za-z0-9+/=）
      */
     private static boolean looksEncrypted(String value) {
-        return value.length() > 20
-                && (value.contains("+") || value.contains("/") || value.contains("="))
-                && !value.startsWith(PLAINTEXT_PREFIX);
+        if (value.length() < 40 || value.startsWith(PLAINTEXT_PREFIX)) {
+            return false;
+        }
+        // 快速检查：如果不含 Base64 特征字符（+ / =）且长度恰好在普通文本范围内，不太可能是密文
+        // 但仅靠 +/= 判断不可靠，改为检查是否全是 Base64 合法字符
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                    || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=')) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

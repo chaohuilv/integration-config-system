@@ -69,6 +69,14 @@ public enum ErrorCode {
     VERSION_CONFLICT(432, "VERSION_CONFLICT", "Version conflict"),
     /** 前置条件不满足 */
     PRECONDITION_FAILED(433, "PRECONDITION_FAILED", "Precondition failed"),
+    /** 数据库字段长度超限 */
+    DB_FIELD_TOO_LONG(434, "DB_FIELD_TOO_LONG", "Field value too long"),
+    /** 数据库唯一约束冲突 */
+    DB_UNIQUE_VIOLATION(435, "DB_UNIQUE_VIOLATION", "Unique constraint violation"),
+    /** 数据库非空约束违反 */
+    DB_NOT_NULL_VIOLATION(436, "DB_NOT_NULL_VIOLATION", "Not null constraint violation"),
+    /** 其他数据库约束异常 */
+    DB_CONSTRAINT_VIOLATION(437, "DB_CONSTRAINT_VIOLATION", "Database constraint violation"),
 
     // ========== 频率限制 (429) ==========
     /** 请求频率超限 */

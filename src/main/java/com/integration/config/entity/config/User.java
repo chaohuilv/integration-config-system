@@ -48,12 +48,12 @@ public class User {
 
     /** 邮箱（AES 加密存储） */
     @Convert(converter = EncryptedFieldConverter.class)
-    @Column(name = "EMAIL", length = 100)
+    @Column(name = "EMAIL", length = 200)
     private String email;
 
     /** 手机号（AES 加密存储） */
     @Convert(converter = EncryptedFieldConverter.class)
-    @Column(name = "PHONE", length = 20)
+    @Column(name = "PHONE", length = 200)
     private String phone;
 
     /** 状态：ACTIVE-启用 / INACTIVE-禁用 */

@@ -134,7 +134,7 @@ integration:
   # 生产环境建议通过环境变量注入：INTEGRATION_ENCRYPTION_KEY=your-key
   encryption:
     enabled: true
-    key: "ZGV2LW9ubHktc2VjcmV0LWtleS1nZW5lcmF0ZWQ="
+    key: "BY+shckco/HQFSiAiYTNiEAvRLDD82zNuOJXc3CJb9g="
 
   # 告警配置
   alert:

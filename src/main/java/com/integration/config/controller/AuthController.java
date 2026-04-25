@@ -215,15 +215,11 @@ public class AuthController {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "未登录");
         }
 
-        try {
-            User user = userService.create(dto, creatorId);
-            return ResultVO.success(userService.list("", 1, 10).getContent().stream()
-                    .filter(u -> u.getId().equals(user.getId()))
-                    .findFirst()
-                    .orElse(null));
-        } catch (RuntimeException e) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, e.getMessage());
-        }
+        User user = userService.create(dto, creatorId);
+        return ResultVO.success(userService.list("", 1, 10).getContent().stream()
+                .filter(u -> u.getId().equals(user.getId()))
+                .findFirst()
+                .orElse(null));
     }
 
     /**
@@ -233,17 +229,13 @@ public class AuthController {
     @AuditLog(operateType = "UPDATE", module = "USER", description = "'更新用户: ' + #dto.userCode", targetType = "USER", targetId = "#id", recordParams = true)
     @Operation(summary = "更新用户", description = "根据ID更新用户信息")
     public ResultVO<UserDTO> updateUser(@PathVariable Long id, @RequestBody CreateUserDTO dto) {
-        try {
-            userService.update(id, dto);
-            return ResultVO.success(userService.getById(id)
-                    .map(u -> userService.list("", 1, 10).getContent().stream()
-                            .filter(dto1 -> dto1.getId().equals(u.getId()))
-                            .findFirst()
-                            .orElse(null))
-                    .orElse(null));
-        } catch (RuntimeException e) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, e.getMessage());
-        }
+        userService.update(id, dto);
+        return ResultVO.success(userService.getById(id)
+                .map(u -> userService.list("", 1, 10).getContent().stream()
+                        .filter(dto1 -> dto1.getId().equals(u.getId()))
+                        .findFirst()
+                        .orElse(null))
+                .orElse(null));
     }
 
     /**
