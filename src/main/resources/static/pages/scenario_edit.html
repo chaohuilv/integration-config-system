@@ -207,15 +207,9 @@
 
         // ========== 加载接口列表 ==========
         function loadApiList() {
-            API.config.list({
-                keyword: "",
-                status: "",
-                version: "latest",
-                page: 1,
-                size: 200
-            }).then(function(res) {
+            API.config.getActiveList().then(function(res) {
                 if (res.code === 200) {
-                    apiList = res.data.records || [];
+                    apiList = res.data || [];
                     // 如果已经有步骤数据，重新渲染
                     if (steps.length > 0) {
                         renderSteps();

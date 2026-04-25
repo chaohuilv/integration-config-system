@@ -51,7 +51,7 @@ public class DashboardController {
 
         // 接口总数
         long apiTotal = apiConfigRepository.count();
-        long apiActive = apiConfigRepository.findByStatusOrderByCreatedAtDesc(Status.ACTIVE).size();
+        long apiActive = apiConfigRepository.findByStatusAndLatestVersionTrueOrderByCreatedAtDesc(Status.ACTIVE).size();
         data.put("apiTotal", apiTotal);
         data.put("apiActive", apiActive);
         data.put("apiInactive", apiTotal - apiActive);
@@ -221,8 +221,8 @@ public class DashboardController {
         OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         double cpuLoad = osBean.getCpuLoad() * 100;
         double processCpuLoad = osBean.getProcessCpuLoad() * 100;
-        long totalPhysicalMemory = osBean.getTotalPhysicalMemorySize();
-        long freePhysicalMemory = osBean.getFreePhysicalMemorySize();
+        long totalPhysicalMemory = osBean.getTotalMemorySize();
+        long freePhysicalMemory = osBean.getFreeMemorySize();
         int processors = osBean.getAvailableProcessors();
 
         data.put("cpu", new LinkedHashMap<String, Object>() {{

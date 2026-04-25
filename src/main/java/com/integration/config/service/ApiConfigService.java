@@ -298,7 +298,7 @@ public class ApiConfigService {
      * 获取所有启用的接口
      */
     public List<ApiConfig> getAllActive() {
-        return apiConfigRepository.findByStatusOrderByCreatedAtDesc(Status.ACTIVE);
+        return apiConfigRepository.findByStatusAndLatestVersionTrueOrderByCreatedAtDesc(Status.ACTIVE);
     }
 
     /** 检查编码是否存在 */

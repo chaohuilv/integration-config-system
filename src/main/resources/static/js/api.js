@@ -647,6 +647,45 @@ const API = {
         resolve: (id) => request(`/alert/records/${id}/resolve`, {
             method: 'POST'
         })
+    },
+
+    // Mock 服务
+    mock: {
+        // 分页查询 Mock 配置
+        list: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/mock/list?${query}`);
+        },
+        // 获取 Mock 详情（ID）
+        getById: (id) => request(`/mock/${id}`),
+        // 获取 Mock 详情（编码）
+        getByCode: (code) => request(`/mock/code/${code}`),
+        // 创建 Mock
+        create: (data) => request('/mock', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新 Mock
+        update: (id, data) => request(`/mock/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除 Mock
+        delete: (id) => request(`/mock/${id}`, {
+            method: 'DELETE'
+        }),
+        // 启用/禁用
+        toggle: (id) => request(`/mock/${id}/toggle`, {
+            method: 'POST'
+        }),
+        // 重置命中计数
+        reset: (id) => request(`/mock/${id}/reset`, {
+            method: 'POST'
+        }),
+        // 获取所有分组
+        getGroups: () => request('/mock/groups'),
+        // 统计信息
+        stats: () => request('/mock/stats')
     }
 };
 

@@ -5,6 +5,12 @@
 server:
   port: 8080
 
+# ========== Mock 服务配置（独立端口） ==========
+mock:
+  server:
+    enabled: true
+    port: 9999  # Mock 服务监听端口
+
 spring:
   messages:
     basename: messages
@@ -87,8 +93,8 @@ spring:
   mail:
     host: smtp.qq.com
     port: 465
-    username: 1907361806@qq.com
-    password: biyaasyagmcheddc
+    username:
+    password:
     properties:
       mail:
         smtp:
@@ -101,7 +107,7 @@ spring:
         smtps:
           ssl:
             enable: true
-        from: 1907361806@qq.com
+        from:
 
   # 不再使用 Spring Session Redis，改用 Bearer Token 认证
   # Token 存放在 Redis database 2，前缀使用 integration:token:

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock 配置 - 编辑</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .form-section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; border: 1px solid #e5e7eb; }
+        .form-section h3 { font-size: 15px; color: #374151; margin: 0 0 16px 0; padding-bottom: 12px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 8px; }
+        .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .form-row .form-group { flex: 1; }
+        .form-row.half .form-group { flex: 0 0 calc(50% - 8px); }
+
+        /* 匹配规则区域 */
+        .match-rules-wrap { margin-bottom: 12px; }
+        .match-rule-item {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .match-rule-item .rule-type-select {
+            width: 108px;
+            border-radius: 6px;
+            font-size: 14px;
+            height: 30px;
+        }
+        .match-rule-item .rule-field {
+            flex: 1;
+            min-width: 130px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            height: 30px;
+        }
+        .match-rule-item .rule-operator {
+            width: 120px;
+            border-radius: 6px;
+            font-size: 14px;
+            height: 30px;
+        }
+        .match-rule-item .rule-value {
+            flex: 1.2;
+            min-width: 150px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            height: 30px;
+        }
+        .match-rule-item .rule-delete {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #fca5a5;
+            background: #fff;
+            color: #ef4444;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .match-rule-item .rule-delete:hover { background: #fef2f2; }
+
+        /* 规则说明面板 */
+        .rule-guide {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .rule-guide-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            color: #475569;
+        }
+        .rule-guide-header:hover { background: #e8eef5; }
+        .rule-guide-header .toggle-icon { margin-left: auto; transition: transform 0.2s; }
+        .rule-guide-header.open .toggle-icon { transform: rotate(180deg); }
+        .rule-guide-body { display: none; padding: 14px; }
+        .rule-guide-body.open { display: block; }
+
+        .rule-guide table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .rule-guide table th {
+            background: #eef2f7;
+            color: #334155;
+            padding: 7px 10px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #d1d9e6;
+        }
+        .rule-guide table td {
+            padding: 7px 10px;
+            border: 1px solid #e2e8f0;
+            vertical-align: top;
+            color: #374151;
+        }
+        .rule-guide table tr:nth-child(even) td { background: #fafbfc; }
+        .rule-guide code {
+            background: #e8f0fe;
+            color: #1a56db;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .rule-guide .row-example {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 4px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 12.5px;
+            color: #9a3412;
+            line-height: 1.8;
+        }
+        .rule-guide .row-example code { background: #ffedd5; color: #c2410c; }
+        .rule-guide .row-example strong { color: #7c2d12; }
+
+        .template-help { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 13px; }
+        .template-help h4 { color: #166534; margin: 0 0 8px 0; font-size: 13px; }
+        .template-help code { background: #dcfce7; padding: 2px 6px; border-radius: 3px; }
+        .template-vars { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin-top: 8px; }
+        .template-vars span { font-family: monospace; font-size: 12px; }
+        .response-editor { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 200px; font-size: 13px; line-height: 1.5; }
+        .json-editor { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; }
+        .json-editor textarea { background: transparent; color: #d4d4d4; border: none; outline: none; resize: vertical; width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">🎭 新建 Mock</h2>
+            <p class="view-sub" id="pageSub">配置 Mock API 响应</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" onclick="parent.loadPage('mock')">← 返回列表</button>
+            <button class="btn btn-primary" id="btnSave" onclick="saveMock()">💾 保存</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <form id="mockForm">
+            <input type="hidden" id="mockId" name="id">
+
+            <!-- 基本信息 -->
+            <div class="form-section">
+                <h3>📋 基本信息</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="code">Mock 编码 <span class="required">*</span></label>
+                        <input type="text" id="code" name="code" required placeholder="唯一标识，如 user_list">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Mock 名称 <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" required placeholder="如：用户列表接口">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="path">API 路径 <span class="required">*</span></label>
+                        <input type="text" id="path" name="path" required placeholder="/api/users/{id}">
+                        <small>支持 Ant 风格路径：/api/*、/api/**、/api/{id}</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="method">HTTP 方法 <span class="required">*</span></label>
+                        <select id="method" name="method" required>
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="HEAD">HEAD</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="groupName">分组</label>
+                        <input type="text" id="groupName" name="groupName" list="groupList" placeholder="如：用户模块">
+                        <datalist id="groupList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="priority">优先级</label>
+                        <input type="number" id="priority" name="priority" value="100" min="1" max="9999">
+                        <small>数值越小优先级越高，匹配时按优先级顺序查找</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="description">描述</label>
+                    <textarea id="description" name="description" rows="2" placeholder="Mock 配置描述"></textarea>
+                </div>
+            </div>
+
+            <!-- 匹配规则 -->
+            <div class="form-section">
+                <h3>🎯 匹配规则 <small style="color:#888;font-weight:normal;">（可选，不配置则仅匹配路径+方法）</small></h3>
+                <div class="match-rules-wrap" id="matchRulesContainer"></div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="addMatchRule()">+ 添加匹配规则</button>
+
+                <!-- 规则填写说明 -->
+                <div class="rule-guide" id="ruleGuide">
+                    <div class="rule-guide-header" onclick="toggleRuleGuide()">
+                        <span>💡 匹配规则填写说明</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="rule-guide-body" id="ruleGuideBody">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:96px;">匹配来源</th>
+                                    <th style="width:100px;">运算符</th>
+                                    <th>field（字段名）</th>
+                                    <th>value（期望值）</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 请求头 -->
+                                <tr>
+                                    <td rowspan="4"><code>请求头</code><br><small>HTTP Header</small></td>
+                                    <td><code>等于</code></td>
+                                    <td>Header 名称，如 <code>Authorization</code></td>
+                                    <td>期望的 Header 值，如 <code>Bearer xxx</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>包含</code></td>
+                                    <td>Header 名称，如 <code>Content-Type</code></td>
+                                    <td>值需包含的字符串，如 <code>json</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>正则</code></td>
+                                    <td>Header 名称，如 <code>User-Agent</code></td>
+                                    <td>正则表达式，如 <code>Mozilla/5.*Windows</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>存在</code></td>
+                                    <td>Header 名称，如 <code>X-Request-Id</code></td>
+                                    <td>（留空即可）</td>
+                                </tr>
+                                <!-- 查询参数 -->
+                                <tr>
+                                    <td rowspan="4"><code>查询参数</code><br><small>URL ?a=1&amp;b=2</small></td>
+                                    <td><code>等于</code></td>
+                                    <td>参数名，如 <code>status</code></td>
+                                    <td>期望值，如 <code>active</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>包含</code></td>
+                                    <td>参数名，如 <code>keyword</code></td>
+                                    <td>值需包含的字符串，如 <code>user</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>正则</code></td>
+                                    <td>参数名，如 <code>phone</code></td>
+                                    <td>正则表达式，如 <code>^1[3-9]\d{9}$</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>存在</code></td>
+                                    <td>参数名，如 <code>page</code></td>
+                                    <td>（留空即可）</td>
+                                </tr>
+                                <!-- 请求体 -->
+                                <tr>
+                                    <td rowspan="5"><code>请求体</code><br><small>POST/PUT JSON</small></td>
+                                    <td><code>等于</code></td>
+                                    <td>JSON 字段名，如 <code>code</code> 或 <code>user.id</code></td>
+                                    <td>期望值，如 <code>11</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>包含</code></td>
+                                    <td>JSON 字段名，如 <code>message</code></td>
+                                    <td>值需包含的字符串，如 <code>error</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>正则</code></td>
+                                    <td>JSON 字段名，如 <code>email</code></td>
+                                    <td>正则表达式，如 <code>^[\w.-]+@[\w.-]+$</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>存在</code></td>
+                                    <td>JSON 字段名，如 <code>data</code></td>
+                                    <td>（留空即可）</td>
+                                </tr>
+                                <tr>
+                                    <td><code>JSON Path</code></td>
+                                    <td>JSON Path 表达式，如 <code>$.code</code></td>
+                                    <td>期望值，如 <code>11</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="row-example">
+                            <strong>📌 填写示例：</strong><br>
+                            <strong>场景：</strong>请求体 <code>{"code":"11","name":"xxx"}</code> 时返回 mock 响应<br>
+                            <strong>配置：</strong>匹配来源 = <code>请求体</code>，运算符 = <code>JSON Path</code><br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<strong>field</strong> 填 <code>$.code</code>（从请求体中取 <code>code</code> 字段）<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<strong>value</strong> 填 <code>11</code>（期望 <code>$.code</code> 的值等于 <code>11</code>）<br>
+                            <strong>⚠ 注意：</strong>JSON Path 运算符仅适用于「请求体」，不能用于请求头或查询参数
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 响应配置 -->
+            <div class="form-section">
+                <h3>📤 响应配置</h3>
+                <div class="form-row half">
+                    <div class="form-group">
+                        <label for="statusCode">状态码</label>
+                        <input type="number" id="statusCode" name="statusCode" value="200">
+                    </div>
+                    <div class="form-group">
+                        <label for="delayMs">延迟（毫秒）</label>
+                        <input type="number" id="delayMs" name="delayMs" value="0" min="0">
+                    </div>
+                </div>
+
+                <div class="template-help">
+                    <h4>🔧 响应模板变量</h4>
+                    <div class="template-vars">
+                        <span><code>{{randomInt}}</code> 随机整数</span>
+                        <span><code>{{randomInt:1:100}}</code> 指定范围</span>
+                        <span><code>{{randomFloat}}</code> 随机浮点</span>
+                        <span><code>{{uuid}}</code> UUID</span>
+                        <span><code>{{timestamp}}</code> 时间戳</span>
+                        <span><code>{{datetime}}</code> 日期时间</span>
+                        <span><code>{{randomString:16}}</code> 随机字符串</span>
+                        <span><code>{{randomEmail}}</code> 随机邮箱</span>
+                        <span><code>{{randomPhone}}</code> 随机手机号</span>
+                        <span><code>{{randomName}}</code> 随机姓名</span>
+                        <span><code>$request.path.xxx</code> 路径参数</span>
+                        <span><code>$request.query.xxx</code> 查询参数</span>
+                        <span><code>$request.body.xxx</code> 请求体字段</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="responseBody">响应体（JSON）</label>
+                    <div class="json-editor">
+                        <textarea id="responseBody" name="responseBody" class="response-editor" rows="12" placeholder='{"code":0,"data":{...}}'></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="responseHeaders">响应头（JSON）</label>
+                    <textarea id="responseHeaders" name="responseHeaders" rows="2" placeholder='{"Content-Type": "application/json"}'></textarea>
+                </div>
+            </div>
+
+            <!-- 启用状态 -->
+            <div class="form-section" style="display:flex;align-items:center;gap:12px;">
+                <label class="switch-label" style="margin:0;">
+                    <input type="checkbox" id="enabled" name="enabled" checked>
+                    <span class="switch"></span>
+                </label>
+                <span id="enabledLabel">启用此 Mock</span>
+            </div>
+        </form>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
+
+    <script>
+    $(function() {
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            initPage();
+        });
+
+        function initPage() {
+            const mockId = utils.getUrlParam('id');
+            if (mockId) {
+                $('#pageTitle').text('🎭 编辑 Mock');
+                $('#pageSub').text('修改 Mock 配置');
+                loadMock(mockId);
+            }
+            loadGroups();
+            $('#enabled').on('change', function() {
+                $('#enabledLabel').text(this.checked ? '启用此 Mock' : '禁用此 Mock');
+            });
+        }
+    });
+
+    async function loadGroups() {
+        try {
+            const json = await API.mock.getGroups();
+            const groups = json.data || [];
+            $('#groupList').empty().append(groups.map(g => `<option value="${utils.escapeHtml(g)}">`));
+        } catch (e) {}
+    }
+
+    async function loadMock(id) {
+        try {
+            const json = await API.mock.getById(id);
+            const m = json.data;
+            if (!m) { utils.toast('Mock 配置不存在', 'error'); return; }
+
+            $('#mockId').val(m.id);
+            $('#code').val(m.code);
+            $('#name').val(m.name);
+            $('#path').val(m.path);
+            $('#method').val(m.method);
+            $('#groupName').val(m.groupName || '');
+            $('#priority').val(m.priority);
+            $('#description').val(m.description || '');
+            $('#statusCode').val(m.statusCode);
+            $('#delayMs').val(m.delayMs);
+            $('#responseBody').val(m.responseBody || '');
+            $('#responseHeaders').val(m.responseHeaders || '');
+            $('#enabled').prop('checked', m.enabled);
+            $('#enabledLabel').text(m.enabled ? '启用此 Mock' : '禁用此 Mock');
+
+            if (m.matchRules) {
+                try {
+                    JSON.parse(m.matchRules).forEach(r => addMatchRule(r));
+                } catch (e) {}
+            }
+        } catch (err) {
+            utils.toast('加载失败: ' + err.message, 'error');
+        }
+    }
+
+    // ---------- 匹配规则相关 ----------
+
+    // 匹配来源 → field placeholder
+    const RULE_FIELD_PLACEHOLDERS = {
+        BODY:   'JSON 字段名，如 code 或 user.id',
+        HEADER: 'Header 名称，如 Authorization',
+        QUERY:  '参数名，如 status'
+    };
+
+    // 匹配来源 + 运算符 → value placeholder
+    const RULE_VALUE_PLACEHOLDERS = {
+        BODY:   { EQUALS: '期望值，如 11', CONTAINS: '值需包含的字符串', REGEX: '正则表达式', EXISTS: '（留空）', JSON_PATH: '期望值，如 11' },
+        HEADER: { EQUALS: '期望的 Header 值', CONTAINS: '值需包含的字符串', REGEX: '正则表达式', EXISTS: '（留空）', JSON_PATH: '（不适用）' },
+        QUERY:  { EQUALS: '期望值，如 active', CONTAINS: '值需包含的字符串', REGEX: '正则表达式', EXISTS: '（留空）', JSON_PATH: '（不适用）' }
+    };
+
+    function addMatchRule(rule) {
+        rule = rule || {};
+        const container = $('#matchRulesContainer');
+        const idx = container.children().length;
+        const type = rule.type || 'BODY';
+        const op   = rule.operator || 'EQUALS';
+
+        const typeOptions = [
+            {v:'BODY',   l:'请求体'},
+            {v:'HEADER', l:'请求头'},
+            {v:'QUERY',  l:'查询参数'}
+        ].map(t => `<option value="${t.v}" ${rule.type===t.v?'selected':''}>${t.l}</option>`).join('');
+
+        const opMap = { EQUALS:'等于', CONTAINS:'包含', REGEX:'正则', EXISTS:'存在', JSON_PATH:'JSON Path' };
+        const opOptions = Object.entries(opMap).map(([k,v]) =>
+            `<option value="${k}" ${rule.operator===k?'selected':''}>${v}</option>`
+        ).join('');
+
+        const fieldPh = RULE_FIELD_PLACEHOLDERS[type] || '字段名';
+        const valPh   = (RULE_VALUE_PLACEHOLDERS[type] && RULE_VALUE_PLACEHOLDERS[type][op]) || '匹配值';
+
+        const html = `
+        <div class="match-rule-item" data-idx="${idx}">
+            <select class="rule-type-select" onchange="onRuleTypeChange(this)">${typeOptions}</select>
+            <input type="text" class="rule-field" placeholder="${fieldPh}" value="${utils.escapeHtml(rule.field||'')}">
+            <select class="rule-operator" onchange="onRuleOpChange(this)">${opOptions}</select>
+            <input type="text" class="rule-value" placeholder="${valPh}" value="${utils.escapeHtml(rule.value||'')}">
+            <button type="button" class="rule-delete" onclick="$(this).closest('.match-rule-item').remove()" title="删除">✕</button>
+        </div>`;
+        container.append(html);
+
+        // 初始化：非 BODY 时禁用 JSON_PATH
+        onRuleTypeChange(container.find('.rule-type-select').last()[0]);
+    }
+
+    // 切换匹配来源 → 更新 field placeholder + 禁用 JSON_PATH（非 BODY 时）
+    function onRuleTypeChange(sel) {
+        const item = $(sel).closest('.match-rule-item');
+        const type = sel.value;
+        item.find('.rule-field').attr('placeholder', RULE_FIELD_PLACEHOLDERS[type] || '字段名');
+
+        const opSel = item.find('.rule-operator');
+        if (type !== 'BODY') {
+            opSel.find('option[value="JSON_PATH"]').prop('disabled', true);
+            if (opSel.val() === 'JSON_PATH') opSel.val('EQUALS');
+        } else {
+            opSel.find('option[value="JSON_PATH"]').prop('disabled', false);
+        }
+        onRuleOpChange(opSel[0]);
+    }
+
+    // 切换运算符 → 更新 value placeholder
+    function onRuleOpChange(sel) {
+        const item = $(sel).closest('.match-rule-item');
+        const type = item.find('.rule-type-select').val();
+        const op   = sel.value;
+        const ph   = (RULE_VALUE_PLACEHOLDERS[type] && RULE_VALUE_PLACEHOLDERS[type][op]) || '匹配值';
+        item.find('.rule-value').attr('placeholder', ph);
+    }
+
+    // 折叠/展开规则说明
+    function toggleRuleGuide() {
+        $('#ruleGuide .rule-guide-header').toggleClass('open');
+        $('#ruleGuideBody').toggleClass('open');
+    }
+
+    // ---------- 保存 ----------
+
+    async function saveMock() {
+        const id   = $('#mockId').val();
+        const code = $('#code').val().trim();
+        const name = $('#name').val().trim();
+        const path = $('#path').val().trim();
+        const method = $('#method').val();
+
+        if (!code || !name || !path) {
+            utils.toast('请填写必填字段', 'error');
+            return;
+        }
+
+        const rules = [];
+        $('.match-rule-item').each(function() {
+            const type     = $(this).find('.rule-type-select').val();
+            const field    = $(this).find('.rule-field').val().trim();
+            const operator = $(this).find('.rule-operator').val();
+            const value    = $(this).find('.rule-value').val();
+            if (type && operator) {
+                rules.push({ type, field, operator, value, negate: false });
+            }
+        });
+
+        const payload = {
+            code, name, path, method,
+            groupName:    $('#groupName').val().trim() || null,
+            priority:     parseInt($('#priority').val()) || 100,
+            description:  $('#description').val().trim() || null,
+            statusCode:   parseInt($('#statusCode').val()) || 200,
+            delayMs:      parseInt($('#delayMs').val()) || 0,
+            responseBody:    $('#responseBody').val().trim() || null,
+            responseHeaders: $('#responseHeaders').val().trim() || null,
+            matchRules:   rules.length > 0 ? JSON.stringify(rules) : null,
+            enabled:      $('#enabled').is(':checked')
+        };
+
+        try {
+            if (id) {
+                await API.mock.update(id, payload);
+                utils.toast('更新成功', 'success');
+            } else {
+                await API.mock.create(payload);
+                utils.toast('创建成功', 'success');
+            }
+            setTimeout(() => parent.loadPage('mock'), 800);
+        } catch (err) {
+            utils.toast('保存失败: ' + err.message, 'error');
+        }
+    }
+
+    window.addMatchRule      = addMatchRule;
+    window.onRuleTypeChange  = onRuleTypeChange;
+    window.onRuleOpChange    = onRuleOpChange;
+    window.toggleRuleGuide   = toggleRuleGuide;
+    window.saveMock          = saveMock;
+    </script>
+</body>
+</html>

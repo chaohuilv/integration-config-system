@@ -300,6 +300,41 @@
       "description": "删除告警规则",
       "module": "alert",
       "sortOrder": 63
+    },
+    {
+      "code": "mock:view",
+      "name": "查看Mock",
+      "description": "查看Mock配置列表和详情",
+      "module": "mock",
+      "sortOrder": 70
+    },
+    {
+      "code": "mock:detail",
+      "name": "查看Mock详情",
+      "description": "查看Mock配置详细信息",
+      "module": "mock",
+      "sortOrder": 71
+    },
+    {
+      "code": "mock:add",
+      "name": "创建Mock",
+      "description": "创建新的Mock配置",
+      "module": "mock",
+      "sortOrder": 72
+    },
+    {
+      "code": "mock:edit",
+      "name": "编辑Mock",
+      "description": "编辑Mock配置、切换启用状态、重置统计",
+      "module": "mock",
+      "sortOrder": 73
+    },
+    {
+      "code": "mock:delete",
+      "name": "删除Mock",
+      "description": "删除Mock配置",
+      "module": "mock",
+      "sortOrder": 74
     }
   ]
 }

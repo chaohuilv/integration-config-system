@@ -455,7 +455,7 @@
 .form-group textarea:focus {
     outline: none;
     border-color: #667eea;
-    background: white;
+    /*background: white;*/
     box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
 }
 

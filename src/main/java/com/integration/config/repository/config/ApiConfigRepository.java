@@ -46,7 +46,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
             @Param("status") Status status,
             Pageable pageable);
 
-    List<ApiConfig> findByStatusOrderByCreatedAtDesc(Status status);
+    List<ApiConfig> findByStatusAndLatestVersionTrueOrderByCreatedAtDesc(Status status);
 
     /** 按分组名称 + 创建时间排序 */
     List<ApiConfig> findByStatusOrderByGroupNameAscCreatedAtDesc(Status status);

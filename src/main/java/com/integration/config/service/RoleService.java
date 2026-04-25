@@ -1,6 +1,5 @@
 package com.integration.config.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.integration.config.dto.PageResult;
@@ -31,7 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -427,7 +426,8 @@ public class RoleService {
             Map<String, Object> config = objectMapper.readValue(resource.getInputStream(), Map.class);
             List<Map<String, Object>> roles = (List<Map<String, Object>>) config.get("roles");
 
-            int created = 0, updated = 0;
+            int createdNum = 0;
+            int updatedNum = 0;
             for (Map<String, Object> roleDef : roles) {
                 String code = (String) roleDef.get("code");
                 Optional<Role> existing = roleRepository.findByCode(code);
@@ -441,7 +441,7 @@ public class RoleService {
                     role.setSortOrder(roleDef.get("sortOrder") != null ? ((Number) roleDef.get("sortOrder")).intValue() : 0);
                     role.setStatus(AppConstants.USER_STATUS_ACTIVE); // 确保状态为 ACTIVE
                     roleRepository.save(role);
-                    updated++;
+                    updatedNum++;
                 } else {
                     // 创建新角色
                     Role role = Role.builder()
@@ -452,11 +452,11 @@ public class RoleService {
                             .sortOrder(roleDef.get("sortOrder") != null ? ((Number) roleDef.get("sortOrder")).intValue() : 0)
                             .build();
                     roleRepository.save(role);
-                    created++;
+                    createdNum++;
                 }
             }
 
-            log.info("[RoleService] 系统预置角色初始化完成: 新增 {} 个, 更新 {} 个", created, updated);
+            log.info("[RoleService] 系统预置角色初始化完成: 新增 {} 个, 更新 {} 个", createdNum, updatedNum);
 
         } catch (Exception e) {
             log.error("[RoleService] 读取角色配置失败: {}", e.getMessage());

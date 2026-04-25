@@ -185,6 +185,24 @@
       "pageType": "FORM"
     },
     {
+      "code": "mock",
+      "name": "Mock 服务",
+      "icon": "🎭",
+      "path": "mock",
+      "pageFile": "pages/mock_list.html",
+      "section": "集成管理",
+      "sortOrder": 7,
+      "pageType": "LIST"
+    },
+    {
+      "code": "mock_edit",
+      "name": "Mock 编辑",
+      "icon": "📝",
+      "path": "mock_edit",
+      "pageFile": "pages/mock_edit.html",
+      "pageType": "FORM"
+    },
+    {
       "code": "api-doc",
       "name": "接口文档",
       "icon": "📚",

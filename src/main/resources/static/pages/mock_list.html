@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock 服务 - 配置列表</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .mock-status { font-family: monospace; }
+        .mock-path { color: #2563eb; font-family: monospace; font-size: 13px; }
+        .mock-hit-info { font-size: 12px; color: #888; }
+        .mock-hit-count { background: #f0fdf4; color: #16a34a; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .priority-badge { background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+        .mock-port-info { background: linear-gradient(135deg, #e0e7ff, #f0f9ff); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .mock-port-info code { font-size: 16px; color: #1e40af; background: white; padding: 4px 12px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🎭 Mock 服务</h2>
+            <p class="view-sub">配置本地 Mock 响应，支持请求匹配和响应模板</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" id="btn-stats" onclick="showStats()">📊 统计</button>
+            <button class="btn btn-primary" id="btn-add" data-permission="mock:add" onclick="parent.loadPage('mock_edit')">+ 新建 Mock</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <div class="mock-port-info">
+            <div>
+                <span>Mock 服务端口：</span>
+                <code id="mockPort">9999</code>
+                <span style="color:#666;font-size:13px;margin-left:12px;">请求示例：<code>http://localhost:9999/mock/api/users</code></span>
+            </div>
+            <div id="mockStatus">
+                <span class="badge badge-success">● 运行中</span>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" class="search-input" id="sKeyword" placeholder="搜索 Mock 名称、编码或路径...">
+            <select id="sGroup">
+                <option value="">全部分组</option>
+            </select>
+            <select id="sEnabled">
+                <option value="">全部状态</option>
+                <option value="true">启用</option>
+                <option value="false">禁用</option>
+            </select>
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mock 名称</th>
+                        <th>路径 / 方法</th>
+                        <th>分组</th>
+                        <th>优先级</th>
+                        <th>状态码</th>
+                        <th>命中</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="mockTableBody">
+                    <tr><td colspan="8" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+
+    <script>
+    $(function() {
+        let currentPage = 0;
+        const size = 15;
+        let pager;
+
+        if (parent.setNav) parent.setNav('mock');
+
+        pager = new Pagination('#pagination', {
+            pageSize: size,
+            onPageChange: function(page) {
+                currentPage = page;
+                refreshList(page);
+            }
+        });
+
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            loadGroups();
+            refreshList();
+        });
+
+        $('#btnSearch').on('click', () => refreshList(currentPage));
+        $('#sKeyword').on('keyup', function(e) {
+            if (e.key === 'Enter') refreshList(currentPage);
+        });
+        $('#sGroup').on('change', () => refreshList(currentPage));
+        $('#sEnabled').on('change', () => refreshList(currentPage));
+
+        function loadGroups() {
+            API.mock.getGroups().then(json => {
+                const groups = json.data || [];
+                const html = '<option value="">全部分组</option>' +
+                    groups.map(g => `<option value="${utils.escapeHtml(g)}">${utils.escapeHtml(g)}</option>`).join('');
+                $('#sGroup').html(html);
+            }).catch(() => {});
+        }
+
+        function refreshList(page) {
+            if (page) currentPage = page;
+
+            const keyword = $('#sKeyword').val();
+            const groupName = $('#sGroup').val();
+            const enabled = $('#sEnabled').val();
+
+            API.mock.list({
+                groupName: groupName,
+                enabled: enabled,
+                keyword: keyword,
+                page: currentPage,
+                size: size
+            })
+            .then(json => {
+                renderTable(json.data.content);
+                pager.render(json.data, currentPage);
+            })
+            .catch(err => {
+                utils.toast('加载失败: ' + err.message, 'error');
+            });
+        }
+
+        function renderTable(mocks) {
+            const tb = $('#mockTableBody');
+
+            if (!mocks || !mocks.length) {
+                tb.html('<tr><td colspan="8" class="empty"><div class="empty-icon">🎭</div>暂无 Mock 配置</td></tr>');
+                return;
+            }
+
+            const html = mocks.map(m => {
+                const methodClass = `method-${(m.method || 'GET').toLowerCase()}`;
+                const statusBadge = m.enabled
+                    ? '<span class="badge badge-success">启用</span>'
+                    : '<span class="badge badge-default">禁用</span>';
+
+                const hitInfo = m.hitCount > 0
+                    ? `<span class="mock-hit-count">${m.hitCount} 次</span>`
+                    : '<span style="color:#aaa;">-</span>';
+
+                const lastHit = m.lastHitTime
+                    ? `<div class="mock-hit-info">最后: ${utils.formatDate(m.lastHitTime)}</div>`
+                    : '';
+
+                return `
+                <tr>
+                    <td>
+                        <strong>${utils.escapeHtml(m.name)}</strong>
+                        <div style="font-size:12px;color:#888;">${utils.escapeHtml(m.code)}</div>
+                    </td>
+                    <td>
+                        <div class="mock-path">${utils.escapeHtml(m.path)}</div>
+                        <span class="method ${methodClass}">${m.method}</span>
+                    </td>
+                    <td style="color:#666;">${utils.escapeHtml(m.groupName || '-')}</td>
+                    <td><span class="priority-badge">P${m.priority}</span></td>
+                    <td><code class="mock-status">${m.statusCode}</code></td>
+                    <td>
+                        ${hitInfo}
+                        ${lastHit}
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td class="actions">
+                        ${Permission.render('mock:detail', `<button class="btn btn-sm btn-default" onclick="testMock('${m.path}', '${m.method}')">测试</button>`)}
+                        ${Permission.render('mock:edit', `<button class="btn btn-sm btn-default" onclick="parent.loadPage('mock_edit', '${m.id}')">编辑</button>`)}
+                        ${Permission.render('mock:edit', `<button class="btn btn-sm btn-ghost" onclick="toggleEnabled('${m.id}')">${m.enabled ? '禁用' : '启用'}</button>`)}
+                        ${Permission.render('mock:delete', `<button class="btn btn-sm btn-danger" onclick="deleteMock('${m.id}')">删除</button>`)}
+                    </td>
+                </tr>
+                `;
+            }).join('');
+
+            tb.html(html);
+        }
+
+        async function toggleEnabled(id) {
+            try {
+                await API.mock.toggle(id);
+                utils.toast('操作成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('操作失败: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteMock(id) {
+            const ok = await utils.showConfirm('确认删除', '确定要删除此 Mock 配置吗？', '🗑️', true);
+            if (!ok) return;
+
+            try {
+                await API.mock.delete(id);
+                utils.toast('删除成功', 'success');
+                refreshList();
+            } catch (err) {
+                utils.toast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        function testMock(path, method) {
+            const port = $('#mockPort').text();
+            const url = `http://localhost:${port}/mock${path}`;
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <html>
+                <head><title>Mock 测试</title></head>
+                <body style="font-family:monospace;padding:20px;">
+                    <h3>Mock 测试</h3>
+                    <p>URL: <a href="${url}" target="_blank">${url}</a></p>
+                    <p>方法: <strong>${method}</strong></p>
+                    <hr>
+                    <p>请在新标签页打开链接，或使用 curl 测试：</p>
+                    <pre style="background:#f5f5f5;padding:12px;border-radius:4px;">curl -X ${method} "${url}"</pre>
+                </body>
+                </html>
+            `);
+        }
+
+        function showStats() {
+            API.mock.stats().then(json => {
+                const stats = json.data || {};
+                utils.showAlert('📊 Mock 统计', `启用中：${stats.enabledCount || 0} 个 Mock`, 'info');
+            }).catch(() => {});
+        }
+
+        window.refreshList = refreshList;
+        window.toggleEnabled = toggleEnabled;
+        window.deleteMock = deleteMock;
+        window.testMock = testMock;
+        window.showStats = showStats;
+    });
+    </script>
+</body>
+</html>
