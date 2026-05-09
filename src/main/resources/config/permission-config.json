@@ -5,6 +5,7 @@
       "name": "查看大盘",
       "description": "查看实时监控大盘",
       "module": "dashboard",
+      "menuCode": "dashboard",
       "sortOrder": 0
     },
     {
@@ -12,6 +13,7 @@
       "name": "查看接口",
       "description": "查看接口配置列表和详情",
       "module": "api",
+      "menuCode": "list",
       "sortOrder": 1
     },
     {
@@ -19,6 +21,7 @@
       "name": "查看接口详情",
       "description": "查看接口配置详细信息",
       "module": "api",
+      "menuCode": "detail",
       "sortOrder": 2
     },
     {
@@ -26,6 +29,7 @@
       "name": "创建接口",
       "description": "创建新的接口配置",
       "module": "api",
+      "menuCode": "form",
       "sortOrder": 3
     },
     {
@@ -33,6 +37,7 @@
       "name": "编辑接口",
       "description": "编辑接口配置",
       "module": "api",
+      "menuCode": "form",
       "sortOrder": 4
     },
     {
@@ -40,6 +45,7 @@
       "name": "删除接口",
       "description": "删除接口配置",
       "module": "api",
+      "menuCode": "list",
       "sortOrder": 5
     },
     {
@@ -47,6 +53,7 @@
       "name": "调用接口",
       "description": "调用接口测试",
       "module": "api",
+      "menuCode": "debug",
       "sortOrder": 6
     },
     {
@@ -54,6 +61,7 @@
       "name": "创建新版本",
       "description": "基于现有接口创建新版本",
       "module": "api",
+      "menuCode": "detail",
       "sortOrder": 7
     },
     {
@@ -61,6 +69,7 @@
       "name": "废弃接口",
       "description": "标记接口为废弃状态或恢复",
       "module": "api",
+      "menuCode": "detail",
       "sortOrder": 8
     },
     {
@@ -68,6 +77,7 @@
       "name": "查看接口文档",
       "description": "查看系统内接口文档",
       "module": "api",
+      "menuCode": "api-doc",
       "sortOrder": 9
     },
     {
@@ -75,6 +85,7 @@
       "name": "导出接口文档",
       "description": "导出接口文档为 Word",
       "module": "api",
+      "menuCode": "api-doc",
       "sortOrder": 10
     },
     {
@@ -82,6 +93,7 @@
       "name": "查看场景",
       "description": "查看场景编排列表和详情",
       "module": "scenario",
+      "menuCode": "scenario",
       "sortOrder": 15
     },
     {
@@ -89,6 +101,7 @@
       "name": "创建场景",
       "description": "创建新的场景编排",
       "module": "scenario",
+      "menuCode": "scenarioEdit",
       "sortOrder": 16
     },
     {
@@ -96,6 +109,7 @@
       "name": "编辑场景",
       "description": "编辑场景配置和步骤",
       "module": "scenario",
+      "menuCode": "scenarioEdit",
       "sortOrder": 17
     },
     {
@@ -103,6 +117,7 @@
       "name": "删除场景",
       "description": "删除场景编排",
       "module": "scenario",
+      "menuCode": "scenario",
       "sortOrder": 18
     },
     {
@@ -110,6 +125,7 @@
       "name": "执行场景",
       "description": "手动触发场景执行",
       "module": "scenario",
+      "menuCode": "scenarioExec",
       "sortOrder": 19
     },
     {
@@ -117,336 +133,382 @@
       "name": "查看环境",
       "description": "查看环境配置",
       "module": "environment",
-      "sortOrder": 10
+      "menuCode": "environments",
+      "sortOrder": 20
     },
     {
       "code": "env:detail",
       "name": "查看环境详情",
       "description": "查看环境配置详细信息",
       "module": "environment",
-      "sortOrder": 11
+      "menuCode": "envForm",
+      "sortOrder": 21
     },
     {
       "code": "env:add",
       "name": "新增环境",
       "description": "新增环境配置",
       "module": "environment",
-      "sortOrder": 12
+      "menuCode": "envForm",
+      "sortOrder": 22
     },
     {
       "code": "env:edit",
       "name": "编辑环境",
       "description": "编辑环境配置",
       "module": "environment",
-      "sortOrder": 13
+      "menuCode": "envForm",
+      "sortOrder": 23
     },
     {
       "code": "env:delete",
       "name": "删除环境",
       "description": "删除环境配置",
       "module": "environment",
-      "sortOrder": 14
+      "menuCode": "environments",
+      "sortOrder": 24
     },
     {
       "code": "user:view",
       "name": "查看用户",
       "description": "查看用户列表和详情",
       "module": "user",
-      "sortOrder": 20
+      "menuCode": "users",
+      "sortOrder": 30
     },
     {
       "code": "user:detail",
       "name": "查看用户详情",
       "description": "查看用户详细信息",
       "module": "user",
-      "sortOrder": 21
+      "menuCode": "userForm",
+      "sortOrder": 31
     },
     {
       "code": "user:add",
       "name": "新增用户",
       "description": "新增用户",
       "module": "user",
-      "sortOrder": 22
+      "menuCode": "userForm",
+      "sortOrder": 32
     },
     {
       "code": "user:edit",
       "name": "编辑用户",
       "description": "编辑用户",
       "module": "user",
-      "sortOrder": 23
+      "menuCode": "userForm",
+      "sortOrder": 33
     },
     {
       "code": "user:delete",
       "name": "删除用户",
       "description": "删除用户",
       "module": "user",
-      "sortOrder": 24
+      "menuCode": "users",
+      "sortOrder": 34
     },
     {
       "code": "role:view",
       "name": "查看角色",
       "description": "查看角色列表和详情",
       "module": "role",
-      "sortOrder": 30
+      "menuCode": "roles",
+      "sortOrder": 40
     },
     {
       "code": "role:detail",
       "name": "查看角色详情",
       "description": "查看角色详细信息",
       "module": "role",
-      "sortOrder": 31
+      "menuCode": "roleEdit",
+      "sortOrder": 41
     },
     {
       "code": "role:add",
       "name": "新增角色",
       "description": "新增角色",
       "module": "role",
-      "sortOrder": 32
+      "menuCode": "roleEdit",
+      "sortOrder": 42
     },
     {
       "code": "role:edit",
       "name": "编辑角色",
       "description": "编辑角色",
       "module": "role",
-      "sortOrder": 33
+      "menuCode": "roleEdit",
+      "sortOrder": 43
     },
     {
       "code": "role:delete",
       "name": "删除角色",
       "description": "删除角色",
       "module": "role",
-      "sortOrder": 34
+      "menuCode": "roles",
+      "sortOrder": 44
     },
     {
       "code": "log:view",
       "name": "查看日志",
       "description": "查看调用日志和审计日志",
       "module": "log",
-      "sortOrder": 40
+      "menuCode": "logs",
+      "sortOrder": 50
     },
     {
       "code": "invoke-log:detail",
       "name": "查看调用日志详情",
       "description": "查看调用日志详细信息",
       "module": "log",
-      "sortOrder": 41
+      "menuCode": "logs",
+      "sortOrder": 51
     },
     {
       "code": "invoke-log:delete",
       "name": "删除调用日志",
       "description": "删除调用日志记录",
       "module": "log",
-      "sortOrder": 42
+      "menuCode": "logs",
+      "sortOrder": 52
     },
     {
       "code": "audit-log:view",
       "name": "查看审计日志",
       "description": "查看审计日志列表和导出",
       "module": "log",
-      "sortOrder": 43
+      "menuCode": "audit-logs",
+      "sortOrder": 53
     },
     {
       "code": "audit-log:detail",
       "name": "查看审计日志详情",
       "description": "查看审计日志详细信息",
       "module": "log",
-      "sortOrder": 44
+      "menuCode": "audit-logs-detail",
+      "sortOrder": 54
     },
     {
       "code": "audit-log:delete",
       "name": "删除审计日志",
       "description": "删除审计日志记录",
       "module": "log",
-      "sortOrder": 45
+      "menuCode": "audit-logs",
+      "sortOrder": 55
     },
     {
       "code": "menu:manage",
       "name": "管理菜单",
       "description": "配置系统菜单",
       "module": "system",
-      "sortOrder": 50
+      "sortOrder": 60
     },
     {
       "code": "permission:manage",
       "name": "管理权限",
       "description": "配置系统权限",
       "module": "system",
-      "sortOrder": 51
+      "sortOrder": 61
     },
     {
       "code": "alert:view",
       "name": "查看告警",
       "description": "查看告警规则和告警记录",
       "module": "alert",
-      "sortOrder": 60
+      "menuCode": "alert-rules",
+      "sortOrder": 70
     },
     {
       "code": "alert:add",
       "name": "创建告警规则",
       "description": "创建新的告警规则",
       "module": "alert",
-      "sortOrder": 61
+      "menuCode": "alert-rules",
+      "sortOrder": 71
     },
     {
       "code": "alert:edit",
       "name": "编辑告警规则",
       "description": "编辑、启用/停用、确认告警记录",
       "module": "alert",
-      "sortOrder": 62
+      "menuCode": "alert-rules",
+      "sortOrder": 72
     },
     {
       "code": "alert:delete",
       "name": "删除告警规则",
       "description": "删除告警规则",
       "module": "alert",
-      "sortOrder": 63
+      "menuCode": "alert-rules",
+      "sortOrder": 73
     },
     {
       "code": "mock:view",
       "name": "查看Mock",
       "description": "查看Mock配置列表和详情",
       "module": "mock",
-      "sortOrder": 70
+      "menuCode": "mock",
+      "sortOrder": 80
     },
     {
       "code": "mock:detail",
       "name": "查看Mock详情",
       "description": "查看Mock配置详细信息",
       "module": "mock",
-      "sortOrder": 71
+      "menuCode": "mock_edit",
+      "sortOrder": 81
     },
     {
       "code": "mock:add",
       "name": "创建Mock",
       "description": "创建新的Mock配置",
       "module": "mock",
-      "sortOrder": 72
+      "menuCode": "mock_edit",
+      "sortOrder": 82
     },
     {
       "code": "mock:edit",
       "name": "编辑Mock",
       "description": "编辑Mock配置、切换启用状态、重置统计",
       "module": "mock",
-      "sortOrder": 73
+      "menuCode": "mock_edit",
+      "sortOrder": 83
     },
     {
       "code": "mock:delete",
       "name": "删除Mock",
       "description": "删除Mock配置",
       "module": "mock",
-      "sortOrder": 74
+      "menuCode": "mock",
+      "sortOrder": 84
     },
     {
       "code": "test:case:view",
       "name": "查看测试用例",
       "description": "查看测试用例列表和详情",
       "module": "test",
-      "sortOrder": 80
+      "menuCode": "test-case",
+      "sortOrder": 90
     },
     {
       "code": "test:case:create",
       "name": "创建测试用例",
       "description": "创建新的测试用例",
       "module": "test",
-      "sortOrder": 81
+      "menuCode": "test-case-edit",
+      "sortOrder": 91
     },
     {
       "code": "test:case:update",
       "name": "编辑测试用例",
       "description": "编辑测试用例配置和步骤",
       "module": "test",
-      "sortOrder": 82
+      "menuCode": "test-case-edit",
+      "sortOrder": 92
     },
     {
       "code": "test:case:delete",
       "name": "删除测试用例",
       "description": "删除测试用例",
       "module": "test",
-      "sortOrder": 83
+      "menuCode": "test-case",
+      "sortOrder": 93
     },
     {
       "code": "test:case:run",
       "name": "执行测试用例",
       "description": "手动触发测试用例执行",
       "module": "test",
-      "sortOrder": 84
+      "menuCode": "test-case",
+      "sortOrder": 94
     },
     {
       "code": "test:suite:view",
       "name": "查看测试套件",
       "description": "查看测试套件列表和详情",
       "module": "test",
-      "sortOrder": 85
+      "menuCode": "test-suite",
+      "sortOrder": 95
     },
     {
       "code": "test:suite:create",
       "name": "创建测试套件",
       "description": "创建新的测试套件",
       "module": "test",
-      "sortOrder": 86
+      "menuCode": "test-suite-edit",
+      "sortOrder": 96
     },
     {
       "code": "test:suite:update",
       "name": "编辑测试套件",
       "description": "编辑测试套件配置",
       "module": "test",
-      "sortOrder": 87
+      "menuCode": "test-suite-edit",
+      "sortOrder": 97
     },
     {
       "code": "test:suite:delete",
       "name": "删除测试套件",
       "description": "删除测试套件",
       "module": "test",
-      "sortOrder": 88
+      "menuCode": "test-suite",
+      "sortOrder": 98
     },
     {
       "code": "test:suite:run",
       "name": "执行测试套件",
       "description": "手动触发测试套件执行",
       "module": "test",
-      "sortOrder": 89
+      "menuCode": "test-suite",
+      "sortOrder": 99
     },
     {
       "code": "test:execution:view",
       "name": "查看执行记录",
       "description": "查看测试执行记录列表和详情",
       "module": "test",
-      "sortOrder": 90
+      "menuCode": "test-execution",
+      "sortOrder": 100
     },
     {
       "code": "test:execution:run",
       "name": "批量执行测试",
       "description": "批量执行测试用例或套件",
       "module": "test",
-      "sortOrder": 91
+      "menuCode": "test-batch-run",
+      "sortOrder": 101
     },
     {
       "code": "ipwhite:view",
       "name": "查看IP白名单",
       "description": "查看IP白名单规则列表和详情",
       "module": "security",
-      "sortOrder": 95
+      "menuCode": "ip-whitelist",
+      "sortOrder": 110
     },
     {
       "code": "ipwhite:add",
       "name": "创建IP白名单规则",
       "description": "创建新的IP白名单/黑名单规则",
       "module": "security",
-      "sortOrder": 96
+      "menuCode": "ip-whitelist",
+      "sortOrder": 111
     },
     {
       "code": "ipwhite:edit",
       "name": "编辑IP白名单规则",
       "description": "编辑、启用/停用IP白名单规则",
       "module": "security",
-      "sortOrder": 97
+      "menuCode": "ip-whitelist",
+      "sortOrder": 112
     },
     {
       "code": "ipwhite:delete",
       "name": "删除IP白名单规则",
       "description": "删除IP白名单规则",
       "module": "security",
-      "sortOrder": 98
+      "menuCode": "ip-whitelist",
+      "sortOrder": 113
     }
   ]
 }

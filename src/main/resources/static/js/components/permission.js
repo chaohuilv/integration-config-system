@@ -34,6 +34,9 @@
  *   或手动调用 Permission.guard()
  *   无权限时页面内容会被遮罩，显示"无访问权限"提示。
  *   表单页（FORM 类型，不在侧边栏菜单中）默认放行。
+ *
+ * 配置数据来源：
+ *   LIST_PAGE_CODES 和 FORM_PERMISSION_MAP 从 /api/auth/menus 接口动态获取
  */
 const Permission = (function() {
     'use strict';
@@ -46,37 +49,9 @@ const Permission = (function() {
     let _currentUser = null;
     let _guarded = false; // guard() 是否已拦截当前页面
 
-    // 需要菜单权限的列表页 code（与 menu-config.json 中 pageType=LIST 的菜单对应）
-    // 表单页（FORM 类型）不需要菜单权限，从列表页调用即可
-    const LIST_PAGE_CODES = new Set([
-        'dashboard', 'list', 'import', 'debug', 'logs', 'environments',
-        'users', 'roles', 'audit-logs', 'sdk',
-        'test-case', 'test-suite', 'test-execution',
-        'alert-rules', 'alert-records', 'mock', 'scenario', 'api-doc'
-    ]);
-
-    // 表单页 → 所需权限码（只要拥有任一即放行）
-    const FORM_PERMISSION_MAP = {
-        'form':         ['api:add', 'api:edit'],           // 接口表单（新建或编辑）
-        'detail':       ['api:detail', 'api:edit'],        // 接口详情（查看或编辑）
-        'import':       ['api:add'],                       // Curl 导入 = 创建
-        'debug':        ['api:invoke'],                    // 接口调试 = 调用
-        'logs':         ['log:view'],                      // 调用日志 = 查看日志
-        'sdk':          ['api:view'],                      // SDK 文档 = 查看接口
-        'envForm':      ['env:add', 'env:edit'],           // 环境表单
-        'userForm':     ['user:add', 'user:edit'],         // 用户表单
-        'roleEdit':     ['role:edit'],                     // 角色编辑
-        'audit-logs-detail': ['audit-log:detail'],         // 审计日志详情
-        'test-case-edit': ['test:case:view', 'test:case:create', 'test:case:update'],  // 测试用例编辑
-        'test-suite-edit': ['test:suite:view', 'test:suite:create', 'test:suite:update'],  // 测试套件编辑
-        'test-execution-detail': ['test:execution:view'],  // 测试执行详情
-        'test-batch-run': ['test:execution:run'],          // 批量执行
-        'scenarioEdit': ['scenario:view', 'scenario:add', 'scenario:edit'],  // 场景编辑
-        'scenarioExec': ['scenario:execute'],              // 场景执行
-        'mock_edit':    ['mock:view', 'mock:add', 'mock:edit'],  // Mock编辑
-        'alert-rules':  ['alert:view'],                    // 告警规则
-        'alert-records': ['alert:view']                    // 告警记录
-    };
+    // 动态加载的配置（从后端接口获取）
+    let _listPageCodes = new Set();          // LIST 页面 code 集合
+    let _formPermissionMap = {};             // FORM 页面权限映射
 
     /**
      * 初始化权限数据
@@ -95,14 +70,19 @@ const Permission = (function() {
                 _isAdmin = !!(_currentUser && _currentUser.isAdmin);
                 _permissions = parent.App.getUserPermissions() || [];
                 _menus = parent.App.getUserMenus() || [];
-                // 优先从 App.getPageMap() 获取，零请求
-                if (parent.App.getPageMap) {
+                
+                // 优先从 App 获取配置（主框架已加载）
+                if (parent.Permission && parent.Permission.getConfig) {
+                    const config = parent.Permission.getConfig();
+                    _listPageCodes = config.listPageCodes || new Set();
+                    _formPermissionMap = config.formPermissionMap || {};
+                    _pageMap = config.pageMap || {};
+                } else if (parent.App.getPageMap) {
                     _pageMap = parent.App.getPageMap() || {};
+                    // 需要单独请求配置
+                    await _loadPermissionConfig();
                 }
-                // 降级：如果 pageMap 为空，请求后端
-                if (Object.keys(_pageMap).length === 0) {
-                    await _loadPageMap();
-                }
+                
                 _initialized = true;
                 console.log('[Permission] 从父窗口加载权限, admin:', _isAdmin, '权限数:', _permissions.length);
                 if (opts.applyOnLoad) apply();
@@ -127,6 +107,14 @@ const Permission = (function() {
             if (menuRes.code === 200 && menuRes.data) {
                 _menus = menuRes.data.menus || [];
                 _pageMap = menuRes.data.pageMap || {};
+                
+                // 从接口获取动态配置
+                if (menuRes.data.listPageCodes) {
+                    _listPageCodes = new Set(menuRes.data.listPageCodes);
+                }
+                if (menuRes.data.formPermissionMap) {
+                    _formPermissionMap = menuRes.data.formPermissionMap;
+                }
             }
         } catch (e) {
             console.error('[Permission] 加载权限失败:', e);
@@ -138,16 +126,24 @@ const Permission = (function() {
     }
 
     /**
-     * 加载 pageMap（仅在父窗口模式下需要额外请求，因为 App 未暴露 pageMap）
+     * 加载权限配置（LIST_PAGE_CODES 和 FORM_PERMISSION_MAP）
      */
-    async function _loadPageMap() {
+    async function _loadPermissionConfig() {
         try {
             const menuRes = await API.auth.getMenus();
-            if (menuRes.code === 200 && menuRes.data && menuRes.data.pageMap) {
-                _pageMap = menuRes.data.pageMap;
+            if (menuRes.code === 200 && menuRes.data) {
+                if (menuRes.data.pageMap) {
+                    _pageMap = menuRes.data.pageMap;
+                }
+                if (menuRes.data.listPageCodes) {
+                    _listPageCodes = new Set(menuRes.data.listPageCodes);
+                }
+                if (menuRes.data.formPermissionMap) {
+                    _formPermissionMap = menuRes.data.formPermissionMap;
+                }
             }
         } catch (e) {
-            console.warn('[Permission] 加载 pageMap 失败:', e);
+            console.warn('[Permission] 加载权限配置失败:', e);
         }
     }
 
@@ -204,6 +200,18 @@ const Permission = (function() {
     }
 
     /**
+     * 获取当前配置（供子页面使用）
+     * @returns {Object}
+     */
+    function getConfig() {
+        return {
+            listPageCodes: _listPageCodes,
+            formPermissionMap: _formPermissionMap,
+            pageMap: _pageMap
+        };
+    }
+
+    /**
      * 声明式权限控制：自动隐藏无权限的按钮
      * 
      * 在 HTML 中给按钮添加 data-permission 属性：
@@ -248,7 +256,7 @@ const Permission = (function() {
      *   2. 从当前 iframe URL 提取页面路径（如 pages/api_list.html）
      *   3. 通过 pageMap 反查对应的 menu code
      *   4. 列表页 → 检查用户菜单权限
-     *   5. 表单页/操作页 → 检查用户按钮权限（FORM_PERMISSION_MAP）
+     *   5. 表单页/操作页 → 检查用户按钮权限（formPermissionMap）
      *   6. 无权限 → 遮罩页面，显示"无访问权限"提示
      * 
      * @returns {boolean} true=有权限放行, false=无权限已拦截
@@ -270,7 +278,7 @@ const Permission = (function() {
         }
 
         // 列表页：检查菜单权限
-        if (LIST_PAGE_CODES.has(menuCode)) {
+        if (_listPageCodes.has(menuCode)) {
             if (hasMenu(menuCode)) return true;
             _guarded = true;
             _showNoPermission(menuCode);
@@ -278,7 +286,7 @@ const Permission = (function() {
         }
 
         // 表单页/操作页：检查按钮权限
-        const requiredPerms = FORM_PERMISSION_MAP[menuCode];
+        const requiredPerms = _formPermissionMap[menuCode];
         if (requiredPerms) {
             const hasAccess = requiredPerms.some(perm => has(perm));
             if (hasAccess) return true;
@@ -287,7 +295,7 @@ const Permission = (function() {
             return false;
         }
 
-        // 未在 FORM_PERMISSION_MAP 中配置的页面，放行（兼容性）
+        // 未在 formPermissionMap 中配置的页面，放行（兼容性）
         console.log('[Permission] guard: 未配置权限映射，放行, code=', menuCode);
         return true;
     }
@@ -371,6 +379,7 @@ const Permission = (function() {
         getCurrentUser,
         getAll,
         getAllMenus,
+        getConfig,
         apply,
         render,
         guard,

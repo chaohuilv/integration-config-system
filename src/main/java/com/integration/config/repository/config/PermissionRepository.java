@@ -22,6 +22,8 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
 
     List<Permission> findByType(String type);
 
+    List<Permission> findByMenuCode(String menuCode);
+
     @Query("SELECT p FROM Permission p WHERE p.menuId IN (SELECT rm.menuId FROM RoleMenu rm WHERE rm.roleId = ?1)")
     List<Permission> findByRoleId(Long roleId);
 }

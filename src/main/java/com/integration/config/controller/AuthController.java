@@ -8,10 +8,7 @@ import com.integration.config.entity.config.Menu;
 import com.integration.config.entity.config.User;
 import com.integration.config.enums.ErrorCode;
 import com.integration.config.exception.BusinessException;
-import com.integration.config.service.MenuService;
-import com.integration.config.service.RoleService;
-import com.integration.config.service.TokenService;
-import com.integration.config.service.UserService;
+import com.integration.config.service.*;
 import com.integration.config.enums.AppConstants;
 import com.integration.config.vo.ResultVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,6 +38,7 @@ public class AuthController {
     private final TokenService tokenService;
     private final RoleService roleService;
     private final MenuService menuService;
+    private final PermissionService permissionService;
 
     /**
      * 用户登录
@@ -178,10 +176,27 @@ public class AuthController {
         // 获取 pageMap（使用 Redis 全局缓存）
         Map<String, String> pageMap = menuService.getPageMap();
         
+        // 获取所有 LIST 页面的 code（用于页面守卫判断）
+        List<String> listPageCodes = menuService.getAllMenus().stream()
+                .filter(m -> "LIST".equals(m.getPageType()))
+                .map(Menu::getCode)
+                .collect(Collectors.toList());
+        
+        // 获取 FORM 页面的权限映射（从 Permission 表按 menuCode 分组）
+        Map<String, List<String>> formPermissionMap = new HashMap<>();
+        permissionService.getAllPermissions().stream()
+                .filter(p -> p.getMenuCode() != null && !p.getMenuCode().isEmpty())
+                .forEach(p -> {
+                    formPermissionMap.computeIfAbsent(p.getMenuCode(), k -> new java.util.ArrayList<>())
+                            .add(p.getCode());
+                });
+        
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("menus", listMenus);       // 用户可访问的列表页菜单
         result.put("pageMap", pageMap);       // 所有页面路由映射
+        result.put("listPageCodes", listPageCodes);  // 所有 LIST 页面 code
+        result.put("formPermissionMap", formPermissionMap);  // FORM 页面权限映射
         
         return ResultVO.success(result);
     }

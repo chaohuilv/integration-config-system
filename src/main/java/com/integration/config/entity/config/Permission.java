@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 @Table(name = "SYS_PERMISSION", indexes = {
     @Index(name = "IDX_PERM_CODE", columnList = "CODE", unique = true),
     @Index(name = "IDX_PERM_MENU", columnList = "MENU_ID"),
+    @Index(name = "IDX_PERM_MENU_CODE", columnList = "MENU_CODE"),
     @Index(name = "IDX_PERM_MODULE", columnList = "MODULE")
 })
 @Data
@@ -43,6 +44,10 @@ public class Permission {
     /** 所属菜单ID */
     @Column(name = "MENU_ID")
     private Long menuId;
+
+    /** 所属菜单编码，用于权限配置关联 */
+    @Column(name = "MENU_CODE", length = 100)
+    private String menuCode;
 
     /** 权限类型：MENU / BUTTON */
     @Column(name = "TYPE", length = 20)

@@ -68,6 +68,10 @@ public class Menu {
     @Column(name = "PAGE_TYPE", length = 20)
     private String pageType;
 
+    /** 页面访问所需权限（JSON数组格式，如 ["api:add","api:edit"]，拥有任一权限即可访问） */
+    @Column(name = "PERMISSIONS", columnDefinition = "TEXT")
+    private String permissions;
+
     /** 创建时间 */
     @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt;
