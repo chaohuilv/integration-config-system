@@ -649,6 +649,123 @@ const API = {
         })
     },
 
+    // 测试管理 - 测试用例
+    testCase: {
+        // 分页查询
+        list: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/test/case/list?${query}`);
+        },
+        // 获取详情（ID）
+        getDetail: (id) => request(`/test/case/${id}`),
+        // 获取详情（编码）
+        getDetailByCode: (code) => request(`/test/case/code/${code}`),
+        // 创建
+        create: (data) => request('/test/case', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新
+        update: (id, data) => request(`/test/case/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除
+        delete: (id) => request(`/test/case/${id}`, {
+            method: 'DELETE'
+        }),
+        // 启用/禁用
+        toggle: (id) => request(`/test/case/${id}/toggle`, {
+            method: 'POST'
+        }),
+        // 获取所有分组
+        getGroups: () => request('/test/case/groups'),
+        // 获取所有启用的用例
+        getActive: () => request('/test/case/active'),
+        // 保存步骤
+        saveSteps: (id, steps) => request(`/test/case/${id}/steps`, {
+            method: 'POST',
+            body: JSON.stringify(steps)
+        }),
+        // 获取步骤
+        getSteps: (id) => request(`/test/case/${id}/steps`)
+    },
+
+    // 测试管理 - 测试套件
+    testSuite: {
+        // 分页查询
+        list: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/test/suite/list?${query}`);
+        },
+        // 获取详情（ID）
+        getDetail: (id) => request(`/test/suite/${id}`),
+        // 获取详情（编码）
+        getDetailByCode: (code) => request(`/test/suite/code/${code}`),
+        // 创建
+        create: (data) => request('/test/suite', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新
+        update: (id, data) => request(`/test/suite/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除
+        delete: (id) => request(`/test/suite/${id}`, {
+            method: 'DELETE'
+        }),
+        // 启用/禁用
+        toggle: (id) => request(`/test/suite/${id}/toggle`, {
+            method: 'POST'
+        }),
+        // 获取所有分组
+        getGroups: () => request('/test/suite/groups'),
+        // 获取所有启用的套件
+        getActive: () => request('/test/suite/active'),
+        // 保存套件-用例关联
+        saveCases: (id, caseIds) => request(`/test/suite/${id}/cases`, {
+            method: 'POST',
+            body: JSON.stringify(caseIds)
+        }),
+        // 获取套件下的用例ID列表
+        getCaseIds: (id) => request(`/test/suite/${id}/cases`)
+    },
+
+    // 测试管理 - 测试执行
+    test: {
+        // 执行单个用例
+        executeCase: (data) => request('/test/execute/case', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 执行套件
+        executeSuite: (suiteId) => request(`/test/execute/suite/${suiteId}`, {
+            method: 'POST'
+        }),
+        // 批量执行
+        executeBatch: (data) => request('/test/execute/batch', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 分页查询执行记录
+        listExecutions: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request(`/test/execution/list?${query}`);
+        },
+        // 获取执行详情
+        getExecution: (id) => request(`/test/execution/${id}`),
+        // 获取执行步骤结果
+        getStepResults: (id) => request(`/test/execution/${id}/steps`),
+        // 获取用例最近执行记录
+        getRecentExecutions: (caseId, limit = 10) => request(`/test/execution/case/${caseId}/recent?limit=${limit}`),
+        // 删除执行记录
+        deleteExecution: (id) => request(`/test/execution/${id}`, {
+            method: 'DELETE'
+        })
+    },
+
     // Mock 服务
     mock: {
         // 分页查询 Mock 配置
@@ -686,6 +803,40 @@ const API = {
         getGroups: () => request('/mock/groups'),
         // 统计信息
         stats: () => request('/mock/stats')
+    },
+
+    // IP 白名单
+    ipWhitelist: {
+        // 分页查询
+        page: (params = {}) => {
+            const query = new URLSearchParams(params).toString();
+            return request('/ip-whitelist?' + query);
+        },
+        // 获取详情
+        getById: (id) => request('/ip-whitelist/' + id),
+        // 创建
+        create: (data) => request('/ip-whitelist', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        // 更新
+        update: (id, data) => request('/ip-whitelist/' + id, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        // 删除
+        delete: (id) => request('/ip-whitelist/' + id, {
+            method: 'DELETE'
+        }),
+        // 启用/停用
+        toggle: (id) => request('/ip-whitelist/' + id + '/toggle', {
+            method: 'PUT'
+        }),
+        // 校验 IP 列表格式
+        validate: (ipList) => request('/ip-whitelist/validate', {
+            method: 'POST',
+            body: JSON.stringify({ ipList: ipList })
+        })
     }
 };
 

@@ -218,7 +218,14 @@ const App = (function() {
         // 添加参数
         if (params) {
             const separator = src.includes('?') ? '&' : '?';
-            src += `${separator}id=${params}`;
+            if(typeof(params) == "string" ){
+                src += `${separator}id=${params}`;
+            }else{
+                src += `${separator}`;
+                for (const key in params){
+                    src += `${key}=${params[key]}&`;
+                }
+            }
         }
 
         // 添加时间戳防止缓存

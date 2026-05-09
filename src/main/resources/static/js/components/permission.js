@@ -50,7 +50,9 @@ const Permission = (function() {
     // 表单页（FORM 类型）不需要菜单权限，从列表页调用即可
     const LIST_PAGE_CODES = new Set([
         'dashboard', 'list', 'import', 'debug', 'logs', 'environments',
-        'users', 'roles', 'audit-logs', 'sdk'
+        'users', 'roles', 'audit-logs', 'sdk',
+        'test-case', 'test-suite', 'test-execution',
+        'alert-rules', 'alert-records', 'mock', 'scenario', 'api-doc'
     ]);
 
     // 表单页 → 所需权限码（只要拥有任一即放行）
@@ -64,7 +66,16 @@ const Permission = (function() {
         'envForm':      ['env:add', 'env:edit'],           // 环境表单
         'userForm':     ['user:add', 'user:edit'],         // 用户表单
         'roleEdit':     ['role:edit'],                     // 角色编辑
-        'audit-logs-detail': ['audit-log:detail']          // 审计日志详情
+        'audit-logs-detail': ['audit-log:detail'],         // 审计日志详情
+        'test-case-edit': ['test:case:view', 'test:case:create', 'test:case:update'],  // 测试用例编辑
+        'test-suite-edit': ['test:suite:view', 'test:suite:create', 'test:suite:update'],  // 测试套件编辑
+        'test-execution-detail': ['test:execution:view'],  // 测试执行详情
+        'test-batch-run': ['test:execution:run'],          // 批量执行
+        'scenarioEdit': ['scenario:view', 'scenario:add', 'scenario:edit'],  // 场景编辑
+        'scenarioExec': ['scenario:execute'],              // 场景执行
+        'mock_edit':    ['mock:view', 'mock:add', 'mock:edit'],  // Mock编辑
+        'alert-rules':  ['alert:view'],                    // 告警规则
+        'alert-records': ['alert:view']                    // 告警记录
     };
 
     /**
@@ -209,8 +220,8 @@ const Permission = (function() {
 
         root.querySelectorAll('[data-permission]').forEach(el => {
             const code = el.getAttribute('data-permission');
-            if (code && !has(code)) {
-                el.style.display = 'none';
+            if (code) {
+                el.style.display = has(code) ? '' : 'none';
             }
         });
     }

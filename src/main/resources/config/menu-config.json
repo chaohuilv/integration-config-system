@@ -203,6 +203,70 @@
       "pageType": "FORM"
     },
     {
+      "code": "test-case",
+      "name": "测试用例",
+      "icon": "🧪",
+      "path": "test-case",
+      "pageFile": "pages/test_case_list.html",
+      "section": "测试管理",
+      "sortOrder": 8,
+      "pageType": "LIST"
+    },
+    {
+      "code": "test-case-edit",
+      "name": "测试用例编辑",
+      "icon": "📝",
+      "path": "test-case-edit",
+      "pageFile": "pages/test_case_edit.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "test-suite",
+      "name": "测试套件",
+      "icon": "📁",
+      "path": "test-suite",
+      "pageFile": "pages/test_suite_list.html",
+      "section": "测试管理",
+      "sortOrder": 9,
+      "pageType": "LIST"
+    },
+    {
+      "code": "test-suite-edit",
+      "name": "测试套件编辑",
+      "icon": "📝",
+      "path": "test-suite-edit",
+      "pageFile": "pages/test_suite_edit.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "test-execution",
+      "name": "测试执行记录",
+      "icon": "📋",
+      "path": "test-execution",
+      "pageFile": "pages/test_execution_list.html",
+      "section": "测试管理",
+      "sortOrder": 10,
+      "pageType": "LIST"
+    },
+    {
+      "code": "test-execution-detail",
+      "name": "测试执行详情",
+      "icon": "📄",
+      "path": "test-execution-detail",
+      "pageFile": "pages/test_execution_detail.html",
+      "pageType": "FORM"
+    },
+    {
+      "code": "test-batch-run",
+      "name": "批量执行",
+      "icon": "🚀",
+      "path": "test-batch-run",
+      "pageFile": "pages/test_batch_run.html",
+      "section": "测试管理",
+      "sortOrder": 11,
+      "pageType": "FORM"
+    },
+    {
       "code": "api-doc",
       "name": "接口文档",
       "icon": "📚",
@@ -220,6 +284,16 @@
       "pageFile": "pages/api_sdk.html",
       "section": "开发文档",
       "sortOrder": 100,
+      "pageType": "LIST"
+    },
+    {
+      "code": "ip-whitelist",
+      "name": "IP 白名单",
+      "icon": "🛡️",
+      "path": "ip-whitelist",
+      "pageFile": "pages/ip_whitelist_list.html",
+      "section": "安全管理",
+      "sortOrder": 56,
       "pageType": "LIST"
     }
   ]

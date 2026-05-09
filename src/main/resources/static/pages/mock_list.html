@@ -106,12 +106,12 @@
             refreshList();
         });
 
-        $('#btnSearch').on('click', () => refreshList(currentPage));
+        $('#btnSearch').on('click', () => refreshList(0));
         $('#sKeyword').on('keyup', function(e) {
-            if (e.key === 'Enter') refreshList(currentPage);
+            if (e.key === 'Enter') refreshList(0);
         });
-        $('#sGroup').on('change', () => refreshList(currentPage));
-        $('#sEnabled').on('change', () => refreshList(currentPage));
+        $('#sGroup').on('change', () => refreshList(0));
+        $('#sEnabled').on('change', () => refreshList(0));
 
         function loadGroups() {
             API.mock.getGroups().then(json => {
