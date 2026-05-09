@@ -143,6 +143,7 @@ public class DataInitializer implements CommandLineRunner {
         private String description;
         private String module;
         private String type;
+        private String menuCode;
         private Integer sortOrder;
     }
 
@@ -167,6 +168,7 @@ public class DataInitializer implements CommandLineRunner {
                 permission.setModule(def.getModule());
                 permission.setType(def.getType() != null ? def.getType() : "BUTTON");
                 permission.setSortOrder(def.getSortOrder() != null ? def.getSortOrder() : 0);
+                permission.setMenuCode(def.getMenuCode());
                 permissionRepository.save(permission);
                 updated++;
             } else {
@@ -178,6 +180,7 @@ public class DataInitializer implements CommandLineRunner {
                         .module(def.getModule())
                         .type(def.getType() != null ? def.getType() : "BUTTON")
                         .sortOrder(def.getSortOrder() != null ? def.getSortOrder() : 0)
+                        .menuCode(def.getMenuCode())
                         .build();
                 permissionRepository.save(permission);
                 created++;
