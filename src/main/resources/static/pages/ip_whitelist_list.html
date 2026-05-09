@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP 白名单</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* ===== search bar ===== */
+        .search-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .search-bar select, .search-bar input { min-width: 140px; }
+        .search-bar .date-range { display: flex; align-items: center; gap: 4px; }
+        .search-bar .date-range span { color: #999; font-size: 12px; }
+        .search-bar .date-range input { width: 160px; }
+        .search-bar .col-full { flex: 1; min-width: 200px; }
+
+        /* ===== table ===== */
+        .table-wrap { overflow-x: auto; }
+        .table { min-width: 1000px; }
+        .col-name { min-width: 130px; }
+        .col-code { min-width: 140px; }
+        .col-scope { width: 80px; }
+        .col-mode { width: 80px; }
+        .col-priority { width: 60px; }
+        .col-api-count { width: 65px; }
+        .col-ips { min-width: 200px; max-width: 260px; }
+        .col-ops { width: 170px; }
+
+        /* ===== tag ===== */
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .tag-blue { background: #dbeafe; color: #1d4ed8; }
+        .tag-green { background: #dcfce7; color: #15803d; }
+        .tag-orange { background: #ffedd5; color: #c2410c; }
+        .tag-red { background: #fee2e2; color: #b91c1c; }
+        .tag-purple { background: #ede9fe; color: #6d28d9; }
+        .tag-gray { background: #f1f5f9; color: #64748b; }
+
+        /* ===== overview cards ===== */
+        .overview-cards { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .overview-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; min-width: 120px; flex: 1; }
+        .overview-card .card-num { font-size: 24px; font-weight: 700; color: #1f2937; }
+        .overview-card .card-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .overview-card.accent { border-left: 3px solid #667eea; }
+        .overview-card.accent .card-num { color: #667eea; }
+
+        /* ===== IP preview ===== */
+        .ip-preview { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; display: block; }
+        .ip-preview:hover { color: #667eea; }
+
+        /* ===== detail modal (IP list preview) ===== */
+        .detail-modal { display: none; }
+        .detail-modal.show { display: block; }
+        .detail-modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: 560px; max-width: 95vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.25); z-index: 2000; }
+        .detail-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; }
+        .detail-modal-header .close-btn { cursor: pointer; font-size: 22px; line-height: 1; color: #999; }
+        .detail-modal-header .close-btn:hover { color: #333; }
+        .detail-modal-body { padding: 14px 18px; }
+        .detail-modal-body pre { background: #f8fafc; border: 1px solid #f0f0f0; border-radius: 6px; padding: 12px; font-family: 'Monaco','Menlo','Courier New',monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: #334155; line-height: 1.8; margin: 0; max-height: 260px; overflow-y: auto; }
+
+        /* ===== edit/create modal ===== */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 10px; width: 680px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
+        .modal-header .close-btn { cursor: pointer; font-size: 22px; line-height: 1; color: #999; }
+        .modal-header .close-btn:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 12px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 8px; }
+        .modal-footer button { min-width: 80px; }
+
+        /* ===== form ===== */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .form-row .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-row .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-size: 13px; font-weight: 500; color: #374151; }
+        .form-group label .required { color: #ef4444; margin-left: 2px; }
+        .form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.12); }
+        .form-group textarea { resize: vertical; min-height: 80px; font-family: 'Courier New',monospace; font-size: 13px; }
+        .form-hint { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+        /* ===== format guide ===== */
+        .format-guide { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #475569; margin-top: 4px; }
+        .format-guide strong { color: #1e40af; }
+        .format-guide code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+        .format-guide ul { margin: 4px 0 0 16px; padding: 0; }
+        .format-guide li { margin-bottom: 2px; }
+
+        /* ===== mode cards ===== */
+        .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+        .mode-card { border: 2px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .mode-card:hover { border-color: #93c5fd; }
+        .mode-card.selected-whitelist { border-color: #22c55e; background: #f0fdf4; }
+        .mode-card.selected-blacklist { border-color: #ef4444; background: #fef2f2; }
+        .mode-card input[type="radio"] { display: none; }
+        .mode-card .card-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .mode-card .card-desc { font-size: 11px; color: #6b7280; }
+
+        /* ===== validate ===== */
+        .ip-ok { border-color: #22c55e !important; }
+        .ip-err { border-color: #ef4444 !important; }
+        .validate-result { font-size: 12px; margin-top: 4px; }
+        .validate-result.ok { color: #22c55e; }
+        .validate-result.err { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🛡️ IP 白名单</h2>
+            <p class="view-sub">控制接口访问来源，支持白名单（仅允许）和黑名单（拒绝）模式</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" id="btnCreate" data-permission="ipwhite:add">+ 新建规则</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- overview cards -->
+        <div class="overview-cards">
+            <div class="overview-card">
+                <div class="card-num" id="totalCount">-</div>
+                <div class="card-label">总规则数</div>
+            </div>
+            <div class="overview-card accent">
+                <div class="card-num" id="activeCount">-</div>
+                <div class="card-label">已启用</div>
+            </div>
+        </div>
+
+        <!-- search bar -->
+        <div class="search-bar">
+            <input type="text" class="search-input col-full" id="sKeyword" placeholder="规则名称 / 编码...">
+            <select id="sScope">
+                <option value="">全部范围</option>
+                <option value="GLOBAL">全局</option>
+                <option value="API">接口级</option>
+            </select>
+            <select id="sStatus">
+                <option value="">全部状态</option>
+                <option value="ACTIVE">启用</option>
+                <option value="INACTIVE">停用</option>
+            </select>
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+            <button class="btn btn-ghost" id="btnReset" style="color:#999;">重置</button>
+        </div>
+
+        <!-- table -->
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-name">规则名称</th>
+                        <th class="col-code">规则编码</th>
+                        <th class="col-scope">范围</th>
+                        <th class="col-mode">模式</th>
+                        <th class="col-priority">优先级</th>
+                        <th class="col-api-count">接口数</th>
+                        <th class="col-ips">IP 列表</th>
+                        <th>状态</th>
+                        <th class="col-ops">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="9" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- IP 详情弹窗（detail-modal 模式） -->
+    <div class="detail-modal" id="ipDetailModal">
+        <div class="detail-modal-content">
+            <div class="detail-modal-header">
+                <span id="ipDetailTitle">IP 列表详情</span>
+                <span class="close-btn" id="btnCloseIpDetail">×</span>
+            </div>
+            <div class="detail-modal-body">
+                <pre id="ipDetailContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑弹窗（modal-overlay 模式） -->
+    <div class="modal-overlay" id="ruleModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span id="modalTitle">新建 IP 白名单规则</span>
+                <span class="close-btn" id="btnCloseModal">×</span>
+            </div>
+            <div class="modal-body">
+                <form id="ruleForm">
+                    <input type="hidden" id="ruleId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><span class="required">*</span>规则名称</label>
+                            <input type="text" id="ruleName" placeholder="如：内网访问白名单">
+                        </div>
+                        <div class="form-group">
+                            <label>规则编码</label>
+                            <input type="text" id="ruleCode" placeholder="留空自动生成">
+                            <span class="form-hint">唯一标识，留空自动生成</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label>描述</label>
+                            <input type="text" id="description" placeholder="描述规则的用途（可选）">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><span class="required">*</span>范围类型</label>
+                            <select id="scope">
+                                <option value="GLOBAL">全局（对所有接口生效）</option>
+                                <option value="API">接口级（仅对指定接口生效）</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>优先级</label>
+                            <input type="number" id="priority" value="100" min="1" max="9999">
+                            <span class="form-hint">1~9999，数值越小优先级越高</span>
+                        </div>
+                    </div>
+                    <div class="form-row" id="apiCodesRow" style="display:none;">
+                        <div class="form-group full">
+                            <label><span class="required">*</span>关联接口编码</label>
+                            <input type="text" id="apiCodes" placeholder="多个用逗号分隔，如：user-api,order-api">
+                            <span class="form-hint">接口级规则必填，对这些接口生效</span>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:4px;">
+                        <div class="form-group full">
+                            <label><span class="required">*</span>匹配模式</label>
+                            <div class="mode-cards">
+                                <div class="mode-card selected-whitelist" id="modeWhitelistCard" onclick="window._selectMode('WHITELIST')">
+                                    <input type="radio" name="matchMode" value="WHITELIST" id="modeWhitelist" checked>
+                                    <div class="card-title">白名单模式（推荐）</div>
+                                    <div class="card-desc">只允许列表中的 IP 访问，未命中则默认拒绝</div>
+                                </div>
+                                <div class="mode-card" id="modeBlacklistCard" onclick="window._selectMode('BLACKLIST')">
+                                    <input type="radio" name="matchMode" value="BLACKLIST" id="modeBlacklist">
+                                    <div class="card-title">黑名单模式</div>
+                                    <div class="card-desc">拒绝列表中的 IP 访问，其他 IP 默认允许</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label><span class="required">*</span>IP 列表</label>
+                            <textarea id="ipList" placeholder="每行一个IP，支持以下格式：
+192.168.1.100     - 单个 IP
+10.0.0.0/8       - CIDR 网段
+172.16.0.0/16    - CIDR 网段
+192.168.1.1-192.168.1.255  - IP 段
+localhost         - 本地回环" rows="5"></textarea>
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                                <button type="button" class="btn btn-sm btn-default" id="btnValidate">校验格式</button>
+                                <span class="validate-result" id="validateResult"></span>
+                            </div>
+                            <div class="format-guide">
+                                <strong>支持格式：</strong>
+                                <ul>
+                                    <li><code>192.168.1.100</code> - 单个 IP</li>
+                                    <li><code>10.0.0.0/8</code> - CIDR 网段（10.x.x.x）</li>
+                                    <li><code>172.16.0.0/16</code> - CIDR 网段（172.16.x.x）</li>
+                                    <li><code>192.168.1.1-192.168.1.255</code> - IP 段范围</li>
+                                    <li><code>localhost</code> - 本地回环地址</li>
+                                </ul>
+                                多个条目可用<strong>换行</strong>或<strong>逗号</strong>分隔
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="btnCancel">取消</button>
+                <button class="btn btn-primary" id="btnSave">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    $(function() {
+        var pager;
+        var currentPage = 1;
+        var size = 10;
+        var allRules = [];
+
+        // ===== init permission & pagination =====
+        Permission.init({ guard: true }).then(function() {
+            if (Permission.isDenied()) return;
+            pager = new Pagination('#pagination', {
+                pageSize: size,
+                showTotal: true,
+                onPageChange: function(page) {
+                    refreshList(page);
+                }
+            });
+            refreshList(1);
+        });
+
+        // ===== refresh list =====
+        function refreshList(page) {
+            currentPage = page || 1;
+            var params = {
+                page: currentPage,
+                size: size,
+                keyword: $('#sKeyword').val() || undefined,
+                scope: $('#sScope').val() || undefined,
+                status: $('#sStatus').val() || undefined
+            };
+            Object.keys(params).forEach(function(k) { if (params[k] === undefined) delete params[k]; });
+
+            $('#tableBody').html('<tr><td colspan="9" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>');
+
+            API.ipWhitelist.page(params).then(function(json) {
+                if (json.code !== 200) { utils.toast(json.message || '加载失败', 'error'); return; }
+                var data = json.data;
+                if (!data) {
+                    $('#tableBody').html('<tr><td colspan="9" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                    pager.render({ total: 0 });
+                    return;
+                }
+                var list = data.records || [];
+                allRules = list;
+                updateOverview(data.total);
+                renderTable(list);
+                pager.render(data, currentPage);
+            }).catch(function(err) {
+                console.error('[refreshList]', err);
+                utils.toast('加载失败: ' + (err.message || '未知错误'), 'error');
+            });
+        }
+
+        function updateOverview(total) {
+            $('#totalCount').text(total != null ? total : 0);
+            var active = 0;
+            allRules.forEach(function(r) { if (r.status === 'ACTIVE') active++; });
+            $('#activeCount').text(active);
+        }
+
+        // ===== render table =====
+        function renderTable(list) {
+            if (!list || list.length === 0) {
+                $('#tableBody').html('<tr><td colspan="9" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                return;
+            }
+            var html = list.map(function(item) {
+                var scopeTag = item.scope === 'GLOBAL'
+                    ? '<span class="tag tag-blue">全局</span>'
+                    : '<span class="tag tag-green">接口级</span>';
+                var modeTag = item.matchMode === 'WHITELIST'
+                    ? '<span class="tag tag-green">白名单</span>'
+                    : '<span class="tag tag-red">黑名单</span>';
+                var statusTag = item.status === 'ACTIVE'
+                    ? '<span class="tag tag-green">启用</span>'
+                    : '<span class="tag tag-gray">停用</span>';
+                var ipPreview = formatIpPreview(item.ipList);
+                var apiCount = item.apiCount || 0;
+
+                var editBtn = Permission.render('ipwhite:edit',
+                    '<button class="btn btn-sm btn-default" onclick="window._editRule(' + item.id + ')">编辑</button>');
+                var toggleLabel = item.status === 'ACTIVE' ? '停用' : '启用';
+                var toggleBtn = Permission.render('ipwhite:edit',
+                    '<button class="btn btn-sm btn-default" onclick="window._toggleRule(' + item.id + ')">' + toggleLabel + '</button>');
+                var deleteBtn = Permission.render('ipwhite:delete',
+                    '<button class="btn btn-sm btn-danger" onclick="window._deleteRule(' + item.id + ')">删除</button>');
+
+                return '<tr>'
+                    + '<td><strong>' + escHtml(item.ruleName) + '</strong></td>'
+                    + '<td><code>' + escHtml(item.ruleCode || '-') + '</code></td>'
+                    + '<td>' + scopeTag + '</td>'
+                    + '<td>' + modeTag + '</td>'
+                    + '<td><code>' + (item.priority || 100) + '</code></td>'
+                    + '<td style="color:' + (apiCount > 0 ? '#667eea' : '#94a3b8') + '">' + apiCount + '</td>'
+                    + '<td><span class="ip-preview" onclick="window._showIpDetail(' + item.id + ')" title="点击查看全部">' + escHtml(ipPreview) + '</span></td>'
+                    + '<td>' + statusTag + '</td>'
+                    + '<td>' + editBtn + ' ' + toggleBtn + ' ' + deleteBtn + '</td>'
+                    + '</tr>';
+            }).join('');
+            $('#tableBody').html(html);
+        }
+
+        function escHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function formatIpPreview(ipList) {
+            if (!ipList) return '-';
+            var lines = ipList.split(/[\n,]/).filter(function(l) { return l.trim(); });
+            if (lines.length === 0) return '-';
+            var preview = lines.slice(0, 3).join(', ');
+            return lines.length > 3 ? preview + ' ...' : preview;
+        }
+
+        // ===== global functions =====
+        window._editRule = function(id) {
+            API.ipWhitelist.getById(id).then(function(json) {
+                if (json.code === 200) {
+                    openModal(json.data);
+                } else {
+                    utils.toast(json.message || '加载失败', 'error');
+                }
+            }).catch(function() { utils.toast('加载失败', 'error'); });
+        };
+
+        window._toggleRule = function(id) {
+            API.ipWhitelist.toggle(id).then(function(json) {
+                if (json.code === 200) {
+                    utils.toast('状态已切换');
+                    refreshList(currentPage);
+                } else {
+                    utils.toast(json.message || '切换失败', 'error');
+                }
+            }).catch(function() { utils.toast('切换失败', 'error'); });
+        };
+
+        window._deleteRule = function(id) {
+            utils.showConfirm('确认删除', '确定要删除该规则吗？此操作不可恢复。', '⚠️', true).then(function(ok) {
+                if (!ok) return;
+                API.ipWhitelist.delete(id).then(function(json) {
+                    if (json.code === 200) {
+                        utils.toast('已删除');
+                        refreshList(currentPage);
+                    } else {
+                        utils.toast(json.message || '删除失败', 'error');
+                    }
+                }).catch(function() { utils.toast('删除失败', 'error'); });
+            });
+        };
+
+        window._showIpDetail = function(id) {
+            var rule = findRuleById(id);
+            if (!rule) return;
+            $('#ipDetailTitle').text('IP 列表详情 - ' + rule.ruleName);
+            var lines = (rule.ipList || '').split(/[\n,]/).filter(function(l) { return l.trim(); });
+            $('#ipDetailContent').text(lines.join('\n') || '(空)');
+            $('#ipDetailModal').addClass('show');
+        };
+
+        window._selectMode = function(mode) {
+            if (mode === 'WHITELIST') {
+                document.getElementById('modeWhitelist').checked = true;
+                $('#modeWhitelistCard').addClass('selected-whitelist').removeClass('selected-blacklist');
+                $('#modeBlacklistCard').removeClass('selected-blacklist');
+            } else {
+                document.getElementById('modeBlacklist').checked = true;
+                $('#modeBlacklistCard').addClass('selected-blacklist').removeClass('selected-whitelist');
+                $('#modeWhitelistCard').removeClass('selected-whitelist');
+            }
+        };
+
+        function findRuleById(id) {
+            for (var i = 0; i < allRules.length; i++) {
+                if (String(allRules[i].id) === String(id)) return allRules[i];
+            }
+            return null;
+        }
+
+        // ===== modal events =====
+        $('#btnCreate').on('click', function() { openModal(); });
+        $('#btnCloseModal, #btnCancel').on('click', closeModal);
+        $('#ruleModal').on('click', function(e) { if (e.target === this) closeModal(); });
+        $('#ruleForm').on('keydown', 'input', function(e) { if (e.key === 'Enter') e.preventDefault(); });
+
+        $('#btnCloseIpDetail').on('click', closeIpDetail);
+        $('#ipDetailModal').on('click', function(e) { if (e.target === this) closeIpDetail(); });
+        $(document).on('keydown', function(e) { if (e.key === 'Escape') closeIpDetail(); });
+
+        $('#scope').on('change', function() {
+            $('#apiCodesRow').toggle($(this).val() === 'API');
+        });
+
+        $('#btnValidate').on('click', validateIp);
+
+        function openModal(data) {
+            data = data || {};
+            $('#modalTitle').text(data.id ? '编辑 IP 白名单规则' : '新建 IP 白名单规则');
+            $('#ruleForm')[0].reset();
+            $('#ruleId').val(data.id || '');
+            $('#ruleName').val(data.ruleName || '');
+            $('#ruleCode').val(data.ruleCode || '').prop('disabled', !!data.id);
+            $('#description').val(data.description || '');
+            $('#scope').val(data.scope || 'GLOBAL').trigger('change');
+            $('#priority').val(data.priority || 100);
+            $('#apiCodes').val(data.apiCodes || '');
+            $('#ipList').val(data.ipList || '');
+            $('#validateResult').text('').removeClass('ok err');
+            $('#ipList').removeClass('ip-ok ip-err');
+            window._selectMode(data.matchMode || 'WHITELIST');
+            $('#ruleModal').addClass('show');
+        }
+
+        function closeModal() { $('#ruleModal').removeClass('show'); }
+        function closeIpDetail() { $('#ipDetailModal').removeClass('show'); }
+
+        function saveRule() {
+            var ruleName = $('#ruleName').val().trim();
+            if (!ruleName) { utils.toast('请填写规则名称', 'warn'); return; }
+            var scope = $('#scope').val();
+            var ipList = $('#ipList').val().trim();
+            if (!ipList) { utils.toast('请填写 IP 列表', 'warn'); return; }
+            if (scope === 'API') {
+                var apiCodes = $('#apiCodes').val().trim();
+                if (!apiCodes) { utils.toast('请填写关联接口编码', 'warn'); return; }
+            }
+            var payload = {
+                ruleName: ruleName,
+                description: $('#description').val().trim() || undefined,
+                scope: scope,
+                apiCodes: scope === 'API' ? $('#apiCodes').val().trim() : undefined,
+                matchMode: $('input[name="matchMode"]:checked').val(),
+                priority: parseInt($('#priority').val()) || 100,
+                ipList: ipList,
+                status: 'ACTIVE'
+            };
+            // 编辑时带上编码
+            if ($('#ruleCode').val().trim()) payload.ruleCode = $('#ruleCode').val().trim();
+            Object.keys(payload).forEach(function(k) { if (payload[k] === undefined) delete payload[k]; });
+
+            var id = $('#ruleId').val();
+            var promise = id
+                ? API.ipWhitelist.update(id, payload)
+                : API.ipWhitelist.create(payload);
+
+            promise.then(function(json) {
+                if (json.code === 200) {
+                    utils.toast(id ? '更新成功' : '创建成功');
+                    closeModal();
+                    refreshList(1);
+                } else {
+                    utils.toast(json.message || '保存失败', 'error');
+                }
+            }).catch(function() { utils.toast('保存失败', 'error'); });
+        }
+
+        $('#btnSave').on('click', saveRule);
+
+        function validateIp() {
+            var ipList = $('#ipList').val().trim();
+            var field = $('#ipList');
+            var result = $('#validateResult');
+            if (!ipList) { field.removeClass('ip-ok ip-err'); result.text('').removeClass('ok err'); return; }
+            API.ipWhitelist.validate(ipList).then(function(json) {
+                if (json.code === 200 && json.data && json.data.valid === 'true') {
+                    field.removeClass('ip-err').addClass('ip-ok');
+                    result.text('格式正确').addClass('ok').removeClass('err');
+                } else {
+                    field.removeClass('ip-ok').addClass('ip-err');
+                    result.text(json.data && json.data.error ? json.data.error : '格式错误').addClass('err').removeClass('ok');
+                }
+            }).catch(function() {
+                result.text('校验请求失败').addClass('err').removeClass('ok');
+            });
+        }
+
+        // ===== search & reset =====
+        $('#btnSearch').on('click', function() { refreshList(1); });
+        $('#btnReset').on('click', function() {
+            $('#sKeyword, #sScope, #sStatus').val('');
+            refreshList(1);
+        });
+        $('#sKeyword').on('keyup', function(e) { if (e.key === 'Enter') refreshList(1); });
+    });
+    </script>
+</body>
+</html>

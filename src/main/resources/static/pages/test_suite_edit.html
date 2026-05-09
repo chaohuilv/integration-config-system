@@ -1,0 +1,549 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试套件编辑</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .form-container { max-width: 1000px; }
+        .form-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+        .form-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px 20px;
+        }
+        .form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .form-label .required { color: #dc2626; margin-left: 2px; }
+        .form-input, .form-select, .form-textarea {
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+        .form-textarea { height: 80px; padding: 10px 12px; resize: vertical; }
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 36px;
+        }
+        .form-checkbox input { width: 16px; height: 16px; }
+        .form-checkbox label { font-size: 13px; color: var(--text-primary); cursor: pointer; }
+        .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+
+        /* 用例选择器 */
+        .case-selector {
+            display: grid;
+            grid-template-columns: 1fr 60px 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .case-box {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+        .case-box-header {
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .case-box-count { font-weight: 400; color: var(--text-tertiary); }
+        .case-box-list {
+            height: 320px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .case-item {
+            padding: 8px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .case-item:hover { background: var(--bg-hover); }
+        .case-item.selected { background: #ede9fe; color: #5b21b6; }
+        .case-item input { width: 14px; height: 14px; flex-shrink: 0; }
+        .case-item-info { flex: 1; min-width: 0; }
+        .case-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .case-item-code { font-size: 11px; color: var(--text-tertiary); }
+        .case-btn-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+        }
+        .case-btn-group .btn {
+            padding: 8px 0;
+            font-size: 16px;
+        }
+        .search-input-small {
+            margin: 8px 14px;
+        }
+        .search-input-small input {
+            width: 100%;
+            height: 28px;
+            padding: 0 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="page-container">
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">新建测试套件</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default btn-sm" id="btnBack">
+                <span>&#8592; 返回列表</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <!-- 基本信息 -->
+        <div class="form-section">
+            <div class="form-section-title">基本信息</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">套件编码<span class="required">*</span></label>
+                    <input type="text" class="form-input" id="inputCode" placeholder="唯一标识，如 suite_user_module" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">套件名称<span class="required">*</span></label>
+                    <input type="text" class="form-input" id="inputName" placeholder="套件名称" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">分组</label>
+                    <input type="text" class="form-input" id="inputGroup" placeholder="分组名称" list="groupList" />
+                    <datalist id="groupList"></datalist>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">描述</label>
+                    <textarea class="form-textarea" id="inputDesc" placeholder="套件描述"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 执行配置 -->
+        <div class="form-section">
+            <div class="form-section-title">执行配置</div>
+            <div class="form-grid form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">执行模式</label>
+                    <select class="form-select" id="inputMode">
+                        <option value="SEQUENTIAL">顺序执行</option>
+                        <option value="PARALLEL">并行执行</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">并发数</label>
+                    <input type="number" class="form-input" id="inputConcurrency" value="3" min="1" max="10" />
+                    <div class="form-hint">并行执行时生效，建议 1-5</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">超时时间（秒）</label>
+                    <input type="number" class="form-input" id="inputTimeout" value="300" min="10" max="3600" />
+                    <div class="form-hint">套件整体超时，默认 5 分钟</div>
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="inputStopOnFail" />
+                        <label for="inputStopOnFail">第一个失败即停止</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="inputNotify" checked />
+                        <label for="inputNotify">执行完成时通知</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用例关联 -->
+        <div class="form-section">
+            <div class="form-section-title">关联用例</div>
+            <div class="case-selector">
+                <!-- 待选用例 -->
+                <div class="case-box">
+                    <div class="case-box-header">
+                        <span>待选用例</span>
+                        <span class="case-box-count" id="availableCount">0 个</span>
+                    </div>
+                    <div class="search-input-small">
+                        <input type="text" id="searchAvailable" placeholder="搜索用例名称..." />
+                    </div>
+                    <div class="case-box-list" id="availableList"></div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="case-btn-group">
+                    <button class="btn btn-primary" id="btnAddCase" title="添加选中">&#9654;</button>
+                    <button class="btn btn-default" id="btnRemoveCase" title="移除选中">&#9664;</button>
+                    <button class="btn btn-default" id="btnAddAll" title="全部添加">&#9658;&#9658;</button>
+                    <button class="btn btn-default" id="btnRemoveAll" title="全部移除">&#9664;&#9664;</button>
+                </div>
+
+                <!-- 已选用例 -->
+                <div class="case-box">
+                    <div class="case-box-header">
+                        <span>已选用例</span>
+                        <span class="case-box-count" id="selectedCount">0 个</span>
+                    </div>
+                    <div class="search-input-small">
+                        <input type="text" id="searchSelected" placeholder="搜索用例名称..." />
+                    </div>
+                    <div class="case-box-list" id="selectedList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="form-actions">
+            <button class="btn btn-primary" id="btnSave">保存</button>
+            <button class="btn btn-success" id="btnSaveAndRun" data-permission="test:suite:run">保存并执行</button>
+            <button class="btn btn-default" id="btnCancel">取消</button>
+        </div>
+    </div>
+</div>
+
+<script src="../js/lib/jquery-3.6.0.min.js"></script>
+<script src="../js/lib/jquery.cookie-1.4.1.min.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/components/pagination.js"></script>
+<script src="../js/components/permission.js"></script>
+<script src="../js/components/utils.js"></script>
+<script>
+$(function() {
+    Permission.init({ guard: true });
+
+    var editId = null;
+    var allCases = [];          // 所有启用的用例
+    var selectedCaseIds = [];   // 已选中的用例ID
+
+    // 从 URL 或父窗口参数获取 id
+    try {
+        var params = new URLSearchParams(window.location.search);
+        editId = params.get('id');
+    } catch(e) {}
+    if (!editId && parent && parent._pageParams) {
+        editId = parent._pageParams.id;
+    }
+
+    if (editId) {
+        $('#pageTitle').text('编辑测试套件');
+        loadDetail();
+    }
+
+    // 返回列表
+    $('#btnBack, #btnCancel').click(function() {
+        parent.loadPage && parent.loadPage('test-suite-list');
+    });
+
+    // 执行模式切换
+    $('#inputMode').change(function() {
+        var isParallel = $(this).val() === 'PARALLEL';
+        $('#inputConcurrency').prop('disabled', !isParallel);
+        if (!isParallel) $('#inputConcurrency').val(3);
+    });
+
+    // 加载详情
+    function loadDetail() {
+        API.testSuite.getDetail(editId).then(function(res) {
+            if (res.code === 200 && res.data) {
+                var d = res.data;
+                $('#inputCode').val(d.code);
+                $('#inputName').val(d.name);
+                $('#inputGroup').val(d.groupName || '');
+                $('#inputDesc').val(d.description || '');
+                $('#inputMode').val(d.executionMode || 'SEQUENTIAL');
+                $('#inputConcurrency').val(d.concurrency || 3);
+                $('#inputTimeout').val((d.timeoutMs || 300000) / 1000);
+                $('#inputStopOnFail').prop('checked', d.stopOnFirstFailure);
+                $('#inputNotify').prop('checked', d.notifyOnComplete !== false);
+                
+                if (d.executionMode !== 'PARALLEL') {
+                    $('#inputConcurrency').prop('disabled', true);
+                }
+
+                selectedCaseIds = d.caseIds || [];
+                loadCases();
+            }
+        });
+    }
+
+    // 加载所有用例
+    function loadCases() {
+        API.testCase.getActive().then(function(res) {
+            if (res.code === 200 && res.data) {
+                allCases = res.data;
+                loadGroups();
+                renderCaseLists();
+            }
+        });
+    }
+
+    // 如果不是编辑模式，也需要加载用例
+    if (!editId) {
+        loadCases();
+    }
+
+    // 加载分组下拉
+    function loadGroups() {
+        API.testSuite.getGroups().then(function(res) {
+            if (res.code === 200 && res.data) {
+                var html = '';
+                res.data.forEach(function(g) {
+                    html += '<option value="' + Utils.escapeHtml(g) + '">';
+                });
+                $('#groupList').html(html);
+            }
+        });
+    }
+
+    // 渲染用例列表
+    function renderCaseLists() {
+        var searchAvail = $('#searchAvailable').val().toLowerCase();
+        var searchSel = $('#searchSelected').val().toLowerCase();
+
+        var available = [];
+        var selected = [];
+
+        allCases.forEach(function(c) {
+            var isSelected = selectedCaseIds.includes(c.id);
+            var name = (c.name || '').toLowerCase();
+            var code = (c.code || '').toLowerCase();
+            var matchAvail = !searchAvail || name.includes(searchAvail) || code.includes(searchAvail);
+            var matchSel = !searchSel || name.includes(searchSel) || code.includes(searchSel);
+
+            if (isSelected) {
+                if (matchSel) selected.push(c);
+            } else {
+                if (matchAvail) available.push(c);
+            }
+        });
+
+        // 待选列表
+        var htmlAvail = '';
+        available.forEach(function(c) {
+            htmlAvail += '<div class="case-item" data-id="' + c.id + '">' +
+                '<input type="checkbox" />' +
+                '<div class="case-item-info">' +
+                    '<div class="case-item-name">' + Utils.escapeHtml(c.name) + '</div>' +
+                    '<div class="case-item-code">' + Utils.escapeHtml(c.code) + '</div>' +
+                '</div>' +
+            '</div>';
+        });
+        $('#availableList').html(htmlAvail || '<div style="padding:20px;text-align:center;color:var(--text-tertiary)">无可用用例</div>');
+        $('#availableCount').text(available.length + ' 个');
+
+        // 已选列表
+        var htmlSel = '';
+        selected.forEach(function(c) {
+            htmlSel += '<div class="case-item selected" data-id="' + c.id + '">' +
+                '<input type="checkbox" checked />' +
+                '<div class="case-item-info">' +
+                    '<div class="case-item-name">' + Utils.escapeHtml(c.name) + '</div>' +
+                    '<div class="case-item-code">' + Utils.escapeHtml(c.code) + '</div>' +
+                '</div>' +
+            '</div>';
+        });
+        $('#selectedList').html(htmlSel || '<div style="padding:20px;text-align:center;color:var(--text-tertiary)">请从左侧选择用例</div>');
+        $('#selectedCount').text(selected.length + ' 个');
+    }
+
+    // 搜索过滤
+    $('#searchAvailable, #searchSelected').on('input', renderCaseLists);
+
+    // 添加选中
+    $('#btnAddCase').click(function() {
+        $('#availableList .case-item input:checked').each(function() {
+            var id = $(this).closest('.case-item').data('id');
+            if (!selectedCaseIds.includes(id)) {
+                selectedCaseIds.push(id);
+            }
+        });
+        renderCaseLists();
+    });
+
+    // 移除选中
+    $('#btnRemoveCase').click(function() {
+        $('#selectedList .case-item input:checked').each(function() {
+            var id = $(this).closest('.case-item').data('id');
+            selectedCaseIds = selectedCaseIds.filter(function(x) { return x !== id; });
+        });
+        renderCaseLists();
+    });
+
+    // 全部添加
+    $('#btnAddAll').click(function() {
+        allCases.forEach(function(c) {
+            if (!selectedCaseIds.includes(c.id)) {
+                selectedCaseIds.push(c.id);
+            }
+        });
+        renderCaseLists();
+    });
+
+    // 全部移除
+    $('#btnRemoveAll').click(function() {
+        selectedCaseIds = [];
+        renderCaseLists();
+    });
+
+    // 点击行选中/取消
+    $(document).on('click', '.case-item', function(e) {
+        if ($(e.target).is('input')) return;
+        var cb = $(this).find('input');
+        cb.prop('checked', !cb.prop('checked'));
+    });
+
+    // 收集表单数据
+    function collectData() {
+        return {
+            code: $('#inputCode').val().trim(),
+            name: $('#inputName').val().trim(),
+            groupName: $('#inputGroup').val().trim() || null,
+            description: $('#inputDesc').val().trim() || null,
+            executionMode: $('#inputMode').val(),
+            concurrency: parseInt($('#inputConcurrency').val()) || 3,
+            timeoutMs: (parseInt($('#inputTimeout').val()) || 300) * 1000,
+            stopOnFirstFailure: $('#inputStopOnFail').is(':checked'),
+            notifyOnComplete: $('#inputNotify').is(':checked')
+        };
+    }
+
+    // 验证
+    function validate() {
+        var data = collectData();
+        if (!data.code) {
+            Utils.toast('请输入套件编码', 'error');
+            return null;
+        }
+        if (!data.name) {
+            Utils.toast('请输入套件名称', 'error');
+            return null;
+        }
+        return data;
+    }
+
+    // 保存
+    $('#btnSave').click(function() {
+        var data = validate();
+        if (!data) return;
+
+        var promise = editId
+            ? API.testSuite.update(editId, data)
+            : API.testSuite.create(data);
+
+        promise.then(function(res) {
+            if (res.code === 200) {
+                var suiteId = editId || res.data.id;
+                // 保存用例关联
+                return API.testSuite.saveCases(suiteId, selectedCaseIds);
+            } else {
+                throw new Error(res.message);
+            }
+        }).then(function(res) {
+            if (res.code === 200) {
+                Utils.toast('保存成功', 'success');
+                setTimeout(function() {
+                    parent.loadPage('test-suite-list');
+                }, 1000);
+            } else {
+                Utils.toast('保存关联失败: ' + res.message, 'error');
+            }
+        }).catch(function(err) {
+            Utils.toast('保存失败: ' + (err.message || '网络异常'), 'error');
+        });
+    });
+
+    // 保存并执行
+    $('#btnSaveAndRun').click(function() {
+        var data = validate();
+        if (!data) return;
+
+        var suiteId = editId;
+
+        var promise = editId
+            ? API.testSuite.update(editId, data)
+            : API.testSuite.create(data);
+
+        promise.then(function(res) {
+            if (res.code === 200) {
+                if (!suiteId) suiteId = res.data.id;
+                return API.testSuite.saveCases(suiteId, selectedCaseIds);
+            } else {
+                throw new Error(res.message);
+            }
+        }).then(function(res) {
+            if (res.code === 200) {
+                Utils.toast('保存成功，正在执行...', 'success');
+                return API.test.executeSuite(suiteId);
+            } else {
+                throw new Error('保存关联失败');
+            }
+        }).then(function(res) {
+            if (res.code === 200) {
+                Utils.toast('执行已触发', 'success');
+                setTimeout(function() {
+                    parent.loadPage('test-execution-list');
+                }, 1500);
+            } else {
+                Utils.toast('执行失败: ' + res.message, 'error');
+            }
+        }).catch(function(err) {
+            Utils.toast('操作失败: ' + (err.message || '网络异常'), 'error');
+        });
+    });
+});
+</script>
+</body>
+</html>

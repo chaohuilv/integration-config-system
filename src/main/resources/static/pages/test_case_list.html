@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用例列表</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🧪 测试用例</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" data-permission="test:case:create" onclick="createCase()">+ 新建用例</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="search-input" id="searchKeyword" placeholder="搜索编码/名称..." onkeydown="if(event.key==='Enter')loadData(1)">
+            <select id="searchGroup">
+                <option value="">全部分组</option>
+            </select>
+            <select id="searchStatus">
+                <option value="">全部状态</option>
+                <option value="ACTIVE">启用</option>
+                <option value="INACTIVE">禁用</option>
+            </select>
+            <select id="searchPriority">
+                <option value="">全部优先级</option>
+                <option value="1">P1 - 最高</option>
+                <option value="2">P2 - 高</option>
+                <option value="3">P3 - 中</option>
+                <option value="4">P4 - 低</option>
+                <option value="5">P5 - 最低</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadData(1)">🔍 搜索</button>
+            <button class="btn btn-default" onclick="resetSearch()">重置</button>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:60px">优先级</th>
+                        <th>编码</th>
+                        <th>名称</th>
+                        <th>分组</th>
+                        <th>标签</th>
+                        <th style="width:80px">状态</th>
+                        <th style="width:140px">更新时间</th>
+                        <th style="width:280px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody">
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty">
+                                <div class="empty-icon">📭</div>
+                                <p>加载中...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+
+    <script>
+    $(function() {
+        // 初始化权限
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            // 加载分组选项
+            loadGroups();
+            // 加载数据
+            loadData(1);
+        });
+
+    });
+
+    var pager = null;
+
+    // 加载分组下拉
+    function loadGroups() {
+        API.testCase.getGroups().then(function(res) {
+            if (res.code === 200 && res.data) {
+                var html = '<option value="">全部分组</option>';
+                res.data.forEach(function(g) {
+                    html += '<option value="' + escapeAttr(g) + '">' + escapeHtml(g) + '</option>';
+                });
+                $('#searchGroup').html(html);
+            }
+        });
+    }
+
+    // 加载列表数据
+    function loadData(page) {
+        var params = {
+            page: page,
+            size: 20
+        };
+
+        var keyword = $.trim($('#searchKeyword').val());
+        if (keyword) params.keyword = keyword;
+
+        var groupName = $('#searchGroup').val();
+        if (groupName) params.groupName = groupName;
+
+        var status = $('#searchStatus').val();
+        if (status) params.status = status;
+
+        var priority = $('#searchPriority').val();
+        if (priority) params.priority = priority;
+
+        API.testCase.list(params).then(function(res) {
+            if (res.code !== 200) {
+                Utils.toast(res.message || '加载失败', 'error');
+                return;
+            }
+            renderTable(res.data);
+
+            // 分页
+            if (!pager) {
+                pager = new Pagination('#pagination', {
+                    pageSize: 20,
+                    onPageChange: function(p) {
+                        loadData(p);
+                    }
+                });
+            }
+            pager.render(res.data);
+        }).catch(function(err) {
+            Utils.toast('加载失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 渲染表格
+    function renderTable(pageData) {
+        var list = pageData.content || pageData.records || [];
+
+        if (!list || list.length === 0) {
+            $('#dataBody').html(
+                '<tr><td colspan="8">' +
+                '<div class="empty"><div class="empty-icon">📭</div><p>暂无测试用例</p></div>' +
+                '</td></tr>'
+            );
+            return;
+        }
+
+        var html = '';
+        list.forEach(function(item) {
+            var priorityBadge = getPriorityBadge(item.priority);
+            var statusBadge = item.status === 'ACTIVE'
+                ? '<span class="badge badge-active">启用</span>'
+                : '<span class="badge badge-inactive">禁用</span>';
+            var tags = renderTags(item.tags);
+
+            html += '<tr>' +
+                '<td style="text-align:center">' + priorityBadge + '</td>' +
+                '<td><code>' + escapeHtml(item.code) + '</code></td>' +
+                '<td>' + escapeHtml(item.name) + '</td>' +
+                '<td>' + escapeHtml(item.groupName || '-') + '</td>' +
+                '<td>' + tags + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td style="color:var(--text-tertiary);font-size:13px">' + Utils.formatDate(item.updatedAt) + '</td>' +
+                '<td><div class="actions">' +
+                    '<button class="btn btn-sm btn-ghost" data-permission="test:case:view" onclick="editCase(\'' + item.id + '\'\)">✏️ 编辑</button>' +
+                    '<button class="btn btn-sm btn-success" data-permission="test:case:view" onclick="runCase(\'' + escapeAttr(item.code) + '\'\)">▶ 执行</button>' +
+                    '<button class="btn btn-sm btn-default" data-permission="test:case:update" onclick="toggleCase(\'' + item.id + '\'\)">' + (item.status === 'ACTIVE' ? '禁用' : '启用') + '</button>' +
+                    '<button class="btn btn-sm btn-danger" data-permission="test:case:delete" onclick="deleteCase(\'' + item.id + '\',\'' + escapeAttr(item.name) + '\'\)">🗑</button>' +
+                '</div></td>' +
+                '</tr>';
+        });
+
+        $('#dataBody').html(html);
+
+        // 重新应用权限（新渲染的按钮）
+        Permission.apply();
+    }
+
+    // 优先级徽章
+    function getPriorityBadge(p) {
+        if (!p) p = 3;
+        var colors = {
+            1: '#dc2626', 2: '#ea580c', 3: '#667eea',
+            4: '#16a34a', 5: '#999'
+        };
+        var color = colors[p] || '#999';
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:' + color + ';background:' + color + '15">P' + p + '</span>';
+    }
+
+    // 标签渲染
+    function renderTags(tagsStr) {
+        if (!tagsStr) return '-';
+        var tags = tagsStr.split(',').filter(function(t) { return t.trim(); });
+        if (tags.length === 0) return '-';
+        return tags.map(function(t) {
+            return '<span class="badge" style="background:#f0f0f8;color:#667eea;margin:2px">' + escapeHtml(t.trim()) + '</span>';
+        }).join('');
+    }
+
+    // 新建用例
+    function createCase() {
+        parent.loadPage('test-case-edit');
+    }
+
+    // 编辑用例
+    function editCase(id) {
+        parent.loadPage('test-case-edit', { id: String(id) });
+    }
+
+    // 执行用例
+    function runCase(code) {
+        Utils.toast('正在提交执行...', 'info');
+        API.test.executeCase({ caseCode: code }).then(function(res) {
+            if (res.code === 200) {
+                Utils.toast('已提交执行', 'success');
+                // 跳转到执行详情
+                if (res.data && res.data.id) {
+                    parent.loadPage('test-execution-detail', { id: res.data.id });
+                }
+            } else {
+                Utils.toast(res.message || '执行失败', 'error');
+            }
+        }).catch(function(err) {
+            Utils.toast('执行失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 切换状态
+    function toggleCase(id) {
+        API.testCase.toggle(String(id)).then(function(res) {
+            if (res.code === 200) {
+                Utils.toast('状态已切换', 'success');
+                loadData(pager ? pager.getCurrentPage() : 1);
+            } else {
+                Utils.toast(res.message || '操作失败', 'error');
+            }
+        }).catch(function(err) {
+            Utils.toast('操作失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 删除用例
+    function deleteCase(id, name) {
+        Utils.showConfirm('确认删除', '确定要删除用例「' + name + '」吗？此操作不可恢复。', '⚠️', true).then(function(ok) {
+            if (!ok) return;
+            API.testCase.delete(String(id)).then(function(res) {
+                if (res.code === 200) {
+                    Utils.toast('删除成功', 'success');
+                    loadData(pager ? pager.getCurrentPage() : 1);
+                } else {
+                    Utils.toast(res.message || '删除失败', 'error');
+                }
+            }).catch(function(err) {
+                Utils.toast('删除失败: ' + (err.message || err), 'error');
+            });
+        });
+    }
+
+    // 重置搜索
+    function resetSearch() {
+        $('#searchKeyword').val('');
+        $('#searchGroup').val('');
+        $('#searchStatus').val('');
+        $('#searchPriority').val('');
+        loadData(1);
+    }
+
+    // HTML 转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
+        });
+    }
+
+    // 属性值转义
+    function escapeAttr(text) {
+        if (!text) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
+        }).replace(/'/g, "\\'");
+    }
+    </script>
+</body>
+</html>

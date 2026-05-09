@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试套件管理</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .search-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .search-bar select, .search-bar input { min-width: 140px; }
+        .search-bar .col-flex { flex: 1; min-width: 200px; }
+
+        .table-wrap { overflow-x: auto; }
+        .table { min-width: 1200px; }
+
+        /* 列宽 */
+        .table .col-code { width: 140px; }
+        .table .col-name { min-width: 160px; }
+        .table .col-group { width: 100px; }
+        .table .col-case-count { width: 80px; text-align: center; }
+        .table .col-mode { width: 80px; }
+        .table .col-concurrency { width: 60px; text-align: center; }
+        .table .col-stop { width: 70px; text-align: center; }
+        .table .col-status { width: 70px; }
+        .table .col-time { width: 150px; }
+        .table .col-op { width: 180px; }
+
+        /* 执行模式标签 */
+        .mode-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .mode-SEQUENTIAL { background: #dbeafe; color: #1d4ed8; }
+        .mode-PARALLEL { background: #ede9fe; color: #7c3aed; }
+
+        /* 用例数徽章 */
+        .case-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .case-count-num { font-weight: 600; color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>测试套件管理</h2>
+            <p class="view-sub">管理测试套件，支持顺序/并行执行模式</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-primary" id="btnCreate" data-permission="test:suite:create">+ 新建套件</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <select id="sGroup"><option value="">全部分组</option></select>
+            <select id="sStatus">
+                <option value="">全部状态</option>
+                <option value="ACTIVE">启用</option>
+                <option value="INACTIVE">禁用</option>
+            </select>
+            <input type="text" class="search-input col-flex" id="sKeyword" placeholder="编码 / 名称...">
+            <button class="btn btn-ghost" id="btnSearch">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                搜索
+            </button>
+            <button class="btn btn-ghost" id="btnReset" style="color:#999;">重置</button>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="col-code">套件编码</th>
+                        <th class="col-name">套件名称</th>
+                        <th class="col-group">分组</th>
+                        <th class="col-case-count">用例数</th>
+                        <th class="col-mode">执行模式</th>
+                        <th class="col-concurrency">并发</th>
+                        <th class="col-stop">失败停止</th>
+                        <th class="col-status">状态</th>
+                        <th class="col-time">创建时间</th>
+                        <th class="col-op">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/pagination.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    $(function() {
+        let currentPage = 1;
+        const size = 15;
+        let pager;
+
+        // 初始化分页组件
+        pager = new Pagination('#pagination', {
+            pageSize: size,
+            onPageChange: function(page) {
+                refreshList(page);
+            }
+        });
+
+        // 初始化权限组件并检查页面访问权限
+        Permission.init({ guard: true });
+
+        // ===== 加载分组列表 =====
+        function loadGroups() {
+            API.testSuite.getGroups().then(json => {
+                if (json.code === 200 && json.data) {
+                    json.data.forEach(g => {
+                        $('#sGroup').append(`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ===== 刷新列表 =====
+        function refreshList(page) {
+            currentPage = page || 1;
+            const params = {
+                page: currentPage,
+                size: size,
+                groupName: $('#sGroup').val() || undefined,
+                status: $('#sStatus').val() || undefined,
+                keyword: $('#sKeyword').val() || undefined
+            };
+            Object.keys(params).forEach(k => params[k] === undefined && delete params[k]);
+
+            API.testSuite.list(params).then(json => {
+                if (json.code !== 200) { utils.toast(json.message || '查询失败', 'error'); return; }
+                
+                const pageData = json.data;
+                if (!pageData) {
+                    $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                    return;
+                }
+                
+                const list = pageData.content || pageData.records || [];
+                renderTable(list);
+                pager.render(pageData, currentPage);
+            }).catch((err) => {
+                utils.toast('加载失败: ' + (err.message || '未知错误'), 'error');
+            });
+        }
+
+        // ===== 渲染表格 =====
+        function renderTable(list) {
+            if (!list || list.length === 0) {
+                $('#tableBody').html('<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>暂无数据</td></tr>');
+                return;
+            }
+            
+            const html = list.map(item => {
+                const statusBadge = item.status === 'ACTIVE'
+                    ? '<span class="badge badge-active">启用</span>'
+                    : '<span class="badge badge-inactive">禁用</span>';
+                const modeTag = item.executionMode === 'PARALLEL'
+                    ? '<span class="mode-tag mode-PARALLEL">并行</span>'
+                    : '<span class="mode-tag mode-SEQUENTIAL">顺序</span>';
+                const stopTag = item.stopOnFirstFailure
+                    ? '<span style="color:#dc2626;font-size:14px">✓</span>'
+                    : '<span style="color:#9ca3af;font-size:14px">✗</span>';
+                const concurrency = item.executionMode === 'PARALLEL' ? (item.concurrency || 3) : '-';
+                const caseCount = item.caseCount || 0;
+                const time = item.createdAt ? item.createdAt.replace('T', ' ').substring(0, 19) : '-';
+                
+                return `<tr data-id="${item.id}">
+                    <td class="col-code"><code style="background:#f0f0f8;padding:2px 6px;border-radius:4px;font-size:12px;color:#667eea">${escapeHtml(item.code || '')}</code></td>
+                    <td class="col-name"><a href="#" class="link-primary" onclick="editSuite('${item.id}');return false;">${escapeHtml(item.name || '')}</a></td>
+                    <td class="col-group">${escapeHtml(item.groupName || '-')}</td>
+                    <td class="col-case-count"><span class="case-count"><span class="case-count-num">${caseCount}</span> 个</span></td>
+                    <td class="col-mode">${modeTag}</td>
+                    <td class="col-concurrency">${concurrency}</td>
+                    <td class="col-stop">${stopTag}</td>
+                    <td class="col-status">${statusBadge}</td>
+                    <td class="col-time">${time}</td>
+                    <td class="col-op">
+                        <div class="actions">
+                            <button class="btn btn-sm btn-default" onclick="editSuite('${item.id}')">编辑</button>
+                            ${Permission.render('test:suite:run', `<button class="btn btn-sm btn-default" onclick="runSuite('${item.id}')">执行</button>`)}
+                            ${Permission.render('test:suite:update', `<button class="btn btn-sm btn-default" onclick="toggleStatus('${item.id}')">切换</button>`)}
+                            ${Permission.render('test:suite:delete', `<button class="btn btn-sm btn-danger" onclick="deleteSuite('${item.id}')">删除</button>`)}
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+            $('#tableBody').html(html);
+            Permission.apply();
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ===== 搜索 & 重置 =====
+        $('#btnSearch').on('click', () => refreshList(1));
+        $('#btnReset').on('click', function() {
+            $('#sGroup').val('');
+            $('#sStatus').val('');
+            $('#sKeyword').val('');
+            refreshList(1);
+        });
+        $('#sKeyword').on('keyup', e => { if (e.key === 'Enter') refreshList(1); });
+
+        // ===== 新建 =====
+        $('#btnCreate').on('click', () => parent.loadPage('test-suite-edit'));
+
+        // ===== 编辑 =====
+        window.editSuite = function(id) {
+            parent.loadPage('test-suite-edit', { id: id });
+        };
+
+        // ===== 执行套件 =====
+        window.runSuite = function(id) {
+            utils.showConfirm('执行套件', '确定要执行该测试套件吗？', '⚠️', false).then(ok => {
+                if (!ok) return;
+                API.test.executeSuite(id).then(res => {
+                    if (res.code === 200) {
+                        utils.toast('套件执行已触发', 'success');
+                        setTimeout(() => parent.loadPage('test-execution-list'), 1500);
+                    } else {
+                        utils.toast('执行失败: ' + res.message, 'error');
+                    }
+                });
+            });
+        };
+
+        // ===== 切换状态 =====
+        window.toggleStatus = function(id) {
+            API.testSuite.toggle(id).then(res => {
+                if (res.code === 200) {
+                    utils.toast('状态已切换', 'success');
+                    refreshList(currentPage);
+                } else {
+                    utils.toast('切换失败: ' + res.message, 'error');
+                }
+            });
+        };
+
+        // ===== 删除 =====
+        window.deleteSuite = function(id) {
+            utils.showConfirm('删除确认', '确定要删除该测试套件吗？此操作不可恢复。', '⚠️', true).then(ok => {
+                if (!ok) return;
+                API.testSuite.delete(id).then(res => {
+                    if (res.code === 200) {
+                        utils.toast('删除成功', 'success');
+                        refreshList(currentPage);
+                    } else {
+                        utils.toast('删除失败: ' + res.message, 'error');
+                    }
+                });
+            });
+        };
+
+        // 初始化
+        if (parent.setNav) parent.setNav('test');
+        loadGroups();
+        refreshList(1);
+    });
+    </script>
+</body>
+</html>

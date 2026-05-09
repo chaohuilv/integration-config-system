@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑测试用例</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .step-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .step-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .step-header:hover {
+            background: var(--bg-hover);
+        }
+        .step-order {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .step-body {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: none;
+        }
+        .step-body.expanded {
+            display: block;
+        }
+        .step-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 6px;
+        }
+        .assertion-row {
+            display: grid;
+            grid-template-columns: 1fr 140px 1fr 1fr 40px;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .assertion-row input,
+        .assertion-row select {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--bg-primary);
+        }
+        .assertion-row input:focus,
+        .assertion-row select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .toggle-icon {
+            transition: transform 0.2s;
+        }
+        .toggle-icon.expanded {
+            transform: rotate(180deg);
+        }
+        .step-type-badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        .step-type-API { background: #e6f7ff; color: #1890ff; }
+        .step-type-SCENARIO { background: #f6ffed; color: #52c41a; }
+        .step-type-MOCK { background: #fff7e6; color: #fa8c16; }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2 id="pageTitle">🧪 新建测试用例</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" onclick="goBack()">← 返回</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <form id="caseForm" class="api-form">
+            <input type="hidden" id="caseId">
+
+            <!-- 基本信息 -->
+            <div class="form-section">
+                <h3>基本信息</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>用例编码 <span style="color:#ff4d4f">*</span></label>
+                        <input type="text" id="code" placeholder="唯一标识，如 test_login" required>
+                    </div>
+                    <div class="form-group">
+                        <label>用例名称 <span style="color:#ff4d4f">*</span></label>
+                        <input type="text" id="name" placeholder="用例描述性名称" required>
+                    </div>
+                    <div class="form-group">
+                        <label>分组</label>
+                        <input type="text" id="groupName" placeholder="如：登录模块、用户管理" list="groupList">
+                        <datalist id="groupList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>优先级</label>
+                        <select id="priority">
+                            <option value="1">P1 - 最高</option>
+                            <option value="2">P2 - 高</option>
+                            <option value="3" selected>P3 - 中</option>
+                            <option value="4">P4 - 低</option>
+                            <option value="5">P5 - 最低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>标签</label>
+                        <input type="text" id="tags" placeholder="逗号分隔，如 smoke,regression">
+                    </div>
+                    <div class="form-group">
+                        <label>超时时间（毫秒）</label>
+                        <input type="number" id="timeoutMs" value="60000" min="1000" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>失败策略</label>
+                        <select id="failureStrategy">
+                            <option value="STOP">立即终止</option>
+                            <option value="CONTINUE">继续执行</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>失败通知</label>
+                        <select id="notifyOnFailure">
+                            <option value="false">关闭</option>
+                            <option value="true">开启</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1">
+                        <label>描述</label>
+                        <textarea id="description" rows="3" placeholder="用例详细描述（可选）"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤编辑 -->
+            <div class="form-section">
+                <h3>
+                    测试步骤
+                    <small style="float:right">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="addStep()">+ 添加步骤</button>
+                    </small>
+                </h3>
+                <div id="stepsContainer">
+                    <div class="empty" style="padding: 30px;">
+                        <div class="empty-icon">📋</div>
+                        <p>暂无步骤，点击上方"添加步骤"开始</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 保存按钮 -->
+            <div class="form-footer">
+                <button type="button" class="btn btn-default" onclick="goBack()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveCase()">💾 保存用例</button>
+                <button type="button" class="btn btn-success" id="btnSaveAndRun" onclick="saveAndRun()" style="display:none">💾 保存并执行</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
+
+    <script>
+    var stepIndex = 0;
+    var caseId = null;
+    var existingSteps = [];
+
+    $(function() {
+        Permission.init();
+
+        // 从 URL 获取用例 ID
+        var urlParams = new URLSearchParams(window.location.search);
+        caseId = urlParams.get('id');
+
+        if (caseId) {
+            $('#pageTitle').text('🧪 编辑测试用例');
+            $('#btnSaveAndRun').show();
+            loadCaseDetail(caseId);
+        }
+
+        // 加载分组建议
+        loadGroups();
+    });
+
+    // 加载分组建议
+    function loadGroups() {
+        API.testCase.getGroups().then(function(res) {
+            if (res.code === 200 && res.data) {
+                var html = '';
+                res.data.forEach(function(g) {
+                    html += '<option value="' + escapeAttr(g) + '">';
+                });
+                $('#groupList').html(html);
+            }
+        });
+    }
+
+    // 加载用例详情
+    function loadCaseDetail(id) {
+        API.testCase.getDetail(id).then(function(res) {
+            if (res.code !== 200) {
+                Utils.toast(res.message || '加载失败', 'error');
+                return;
+            }
+            var data = res.data;
+            $('#caseId').val(data.id);
+            $('#code').val(data.code || '');
+            $('#name').val(data.name || '');
+            $('#groupName').val(data.groupName || '');
+            $('#priority').val(data.priority || 3);
+            $('#tags').val(data.tags || '');
+            $('#timeoutMs').val(data.timeoutMs || 60000);
+            $('#failureStrategy').val(data.failureStrategy || 'STOP');
+            $('#notifyOnFailure').val(String(data.notifyOnFailure || false));
+            $('#description').val(data.description || '');
+
+            // 加载步骤
+            loadSteps(id);
+        }).catch(function(err) {
+            Utils.toast('加载失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 加载步骤
+    function loadSteps(id) {
+        API.testCase.getSteps(id).then(function(res) {
+            if (res.code === 200 && res.data) {
+                existingSteps = res.data;
+                renderSteps(existingSteps);
+            }
+        });
+    }
+
+    // 渲染步骤列表
+    function renderSteps(steps) {
+        if (!steps || steps.length === 0) {
+            $('#stepsContainer').html(
+                '<div class="empty" style="padding: 30px;">' +
+                '<div class="empty-icon">📋</div>' +
+                '<p>暂无步骤，点击上方"添加步骤"开始</p>' +
+                '</div>'
+            );
+            stepIndex = 0;
+            return;
+        }
+
+        var html = '';
+        stepIndex = 0;
+        steps.forEach(function(step) {
+            html += buildStepHtml(step);
+            stepIndex++;
+        });
+        $('#stepsContainer').html(html);
+    }
+
+    // 构建单个步骤 HTML
+    function buildStepHtml(step) {
+        var idx = stepIndex;
+        var assertions = [];
+        try {
+            if (step.assertions) {
+                assertions = typeof step.assertions === 'string' ? JSON.parse(step.assertions) : step.assertions;
+            }
+        } catch(e) {}
+
+        var assertionHtml = '';
+        if (assertions.length > 0) {
+            assertions.forEach(function(a, ai) {
+                assertionHtml += buildAssertionRowHtml(idx, ai, a);
+            });
+        }
+
+        return '<div class="step-item" data-index="' + idx + '">' +
+            '<div class="step-header" onclick="toggleStepBody(' + idx + ')">' +
+                '<span class="step-order">' + (idx + 1) + '</span>' +
+                '<input type="text" class="step-code-input" data-field="stepCode" value="' + escapeAttr(step.stepCode || '') + '" placeholder="步骤编码" onclick="event.stopPropagation()" style="border:1px solid var(--border-color);border-radius:4px;padding:4px 8px;width:140px;font-size:13px">' +
+                '<input type="text" class="step-name-input" data-field="stepName" value="' + escapeAttr(step.stepName || '') + '" placeholder="步骤名称" onclick="event.stopPropagation()" style="border:1px solid var(--border-color);border-radius:4px;padding:4px 8px;flex:1;font-size:13px">' +
+                '<span class="step-type-badge step-type-' + (step.stepType || 'API') + '">' + (step.stepType || 'API') + '</span>' +
+                '<div class="step-actions">' +
+                    '<button type="button" class="btn btn-sm btn-default" onclick="event.stopPropagation();moveStep(' + idx + ',-1)" title="上移">↑</button>' +
+                    '<button type="button" class="btn btn-sm btn-default" onclick="event.stopPropagation();moveStep(' + idx + ',1)" title="下移">↓</button>' +
+                    '<button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation();removeStep(' + idx + ')" title="删除">✕</button>' +
+                '</div>' +
+                '<span class="toggle-icon" id="toggle-icon-' + idx + '">▼</span>' +
+            '</div>' +
+            '<div class="step-body" id="step-body-' + idx + '">' +
+                '<div class="form-grid" style="margin-bottom:16px">' +
+                    '<div class="form-group">' +
+                        '<label>步骤类型</label>' +
+                        '<select data-field="stepType" class="step-field">' +
+                            '<option value="API"' + (step.stepType === 'API' ? ' selected' : '') + '>API 接口</option>' +
+                            '<option value="SCENARIO"' + (step.stepType === 'SCENARIO' ? ' selected' : '') + '>场景编排</option>' +
+                            '<option value="MOCK"' + (step.stepType === 'MOCK' ? ' selected' : '') + '>Mock 服务</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label>目标编码</label>' +
+                        '<input type="text" data-field="targetCode" class="step-field" value="' + escapeAttr(step.targetCode || '') + '" placeholder="API/Scenario/Mock 编码">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label>超时（毫秒）</label>' +
+                        '<input type="number" data-field="timeoutMs" class="step-field" value="' + (step.timeoutMs || '') + '" placeholder="留空继承用例超时" min="1000" step="1000">' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label>失败时跳过</label>' +
+                        '<select data-field="skipOnError" class="step-field">' +
+                            '<option value="0"' + (step.skipOnError !== 1 ? ' selected' : '') + '>否</option>' +
+                            '<option value="1"' + (step.skipOnError === 1 ? ' selected' : '') + '>是</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="form-group" style="grid-column: 1 / -1">' +
+                        '<label>请求覆盖参数（JSON）</label>' +
+                        '<textarea data-field="requestOverride" class="step-field json-textarea" rows="3" placeholder=\'{"headers":{"X-Test":"true"}}\'>' + escapeHtml(step.requestOverride || '') + '</textarea>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
+                    '<strong style="font-size: 14px;">断言规则</strong>' +
+                    '<button type="button" class="btn btn-sm btn-primary" onclick="addAssertion(' + idx + ')">+ 添加断言</button>' +
+                '</div>' +
+                '<div class="assertion-list" id="assertion-list-' + idx + '">' +
+                    assertionHtml +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    // 构建断言行 HTML
+    function buildAssertionRowHtml(stepIdx, assertionIdx, assertion) {
+        var operators = [
+            {v:'EQUALS', l:'等于'}, {v:'NOT_EQUALS', l:'不等于'},
+            {v:'CONTAINS', l:'包含'}, {v:'NOT_CONTAINS', l:'不包含'},
+            {v:'GREATER_THAN', l:'大于'}, {v:'LESS_THAN', l:'小于'}
+        ];
+        var opHtml = operators.map(function(op) {
+            return '<option value="' + op.v + '"' + (assertion && assertion.operator === op.v ? ' selected' : '') + '>' + op.l + '</option>';
+        }).join('');
+
+        return '<div class="assertion-row">' +
+            '<input type="text" placeholder="字段 (JSON Path)" value="' + escapeAttr(assertion ? (assertion.field || '') : '') + '" data-af="field">' +
+            '<select data-af="operator">' + opHtml + '</select>' +
+            '<input type="text" placeholder="期望值" value="' + escapeAttr(assertion ? (assertion.expected || '') : '') + '" data-af="expected">' +
+            '<input type="text" placeholder="消息（可选）" value="' + escapeAttr(assertion ? (assertion.message || '') : '') + '" data-af="message">' +
+            '<button type="button" class="btn btn-sm btn-danger" onclick="removeAssertion(this)" title="删除">✕</button>' +
+        '</div>';
+    }
+
+    // 添加步骤
+    function addStep() {
+        var newStep = {
+            stepCode: 'step_' + (stepIndex + 1),
+            stepName: '',
+            stepType: 'API',
+            targetCode: '',
+            requestOverride: '',
+            assertions: [],
+            skipOnError: 0,
+            enabled: true
+        };
+
+        // 如果当前为空状态，先清空
+        if ($('#stepsContainer .empty').length > 0) {
+            $('#stepsContainer').html('');
+        }
+
+        var html = buildStepHtml(newStep);
+        $('#stepsContainer').append(html);
+        stepIndex++;
+    }
+
+    // 删除步骤
+    function removeStep(idx) {
+        $('#stepsContainer .step-item[data-index="' + idx + '"]').remove();
+        reindexSteps();
+    }
+
+    // 移动步骤
+    function moveStep(idx, direction) {
+        var items = $('#stepsContainer .step-item');
+        var current = items.filter('[data-index="' + idx + '"]');
+        if (!current.length) return;
+
+        var targetIdx;
+        if (direction === -1) {
+            var prev = current.prev('.step-item');
+            if (!prev.length) return;
+            current.insertBefore(prev);
+        } else {
+            var next = current.next('.step-item');
+            if (!next.length) return;
+            current.insertAfter(next);
+        }
+        reindexSteps();
+    }
+
+    // 重新索引步骤
+    function reindexSteps() {
+        stepIndex = 0;
+        $('#stepsContainer .step-item').each(function() {
+            $(this).attr('data-index', stepIndex);
+            $(this).find('.step-order').text(stepIndex + 1);
+            stepIndex++;
+        });
+    }
+
+    // 切换步骤展开
+    function toggleStepBody(idx) {
+        var $body = $('#step-body-' + idx);
+        var $icon = $('#toggle-icon-' + idx);
+        $body.toggleClass('expanded');
+        $icon.toggleClass('expanded');
+    }
+
+    // 添加断言
+    function addAssertion(stepIdx) {
+        var html = buildAssertionRowHtml(stepIdx, 0, null);
+        $('#assertion-list-' + stepIdx).append(html);
+        // 自动展开
+        $('#step-body-' + stepIdx).addClass('expanded');
+        $('#toggle-icon-' + stepIdx).addClass('expanded');
+    }
+
+    // 删除断言
+    function removeAssertion(btn) {
+        $(btn).closest('.assertion-row').remove();
+    }
+
+    // 收集表单数据
+    function collectFormData() {
+        var code = $.trim($('#code').val());
+        var name = $.trim($('#name').val());
+
+        if (!code) { Utils.toast('请输入用例编码', 'warning'); return null; }
+        if (!name) { Utils.toast('请输入用例名称', 'warning'); return null; }
+
+        var data = {
+            code: code,
+            name: name,
+            groupName: $.trim($('#groupName').val()) || null,
+            priority: parseInt($('#priority').val()) || 3,
+            tags: $.trim($('#tags').val()) || null,
+            timeoutMs: parseInt($('#timeoutMs').val()) || 60000,
+            failureStrategy: $('#failureStrategy').val(),
+            notifyOnFailure: $('#notifyOnFailure').val() === 'true',
+            description: $.trim($('#description').val()) || null
+        };
+
+        return data;
+    }
+
+    // 收集步骤数据
+    function collectSteps() {
+        var steps = [];
+        var order = 1;
+
+        $('#stepsContainer .step-item').each(function() {
+            var $item = $(this);
+            var stepCode = $item.find('.step-code-input').val() || 'step_' + order;
+            var stepName = $item.find('.step-name-input').val() || '';
+
+            var step = {
+                stepOrder: order,
+                stepCode: $.trim(stepCode),
+                stepName: $.trim(stepName),
+                stepType: $item.find('[data-field="stepType"]').val() || 'API',
+                targetCode: $.trim($item.find('[data-field="targetCode"]').val()) || null,
+                requestOverride: $.trim($item.find('[data-field="requestOverride"]').val()) || null,
+                skipOnError: parseInt($item.find('[data-field="skipOnError"]').val()) || 0,
+                timeoutMs: parseInt($item.find('[data-field="timeoutMs"]').val()) || null,
+                enabled: true,
+                assertions: []
+            };
+
+            // 收集断言
+            $item.find('.assertion-row').each(function() {
+                var $row = $(this);
+                var field = $.trim($row.find('[data-af="field"]').val());
+                if (field) {
+                    step.assertions.push({
+                        field: field,
+                        operator: $row.find('[data-af="operator"]').val() || 'EQUALS',
+                        expected: $.trim($row.find('[data-af="expected"]').val()) || '',
+                        message: $.trim($row.find('[data-af="message"]').val()) || null
+                    });
+                }
+            });
+
+            step.assertions = step.assertions.length > 0 ? JSON.stringify(step.assertions) : null;
+            steps.push(step);
+            order++;
+        });
+
+        return steps;
+    }
+
+    // 保存用例
+    function saveCase() {
+        var data = collectFormData();
+        if (!data) return;
+
+        var steps = collectSteps();
+
+        var promise;
+        if (caseId) {
+            promise = API.testCase.update(caseId, data);
+        } else {
+            promise = API.testCase.create(data);
+        }
+
+        promise.then(function(res) {
+            if (res.code !== 200) {
+                Utils.toast(res.message || '保存失败', 'error');
+                return;
+            }
+
+            var savedId = caseId || (res.data && res.data.id);
+            caseId = savedId;
+            $('#caseId').val(savedId);
+            $('#pageTitle').text('🧪 编辑测试用例');
+            $('#btnSaveAndRun').show();
+
+            // 保存步骤
+            if (steps.length > 0 && savedId) {
+                API.testCase.saveSteps(savedId, steps).then(function(stepRes) {
+                    if (stepRes.code === 200) {
+                        Utils.toast('保存成功', 'success');
+                    } else {
+                        Utils.toast('用例已保存，但步骤保存失败: ' + (stepRes.message || ''), 'warning');
+                    }
+                });
+            } else {
+                Utils.toast('保存成功', 'success');
+            }
+        }).catch(function(err) {
+            Utils.toast('保存失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 保存并执行
+    function saveAndRun() {
+        var data = collectFormData();
+        if (!data) return;
+
+        var steps = collectSteps();
+
+        var promise = caseId ? API.testCase.update(caseId, data) : API.testCase.create(data);
+
+        promise.then(function(res) {
+            if (res.code !== 200) {
+                Utils.toast(res.message || '保存失败', 'error');
+                return;
+            }
+
+            var savedId = caseId || (res.data && res.data.id);
+            caseId = savedId;
+
+            // 保存步骤
+            var stepPromise = steps.length > 0 && savedId
+                ? API.testCase.saveSteps(savedId, steps)
+                : Promise.resolve({ code: 200 });
+
+            stepPromise.then(function() {
+                // 执行用例
+                API.test.executeCase({ caseId: savedId }).then(function(execRes) {
+                    if (execRes.code === 200) {
+                        Utils.toast('已提交执行', 'success');
+                        if (execRes.data && execRes.data.id) {
+                            parent.loadPage('test-execution-detail', { id: execRes.data.id });
+                        }
+                    } else {
+                        Utils.toast(execRes.message || '执行失败', 'error');
+                    }
+                }).catch(function(err) {
+                    Utils.toast('执行失败: ' + (err.message || err), 'error');
+                });
+            });
+        }).catch(function(err) {
+            Utils.toast('操作失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 返回
+    function goBack() {
+        parent.loadPage('test-case');
+    }
+
+    // HTML 转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
+        });
+    }
+
+    // 属性值转义
+    function escapeAttr(text) {
+        if (!text) return '';
+        return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    </script>
+</body>
+</html>

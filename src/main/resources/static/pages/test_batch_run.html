@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量执行</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        .mode-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        .mode-tab {
+            padding: 10px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .mode-tab:hover {
+            color: var(--text-primary);
+        }
+        .mode-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .select-panel {
+            display: none;
+        }
+        .select-panel.active {
+            display: block;
+        }
+        .pick-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            min-height: 300px;
+        }
+        .pick-source {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pick-source-header {
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pick-source-header h4 {
+            margin: 0;
+            font-size: 14px;
+        }
+        .pick-source-body {
+            padding: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .pick-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .pick-item:hover {
+            background: var(--bg-hover);
+        }
+        .pick-item.selected {
+            background: rgba(102,126,234,0.08);
+        }
+        .pick-item input[type="checkbox"] {
+            accent-color: #667eea;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .pick-item-name {
+            font-size: 13px;
+            flex: 1;
+        }
+        .pick-item-code {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+        .pick-target {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pick-target-header {
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .pick-target-header h4 {
+            margin: 0;
+            font-size: 14px;
+        }
+        .pick-target-body {
+            padding: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .picked-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(102,126,234,0.06);
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        .picked-item .remove-btn {
+            margin-left: auto;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            font-size: 16px;
+            line-height: 1;
+        }
+        .picked-item .remove-btn:hover {
+            color: #ff4d4f;
+        }
+        .batch-options {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+        .batch-options h4 {
+            margin: 0 0 12px;
+            font-size: 14px;
+        }
+        .run-summary {
+            margin-top: 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .run-summary .summary-info {
+            font-size: 14px;
+        }
+        .run-summary .summary-count {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px;
+        }
+        .tag-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .tag-chip:hover {
+            border-color: #667eea;
+        }
+        .tag-chip.selected {
+            background: rgba(102,126,234,0.1);
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .tag-chip input[type="checkbox"] {
+            accent-color: #667eea;
+            width: 14px;
+            height: 14px;
+        }
+        .empty-pick {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+        .search-mini {
+            flex: 1;
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            background: var(--bg-primary);
+        }
+        .search-mini:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>🚀 批量执行</h2>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-ghost" onclick="goBack()">← 返回</button>
+        </div>
+    </div>
+
+    <div class="view-body">
+        <!-- 模式切换 -->
+        <div class="mode-tabs">
+            <div class="mode-tab active" data-mode="case" onclick="switchMode('case')">📦 按用例</div>
+            <div class="mode-tab" data-mode="suite" onclick="switchMode('suite')">📁 按套件</div>
+            <div class="mode-tab" data-mode="tag" onclick="switchMode('tag')">🏷️ 按标签</div>
+        </div>
+
+        <!-- 按用例选择 -->
+        <div class="select-panel active" id="panel-case">
+            <div class="pick-list">
+                <div class="pick-source">
+                    <div class="pick-source-header">
+                        <h4>可选用例</h4>
+                        <input type="text" class="search-mini" id="caseSearch" placeholder="搜索..." oninput="filterCases()">
+                        <button class="btn btn-sm btn-default" onclick="selectAllCases()">全选</button>
+                    </div>
+                    <div class="pick-source-body" id="caseSource">
+                        <div class="empty-pick">加载中...</div>
+                    </div>
+                </div>
+                <div class="pick-target">
+                    <div class="pick-target-header">
+                        <h4>已选用例 (<span id="caseCount">0</span>)</h4>
+                        <button class="btn btn-sm btn-ghost" onclick="clearSelectedCases()">清空</button>
+                    </div>
+                    <div class="pick-target-body" id="caseTarget">
+                        <div class="empty-pick">从左侧勾选用例</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 按套件选择 -->
+        <div class="select-panel" id="panel-suite">
+            <div class="pick-list">
+                <div class="pick-source">
+                    <div class="pick-source-header">
+                        <h4>可选套件</h4>
+                        <input type="text" class="search-mini" id="suiteSearch" placeholder="搜索..." oninput="filterSuites()">
+                    </div>
+                    <div class="pick-source-body" id="suiteSource">
+                        <div class="empty-pick">加载中...</div>
+                    </div>
+                </div>
+                <div class="pick-target">
+                    <div class="pick-target-header">
+                        <h4>已选套件 (<span id="suiteCount">0</span>)</h4>
+                        <button class="btn btn-sm btn-ghost" onclick="clearSelectedSuites()">清空</button>
+                    </div>
+                    <div class="pick-target-body" id="suiteTarget">
+                        <div class="empty-pick">从左侧勾选套件</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 按标签选择 -->
+        <div class="select-panel" id="panel-tag">
+            <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 13px;">
+                选择标签，系统将自动匹配包含所选标签的用例
+            </div>
+            <div class="tag-cloud" id="tagCloud">
+                <div class="empty-pick">加载中...</div>
+            </div>
+            <div style="margin-top: 16px;">
+                <h4 style="font-size: 14px; margin: 0 0 8px;">匹配到的用例</h4>
+                <div id="tagMatchResult" style="color: var(--text-tertiary); font-size: 13px;">请先选择标签</div>
+            </div>
+        </div>
+
+        <!-- 执行选项 -->
+        <div class="batch-options">
+            <h4>执行选项</h4>
+            <div class="form-grid" style="margin-bottom: 0;">
+                <div class="form-group">
+                    <label>首个失败即停止</label>
+                    <select id="stopOnFirstFailure">
+                        <option value="false">否（继续执行）</option>
+                        <option value="true">是（立即停止）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>触发来源</label>
+                    <select id="triggerSource">
+                        <option value="MANUAL">手动触发</option>
+                        <option value="SCHEDULED">定时触发</option>
+                        <option value="API">API 调用</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 执行汇总 -->
+        <div class="run-summary">
+            <div>
+                <div class="summary-info">待执行项目</div>
+                <div class="summary-count" id="totalCount">0</div>
+            </div>
+            <button class="btn btn-default" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:10px 32px;font-size:15px;font-weight:600" onclick="startBatchRun()" data-permission="test:execute">🚀 开始执行</button>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
+
+    <script>
+    var currentMode = 'case';
+    var allCases = [];
+    var allSuites = [];
+    var allTags = [];
+    var selectedCaseIds = [];
+    var selectedSuiteIds = [];
+    var selectedTags = [];
+
+    $(function() {
+        Permission.init().then(function() {
+            Permission.apply();
+        });
+
+        loadActiveCases();
+        loadActiveSuites();
+    });
+
+    // ===== 模式切换 =====
+    function switchMode(mode) {
+        currentMode = mode;
+        $('.mode-tab').removeClass('active');
+        $('.mode-tab[data-mode="' + mode + '"]').addClass('active');
+        $('.select-panel').removeClass('active');
+        $('#panel-' + mode).addClass('active');
+        updateSummary();
+    }
+
+    // ===== 加载数据 =====
+    function loadActiveCases() {
+        API.testCase.getActive().then(function(res) {
+            if (res.code === 200 && res.data) {
+                allCases = res.data;
+                renderCaseSource();
+                extractTags();
+            }
+        }).catch(function(err) {
+            $('#caseSource').html('<div class="empty-pick">加载失败</div>');
+        });
+    }
+
+    function loadActiveSuites() {
+        API.testSuite.getActive().then(function(res) {
+            if (res.code === 200 && res.data) {
+                allSuites = res.data;
+                renderSuiteSource();
+            }
+        }).catch(function(err) {
+            $('#suiteSource').html('<div class="empty-pick">加载失败</div>');
+        });
+    }
+
+    // 从用例中提取标签
+    function extractTags() {
+        var tagSet = {};
+        allCases.forEach(function(c) {
+            if (c.tags) {
+                c.tags.split(',').forEach(function(t) {
+                    t = t.trim();
+                    if (t) tagSet[t] = (tagSet[t] || 0) + 1;
+                });
+            }
+        });
+        allTags = Object.keys(tagSet).map(function(t) {
+            return { name: t, count: tagSet[t] };
+        }).sort(function(a, b) { return b.count - a.count; });
+        renderTagCloud();
+    }
+
+    // ===== 渲染用例源列表 =====
+    function renderCaseSource(filter) {
+        var list = allCases;
+        if (filter) {
+            var kw = filter.toLowerCase();
+            list = list.filter(function(c) {
+                return (c.name && c.name.toLowerCase().indexOf(kw) >= 0) ||
+                       (c.code && c.code.toLowerCase().indexOf(kw) >= 0);
+            });
+        }
+
+        if (list.length === 0) {
+            $('#caseSource').html('<div class="empty-pick">无可选用例</div>');
+            return;
+        }
+
+        var html = '';
+        list.forEach(function(c) {
+            var checked = selectedCaseIds.indexOf(c.id) >= 0 ? 'checked' : '';
+            var selClass = checked ? ' selected' : '';
+            html += '<div class="pick-item' + selClass + '" onclick="toggleCaseItem(this,' + c.id + ')">' +
+                '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();toggleCaseItem(this.parentElement,' + c.id + ')">' +
+                '<span class="pick-item-name">' + escapeHtml(c.name) + '</span>' +
+                '<span class="pick-item-code">' + escapeHtml(c.code) + '</span>' +
+            '</div>';
+        });
+        $('#caseSource').html(html);
+    }
+
+    function filterCases() {
+        renderCaseSource($('#caseSearch').val());
+    }
+
+    // ===== 渲染套件源列表 =====
+    function renderSuiteSource(filter) {
+        var list = allSuites;
+        if (filter) {
+            var kw = filter.toLowerCase();
+            list = list.filter(function(s) {
+                return (s.name && s.name.toLowerCase().indexOf(kw) >= 0) ||
+                       (s.code && s.code.toLowerCase().indexOf(kw) >= 0);
+            });
+        }
+
+        if (list.length === 0) {
+            $('#suiteSource').html('<div class="empty-pick">无可用套件</div>');
+            return;
+        }
+
+        var html = '';
+        list.forEach(function(s) {
+            var checked = selectedSuiteIds.indexOf(s.id) >= 0 ? 'checked' : '';
+            var selClass = checked ? ' selected' : '';
+            html += '<div class="pick-item' + selClass + '" onclick="toggleSuiteItem(this,' + s.id + ')">' +
+                '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();toggleSuiteItem(this.parentElement,' + s.id + ')">' +
+                '<span class="pick-item-name">' + escapeHtml(s.name) + '</span>' +
+                '<span class="pick-item-code">' + escapeHtml(s.code) + '</span>' +
+            '</div>';
+        });
+        $('#suiteSource').html(html);
+    }
+
+    function filterSuites() {
+        renderSuiteSource($('#suiteSearch').val());
+    }
+
+    // ===== 渲染标签云 =====
+    function renderTagCloud() {
+        if (allTags.length === 0) {
+            $('#tagCloud').html('<div class="empty-pick">暂无标签数据</div>');
+            return;
+        }
+        var html = '';
+        allTags.forEach(function(t) {
+            var selClass = selectedTags.indexOf(t.name) >= 0 ? ' selected' : '';
+            html += '<span class="tag-chip' + selClass + '" onclick="toggleTag(\'' + escapeAttr(t.name) + '\')">' +
+                '<input type="checkbox" ' + (selClass ? 'checked' : '') + ' onclick="event.stopPropagation();toggleTag(\'' + escapeAttr(t.name) + '\')">' +
+                escapeHtml(t.name) + ' <small style="color:var(--text-tertiary)">(' + t.count + ')</small>' +
+            '</span>';
+        });
+        $('#tagCloud').html(html);
+        updateTagMatch();
+    }
+
+    // ===== 选择操作 =====
+    function toggleCaseItem(el, id) {
+        var idx = selectedCaseIds.indexOf(id);
+        if (idx >= 0) {
+            selectedCaseIds.splice(idx, 1);
+            $(el).removeClass('selected').find('input[type="checkbox"]').prop('checked', false);
+        } else {
+            selectedCaseIds.push(id);
+            $(el).addClass('selected').find('input[type="checkbox"]').prop('checked', true);
+        }
+        renderCaseTarget();
+        updateSummary();
+    }
+
+    function toggleSuiteItem(el, id) {
+        var idx = selectedSuiteIds.indexOf(id);
+        if (idx >= 0) {
+            selectedSuiteIds.splice(idx, 1);
+            $(el).removeClass('selected').find('input[type="checkbox"]').prop('checked', false);
+        } else {
+            selectedSuiteIds.push(id);
+            $(el).addClass('selected').find('input[type="checkbox"]').prop('checked', true);
+        }
+        renderSuiteTarget();
+        updateSummary();
+    }
+
+    function toggleTag(tagName) {
+        var idx = selectedTags.indexOf(tagName);
+        if (idx >= 0) {
+            selectedTags.splice(idx, 1);
+        } else {
+            selectedTags.push(tagName);
+        }
+        renderTagCloud();
+        updateSummary();
+    }
+
+    // 全选用例
+    function selectAllCases() {
+        var filter = $('#caseSearch').val();
+        var list = allCases;
+        if (filter) {
+            var kw = filter.toLowerCase();
+            list = list.filter(function(c) {
+                return (c.name && c.name.toLowerCase().indexOf(kw) >= 0) ||
+                       (c.code && c.code.toLowerCase().indexOf(kw) >= 0);
+            });
+        }
+        list.forEach(function(c) {
+            if (selectedCaseIds.indexOf(c.id) < 0) {
+                selectedCaseIds.push(c.id);
+            }
+        });
+        renderCaseSource(filter);
+        renderCaseTarget();
+        updateSummary();
+    }
+
+    // 清空已选用例
+    function clearSelectedCases() {
+        selectedCaseIds = [];
+        renderCaseSource($('#caseSearch').val());
+        renderCaseTarget();
+        updateSummary();
+    }
+
+    // 清空已选套件
+    function clearSelectedSuites() {
+        selectedSuiteIds = [];
+        renderSuiteSource($('#suiteSearch').val());
+        renderSuiteTarget();
+        updateSummary();
+    }
+
+    // ===== 渲染已选目标 =====
+    function renderCaseTarget() {
+        $('#caseCount').text(selectedCaseIds.length);
+        if (selectedCaseIds.length === 0) {
+            $('#caseTarget').html('<div class="empty-pick">从左侧勾选用例</div>');
+            return;
+        }
+        var html = '';
+        selectedCaseIds.forEach(function(id) {
+            var c = allCases.find(function(x) { return x.id === id; });
+            if (c) {
+                html += '<div class="picked-item">' +
+                    '<span>' + escapeHtml(c.name) + '</span>' +
+                    '<code style="font-size:11px;color:var(--text-tertiary)">' + escapeHtml(c.code) + '</code>' +
+                    '<span class="remove-btn" onclick="removeCase(' + id + ')">✕</span>' +
+                '</div>';
+            }
+        });
+        $('#caseTarget').html(html);
+    }
+
+    function renderSuiteTarget() {
+        $('#suiteCount').text(selectedSuiteIds.length);
+        if (selectedSuiteIds.length === 0) {
+            $('#suiteTarget').html('<div class="empty-pick">从左侧勾选套件</div>');
+            return;
+        }
+        var html = '';
+        selectedSuiteIds.forEach(function(id) {
+            var s = allSuites.find(function(x) { return x.id === id; });
+            if (s) {
+                html += '<div class="picked-item">' +
+                    '<span>' + escapeHtml(s.name) + '</span>' +
+                    '<code style="font-size:11px;color:var(--text-tertiary)">' + escapeHtml(s.code) + '</code>' +
+                    '<span class="remove-btn" onclick="removeSuite(' + id + ')">✕</span>' +
+                '</div>';
+            }
+        });
+        $('#suiteTarget').html(html);
+    }
+
+    function removeCase(id) {
+        var idx = selectedCaseIds.indexOf(id);
+        if (idx >= 0) selectedCaseIds.splice(idx, 1);
+        renderCaseSource($('#caseSearch').val());
+        renderCaseTarget();
+        updateSummary();
+    }
+
+    function removeSuite(id) {
+        var idx = selectedSuiteIds.indexOf(id);
+        if (idx >= 0) selectedSuiteIds.splice(idx, 1);
+        renderSuiteSource($('#suiteSearch').val());
+        renderSuiteTarget();
+        updateSummary();
+    }
+
+    // ===== 标签匹配 =====
+    function updateTagMatch() {
+        if (selectedTags.length === 0) {
+            $('#tagMatchResult').html('请先选择标签');
+            return;
+        }
+        var matched = allCases.filter(function(c) {
+            if (!c.tags) return false;
+            var caseTags = c.tags.split(',').map(function(t) { return t.trim(); });
+            return selectedTags.some(function(st) { return caseTags.indexOf(st) >= 0; });
+        });
+
+        if (matched.length === 0) {
+            $('#tagMatchResult').html('未匹配到用例');
+            return;
+        }
+
+        var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+        matched.forEach(function(c) {
+            html += '<div style="padding:6px 10px;background:var(--bg-secondary);border-radius:4px;font-size:13px">' +
+                escapeHtml(c.name) + ' <code style="font-size:11px;color:var(--text-tertiary)">' + escapeHtml(c.code) + '</code></div>';
+        });
+        html += '</div>';
+        $('#tagMatchResult').html(html);
+    }
+
+    // ===== 汇总更新 =====
+    function updateSummary() {
+        var count = 0;
+        if (currentMode === 'case') {
+            count = selectedCaseIds.length;
+        } else if (currentMode === 'suite') {
+            count = selectedSuiteIds.length;
+        } else if (currentMode === 'tag') {
+            var matched = allCases.filter(function(c) {
+                if (!c.tags) return false;
+                var caseTags = c.tags.split(',').map(function(t) { return t.trim(); });
+                return selectedTags.some(function(st) { return caseTags.indexOf(st) >= 0; });
+            });
+            count = matched.length;
+        }
+        $('#totalCount').text(count);
+    }
+
+    // ===== 执行 =====
+    function startBatchRun() {
+        var data = {
+            stopOnFirstFailure: $('#stopOnFirstFailure').val() === 'true',
+            triggerSource: $('#triggerSource').val()
+        };
+
+        if (currentMode === 'case') {
+            if (selectedCaseIds.length === 0) {
+                Utils.toast('请至少选择一个用例', 'warning');
+                return;
+            }
+            data.caseIds = selectedCaseIds.slice();
+        } else if (currentMode === 'suite') {
+            if (selectedSuiteIds.length === 0) {
+                Utils.toast('请至少选择一个套件', 'warning');
+                return;
+            }
+            data.suiteIds = selectedSuiteIds.slice();
+        } else if (currentMode === 'tag') {
+            if (selectedTags.length === 0) {
+                Utils.toast('请至少选择一个标签', 'warning');
+                return;
+            }
+            data.tags = selectedTags.slice();
+        }
+
+        Utils.toast('正在提交批量执行...', 'info');
+        API.test.executeBatch(data).then(function(res) {
+            if (res.code === 200) {
+                var executions = res.data || [];
+                Utils.toast('批量执行已提交，共 ' + executions.length + ' 项', 'success');
+                // 跳转到执行记录列表
+                setTimeout(function() {
+                    parent.loadPage('test_execution_list');
+                }, 1000);
+            } else {
+                Utils.toast(res.message || '执行失败', 'error');
+            }
+        }).catch(function(err) {
+            Utils.toast('执行失败: ' + (err.message || err), 'error');
+        });
+    }
+
+    // 返回
+    function goBack() {
+        parent.loadPage('test-execution-list');
+    }
+
+    // HTML 转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
+        });
+    }
+
+    // 属性值转义
+    function escapeAttr(text) {
+        if (!text) return '';
+        return String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    </script>
+</body>
+</html>

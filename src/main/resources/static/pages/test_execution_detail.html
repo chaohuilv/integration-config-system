@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试执行详情</title>
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <style>
+        /* 详情页布局 */
+        .detail-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            padding: 0 28px 28px;
+        }
+
+        /* 统计条 */
+        .stat-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 140px;
+        }
+        .stat-icon { font-size: 22px; }
+        .stat-info { display: flex; flex-direction: column; }
+        .stat-info .stat-val { font-size: 16px; font-weight: 700; color: #1a1d23; line-height: 1.2; }
+        .stat-info .stat-key { font-size: 11px; color: #999; margin-top: 2px; }
+
+        /* 通用行 */
+        .detail-row {
+            display: flex;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid #f8f8f8;
+            font-size: 13px;
+            align-items: flex-start;
+        }
+        .detail-row:last-child { border-bottom: none; }
+
+        .detail-label {
+            color: #999;
+            min-width: 72px;
+            flex-shrink: 0;
+            font-weight: 500;
+            padding-top: 1px;
+        }
+
+        .detail-value {
+            flex: 1;
+            font-size: 13px;
+            color: #444;
+            word-break: break-all;
+        }
+
+        /* 基本信息区块 - 双列网格 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0 24px;
+        }
+        .info-grid .detail-row {
+            padding: 8px 0;
+        }
+
+        /* JSON 区块 */
+        .json-section {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .json-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        /* 步骤卡片 */
+        .step-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .step-card-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .step-card-header:hover { background: var(--bg-hover); }
+        .step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-num.failed { background: #dc2626; }
+        .step-num.skipped { background: #9ca3af; }
+        .step-info { flex: 1; min-width: 0; }
+        .step-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .step-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+        .step-cost {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+        .step-body {
+            display: none;
+            border-top: 1px solid var(--border-color);
+            padding: 14px 16px;
+        }
+        .step-body.open { display: block; }
+
+        /* 断言结果 */
+        .assertion-list { margin-top: 10px; }
+        .assertion-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .assertion-pass { background: #dcfce7; color: #15803d; }
+        .assertion-fail { background: #fee2e2; color: #dc2626; }
+
+        /* JSON 代码块 */
+        .json-block {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+            max-height: 200px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            margin-top: 12px;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        .empty-steps {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* 查看日志按钮 */
+        .btn-view-log {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            font-size: 12px;
+            color: var(--primary);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-view-log:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* 调用日志模态框 */
+        .log-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .log-modal.open { display: flex; }
+        .log-modal-content {
+            background: #fff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .log-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .log-modal-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .log-modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-tertiary);
+        }
+        .log-modal-close:hover { background: var(--bg-hover); }
+        .log-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+        .log-modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: right;
+        }
+
+        /* 日志列表 */
+        .log-list { }
+        .log-item {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .log-item-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            cursor: pointer;
+        }
+        .log-item-header:hover { background: var(--bg-hover); }
+        .log-method {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .log-method.GET { background: #dbeafe; color: #1d4ed8; }
+        .log-method.POST { background: #dcfce7; color: #15803d; }
+        .log-method.PUT { background: #fef3c7; color: #d97706; }
+        .log-method.DELETE { background: #fee2e2; color: #dc2626; }
+        .log-url {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'Courier New', monospace;
+        }
+        .log-status {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .log-status.success { background: #dcfce7; color: #15803d; }
+        .log-status.fail { background: #fee2e2; color: #dc2626; }
+        .log-time {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+        .log-item-body {
+            display: none;
+            border-top: 1px solid var(--border-color);
+            padding: 14px;
+        }
+        .log-item-body.open { display: block; }
+        .log-detail-row {
+            display: flex;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+        .log-detail-label {
+            color: var(--text-tertiary);
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        .log-detail-value {
+            flex: 1;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .info-grid { grid-template-columns: 1fr; }
+            .detail-scroll { padding: 0 16px 20px; }
+            .stat-bar { flex-direction: column; }
+            .log-modal-content { width: 95%; max-height: 90vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="view-header">
+        <div class="view-title">
+            <h2>测试执行详情</h2>
+            <p class="view-sub">查看测试执行的详细信息和步骤结果</p>
+        </div>
+        <div class="view-actions">
+            <button class="btn btn-default" id="btnBack">← 返回</button>
+            <button class="btn btn-primary" id="btnRerun" data-permission="test:execution:run">再次执行</button>
+        </div>
+    </div>
+
+    <div class="view-body" style="display:flex;flex-direction:column;overflow:hidden;">
+        <!-- 加载中 -->
+        <div class="detail-scroll" id="loading">
+            <div class="empty" style="padding:80px 0;">
+                <div class="empty-icon">⏳</div>
+                <div style="margin-top:8px;color:#999;">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 详情内容 -->
+        <div class="detail-scroll" id="detailContent" style="display:none;">
+
+            <!-- 统计条 -->
+            <div class="stat-bar">
+                <div class="stat-item">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fStatus"></div>
+                        <div class="stat-key">执行状态</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fSteps"></div>
+                        <div class="stat-key">总步骤数</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fPassed" style="color:#16a34a"></div>
+                        <div class="stat-key">通过</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">✗</div>
+                    <div class="stat-info">
+                        <div class="stat-val" id="fFailed" style="color:#dc2626"></div>
+                        <div class="stat-key">失败</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基本信息 -->
+            <div class="json-section" style="margin-bottom:16px;">
+                <div class="json-section-header">📋 基本信息</div>
+                <div style="padding:4px 16px 12px;">
+                    <div class="info-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">用例名称</div>
+                            <div class="detail-value" id="fCaseName"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">执行套件</div>
+                            <div class="detail-value" id="fSuiteName"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">执行时间</div>
+                            <div class="detail-value" id="fTime"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">总耗时</div>
+                            <div class="detail-value" id="fCost"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">触发来源</div>
+                            <div class="detail-value" id="fSource"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">执行人</div>
+                            <div class="detail-value" id="fUser"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步骤结果列表 -->
+            <div class="json-section">
+                <div class="json-section-header">📝 步骤执行详情</div>
+                <div style="padding:12px 16px;">
+                    <div id="stepsContainer">
+                        <div class="empty-steps">加载中...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="detail-scroll" id="errorBox" style="display:none;padding:40px 28px;"></div>
+    </div>
+
+    <!-- 调用日志模态框 -->
+    <div class="log-modal" id="logModal">
+        <div class="log-modal-content">
+            <div class="log-modal-header">
+                <h3 id="logModalTitle">接口调用日志</h3>
+                <button class="log-modal-close" onclick="closeLogModal()">×</button>
+            </div>
+            <div class="log-modal-body" id="logModalBody">
+                <div class="empty-steps">加载中...</div>
+            </div>
+            <div class="log-modal-footer">
+                <button class="btn btn-default" onclick="closeLogModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/vendor/jquery.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/components/permission.js"></script>
+    <script>
+    $(function() {
+        // 页面访问权限校验
+        Permission.init({ guard: true }).then(() => {
+            if (Permission.isDenied()) return;
+            initDetail();
+        });
+
+        function initDetail() {
+            // 从 URL 参数或父窗口参数获取 id
+            let execId = null;
+            try {
+                const params = new URLSearchParams(location.search);
+                execId = params.get('id');
+            } catch(e) {}
+            if (!execId && parent && parent._pageParams) {
+                execId = parent._pageParams.id;
+            }
+
+            if (!execId) {
+                showError('缺少执行记录ID参数，请从列表页进入');
+                return;
+            }
+
+            $('#btnBack').on('click', () => parent.loadPage && parent.loadPage('test-execution-list'));
+
+            // 加载详情和步骤结果
+            loadDetail(execId);
+            loadStepResults(execId);
+        }
+
+        function loadDetail(execId) {
+            API.test.getExecution(execId).then(json => {
+                if (json.code !== 200) {
+                    showError(json.message || '加载详情失败');
+                    return;
+                }
+                renderHeader(json.data);
+            }).catch(() => {
+                showError('网络错误，请检查后端服务');
+            });
+        }
+
+        function loadStepResults(execId) {
+            API.test.getStepResults(execId).then(json => {
+                if (json.code === 200) {
+                    renderSteps(json.data || []);
+                }
+            });
+        }
+
+        function renderHeader(exec) {
+            $('#loading').hide();
+            $('#detailContent').show();
+
+            // 统计条
+            $('#fStatus').html(getStatusBadge(exec.status));
+            $('#fSteps').text(exec.totalSteps || 0);
+            $('#fPassed').text(exec.passedSteps || 0);
+            $('#fFailed').text(exec.failedSteps || 0);
+
+            // 基本信息
+            $('#fCaseName').text(escapeHtml(exec.testCaseName || exec.caseName || '-'));
+            $('#fSuiteName').text(escapeHtml(exec.testSuiteName || exec.suiteName || '-'));
+            $('#fTime').text(exec.createdAt ? exec.createdAt.replace('T', ' ').substring(0, 19) : '-');
+            $('#fSource').text(getSourceText(exec.triggerSource));
+            $('#fUser').text(escapeHtml(exec.executor || exec.userCode || '-'));
+
+            const cost = exec.costTimeMs != null
+                ? (exec.costTimeMs < 1000 ? exec.costTimeMs + 'ms' : (exec.costTimeMs / 1000).toFixed(2) + 's')
+                : '-';
+            $('#fCost').text(cost);
+
+            // 再次执行按钮
+            $('#btnRerun').data('caseId', exec.testCaseId || exec.caseId);
+        }
+
+        function renderSteps(steps) {
+            const container = $('#stepsContainer');
+            if (!steps || steps.length === 0) {
+                container.html('<div class="empty-steps">暂无步骤执行记录</div>');
+                return;
+            }
+            let html = '';
+            steps.forEach((step, i) => {
+                const num = i + 1;
+                const isFailed = step.status === 'FAILED';
+                const isSkipped = step.status === 'SKIPPED';
+                const numClass = isFailed ? 'failed' : isSkipped ? 'skipped' : '';
+                const cost = step.costTimeMs != null
+                    ? (step.costTimeMs < 1000 ? step.costTimeMs + 'ms' : (step.costTimeMs / 1000).toFixed(2) + 's')
+                    : '-';
+                const typeTag = getStepTypeTag(step.stepType);
+                const statusIcon = step.status === 'SUCCESS'
+                    ? '<span style="color:#16a34a;font-size:16px">✓</span>'
+                    : step.status === 'FAILED'
+                    ? '<span style="color:#dc2626;font-size:16px">✗</span>'
+                    : step.status === 'SKIPPED'
+                    ? '<span style="color:#9ca3af;font-size:16px">▶</span>'
+                    : '<span style="color:#d97706;font-size:16px">▶</span>';
+
+                // 判断是否显示"查看日志"按钮（仅 API 类型且有 targetCode）
+                const showViewLog = step.stepType === 'API' && step.targetCode;
+
+                html += `<div class="step-card">
+                    <div class="step-card-header" onclick="toggleStep(this)">
+                        <div class="step-num ${numClass}">${num}</div>
+                        <div class="step-info">
+                            <div class="step-name">${escapeHtml(step.stepName || step.stepCode || '步骤 ' + num)}</div>
+                            <div class="step-meta">${typeTag} · ${escapeHtml(step.targetCode || '')}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                            <div class="step-cost">${cost}</div>
+                            ${statusIcon}
+                            <span class="toggle-icon" style="font-size:14px;color:var(--text-tertiary)">▼</span>
+                        </div>
+                    </div>
+                    <div class="step-body">`;
+
+                // 查看日志按钮
+                if (showViewLog) {
+                    const startTime = step.startTime ? step.startTime.replace('T', ' ').substring(0, 19) : '';
+                    const endTime = step.endTime ? step.endTime.replace('T', ' ').substring(0, 19) : '';
+                    html += `<div style="margin-bottom:12px;">
+                        <button class="btn-view-log" onclick="viewInvokeLog('${escapeHtml(step.targetCode)}', '${startTime}', '${endTime}');event.stopPropagation();">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            查看调用日志
+                        </button>
+                    </div>`;
+                }
+
+                // 断言结果
+                if (step.assertionResults && step.assertionResults.length > 0) {
+                    html += '<div class="section-title">断言结果</div><div class="assertion-list">';
+                    step.assertionResults.forEach(a => {
+                        const cls = a.passed ? 'assertion-pass' : 'assertion-fail';
+                        const icon = a.passed ? '✓' : '✗';
+                        html += `<div class="assertion-item ${cls}">
+                            <span>${icon}</span>
+                            <span>${escapeHtml(a.field || a.path || '-')}</span>
+                            <span style="opacity:0.7">${escapeHtml(a.operator || '')}</span>
+                            <span>${escapeHtml(String(a.expected !== undefined ? a.expected : ''))}</span>
+                            ${!a.passed && a.actual !== undefined ? `<span style="opacity:0.7">实际: ${escapeHtml(String(a.actual))}</span>` : ''}
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+
+                // 请求参数
+                if (step.requestParams) {
+                    html += '<div class="section-title">请求参数</div>';
+                    html += `<div class="json-block">${formatJson(step.requestParams)}</div>`;
+                }
+
+                // 响应数据
+                if (step.responseData) {
+                    html += '<div class="section-title">响应数据</div>';
+                    html += `<div class="json-block">${formatJson(step.responseData)}</div>`;
+                }
+
+                // 错误信息
+                if (step.errorMessage) {
+                    html += '<div class="section-title" style="color:#dc2626">错误信息</div>';
+                    html += `<div class="json-block" style="color:#dc2626;border-color:#fca5a5">${escapeHtml(step.errorMessage)}</div>`;
+                }
+
+                html += '</div></div>';
+            });
+            container.html(html);
+        }
+
+        // ===== 查看调用日志 =====
+        window.viewInvokeLog = function(apiCode, startTime, endTime) {
+            $('#logModalTitle').text('接口调用日志 - ' + apiCode);
+            $('#logModalBody').html('<div class="empty-steps">加载中...</div>');
+            $('#logModal').addClass('open');
+
+            // 构建查询参数
+            const params = {
+                apiCode: apiCode,
+                page: 1,
+                size: 20
+            };
+            if (startTime) params.startTime = startTime;
+            if (endTime) params.endTime = endTime;
+
+            // 调用后端接口
+            request('/api/invoke/logs', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            }, params).then(json => {
+                if (json.code !== 200) {
+                    $('#logModalBody').html(`<div class="empty-steps" style="color:#dc2626">${escapeHtml(json.message || '查询失败')}</div>`);
+                    return;
+                }
+                renderLogList(json.data);
+            }).catch(err => {
+                $('#logModalBody').html(`<div class="empty-steps" style="color:#dc2626">加载失败: ${escapeHtml(err.message || '未知错误')}</div>`);
+            });
+        };
+
+        // 使用 fetch 封装（复用 api.js 的 token 逻辑）
+        function request(url, options, params) {
+            const token = localStorage.getItem('integration_access_token');
+            const query = params ? '?' + new URLSearchParams(params).toString() : '';
+            return fetch('/api' + url.replace('/api', '') + query, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
+            }).then(r => r.json());
+        }
+
+        function renderLogList(pageData) {
+            const logs = pageData.content || pageData.records || [];
+            if (!logs || logs.length === 0) {
+                $('#logModalBody').html('<div class="empty-steps">暂无调用日志记录</div>');
+                return;
+            }
+
+            let html = '<div class="log-list">';
+            logs.forEach((log, i) => {
+                const method = (log.requestUrl || '').split(' ')[0] || 'GET';
+                const url = (log.requestUrl || '').split(' ').slice(1).join(' ') || log.requestUrl || '-';
+                const statusClass = log.success ? 'success' : 'fail';
+                const statusText = log.success ? '成功' : '失败';
+                const time = log.invokeTime ? log.invokeTime.replace('T', ' ').substring(0, 19) : '-';
+                const cost = log.costTime != null ? (log.costTime < 1000 ? log.costTime + 'ms' : (log.costTime / 1000).toFixed(2) + 's') : '-';
+
+                html += `<div class="log-item">
+                    <div class="log-item-header" onclick="toggleLogItem(this)">
+                        <span class="log-method ${method}">${method}</span>
+                        <span class="log-url">${escapeHtml(url)}</span>
+                        <span class="log-status ${statusClass}">${statusText}</span>
+                        <span class="log-time">${time} · ${cost}</span>
+                    </div>
+                    <div class="log-item-body">
+                        <div class="log-detail-row">
+                            <span class="log-detail-label">接口编码:</span>
+                            <span class="log-detail-value">${escapeHtml(log.apiCode || '-')}</span>
+                        </div>
+                        <div class="log-detail-row">
+                            <span class="log-detail-label">请求URL:</span>
+                            <span class="log-detail-value">${escapeHtml(log.requestUrl || '-')}</span>
+                        </div>
+                        <div class="log-detail-row">
+                            <span class="log-detail-label">HTTP状态:</span>
+                            <span class="log-detail-value">${log.responseStatus || '-'}</span>
+                        </div>
+                        <div class="log-detail-row">
+                            <span class="log-detail-label">耗时:</span>
+                            <span class="log-detail-value">${cost}</span>
+                        </div>
+                        ${log.requestParams ? `<div class="log-detail-row"><span class="log-detail-label">请求参数:</span><div class="json-block" style="margin-top:4px">${formatJson(log.requestParams)}</div></div>` : ''}
+                        ${log.requestBody ? `<div class="log-detail-row"><span class="log-detail-label">请求体:</span><div class="json-block" style="margin-top:4px">${formatJson(log.requestBody)}</div></div>` : ''}
+                        ${log.responseData ? `<div class="log-detail-row"><span class="log-detail-label">响应数据:</span><div class="json-block" style="margin-top:4px">${formatJson(log.responseData)}</div></div>` : ''}
+                        ${log.errorMessage ? `<div class="log-detail-row" style="color:#dc2626"><span class="log-detail-label">错误信息:</span><div class="json-block" style="margin-top:4px;border-color:#fca5a5">${escapeHtml(log.errorMessage)}</div></div>` : ''}
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            $('#logModalBody').html(html);
+        }
+
+        window.toggleLogItem = function(header) {
+            const body = header.nextElementSibling;
+            body.classList.toggle('open');
+        };
+
+        window.closeLogModal = function() {
+            $('#logModal').removeClass('open');
+        };
+
+        // 点击模态框背景关闭
+        $('#logModal').on('click', function(e) {
+            if (e.target === this) closeLogModal();
+        });
+
+        function formatJson(str) {
+            try {
+                const obj = typeof str === 'string' ? JSON.parse(str) : str;
+                return escapeHtml(JSON.stringify(obj, null, 2));
+            } catch(e) {
+                return escapeHtml(String(str));
+            }
+        }
+
+        function getStepTypeTag(type) {
+            const map = {
+                'API': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:11px">API</span>',
+                'SCENARIO': '<span style="background:#ede9fe;color:#7c3aed;padding:2px 6px;border-radius:4px;font-size:11px">SCENARIO</span>',
+                'MOCK': '<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:11px">MOCK</span>'
+            };
+            return map[type] || `<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:4px;font-size:11px">${type || '-'}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                'SUCCESS': '<span class="badge badge-active">成功</span>',
+                'FAILED': '<span class="badge badge-inactive">失败</span>',
+                'RUNNING': '<span class="badge" style="background:#fef3c7;color:#d97706">进行中</span>',
+                'PENDING': '<span class="badge" style="background:#dbeafe;color:#1d4ed8">等待</span>',
+                'TIMEOUT': '<span class="badge badge-inactive">超时</span>',
+                'SKIPPED': '<span class="badge" style="background:#f3f4f6;color:#6b7280">跳过</span>'
+            };
+            return map[status] || `<span class="badge">${status || '-'}</span>`;
+        }
+
+        function getSourceText(source) {
+            const map = {
+                'MANUAL': '手动执行', 'AUTO': '自动触发', 'SCHEDULE': '定时任务',
+                'WEBHOOK': 'Webhook', 'TEST_EXECUTOR': '测试执行'
+            };
+            return map[source] || source || '-';
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // 折叠/展开步骤
+        window.toggleStep = function(header) {
+            const body = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            if (body.classList.contains('open')) {
+                body.classList.remove('open');
+                icon.innerHTML = '▼';
+            } else {
+                body.classList.add('open');
+                icon.innerHTML = '▲';
+            }
+        };
+
+        // 再次执行
+        $('#btnRerun').on('click', function() {
+            const caseId = $(this).data('caseId');
+            if (!caseId) {
+                utils.toast('无法获取用例ID', 'error');
+                return;
+            }
+            utils.showConfirm('再次执行', '确定要再次执行该用例吗？', '⚠️', false).then(ok => {
+                if (!ok) return;
+                API.test.executeCase({ caseId: caseId }).then(res => {
+                    if (res.code === 200) {
+                        utils.toast('执行已触发', 'success');
+                        setTimeout(() => parent.loadPage('test-execution-list'), 1500);
+                    } else {
+                        utils.toast('执行失败: ' + res.message, 'error');
+                    }
+                });
+            });
+        });
+
+        function showError(msg) {
+            $('#loading').hide();
+            $('#detailContent').hide();
+            $('#errorBox').html(`
+                <div style="text-align:center;padding:60px 20px;">
+                    <div style="font-size:48px;margin-bottom:16px;">❌</div>
+                    <div style="font-size:15px;color:#666;">${escapeHtml(msg)}</div>
+                    <div style="margin-top:20px;">
+                        <button class="btn btn-default" onclick="parent.loadPage('test-execution-list')">← 返回列表</button>
+                    </div>
+                </div>
+            `).show();
+        }
+    });
+    </script>
+</body>
+</html>
