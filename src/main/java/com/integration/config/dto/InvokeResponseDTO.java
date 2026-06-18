@@ -60,4 +60,9 @@ public class InvokeResponseDTO {
      * 实际请求 URL（含域名替换后的完整地址）
      */
     private String requestUrl;
+
+    /**
+     * Schema 校验错误信息
+     */
+    private String schemaValidationError;
 }

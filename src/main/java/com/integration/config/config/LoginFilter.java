@@ -102,8 +102,13 @@ public class LoginFilter implements Filter {
         log.debug("[LoginFilter] Access granted. URI: {}, user: {}", uri, tokenInfo.getUserCode());
 
         // 用 ContentCachingRequestWrapper 包装，使 body 可被重复读取（AOP 切面需要）
-        CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(req);
-        chain.doFilter(cachedRequest, response);
+        // 注意：multipart/form-data 请求不能缓存 body，否则 Spring MultipartResolver 无法解析
+        if (req.getContentType() != null && req.getContentType().startsWith("multipart/")) {
+            chain.doFilter(req, response);
+        } else {
+            CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(req);
+            chain.doFilter(cachedRequest, response);
+        }
     }
 
     /**

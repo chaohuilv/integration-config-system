@@ -35,6 +35,14 @@ spring:
     livereload:
       enabled: true
 
+  # ========== 文件上传配置 ==========
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
+
   # ========== 数据源配置 ==========
   datasource-config:
     url: jdbc:h2:./data/integration_config;DB_CLOSE_DELAY=-1;MODE=MySQL

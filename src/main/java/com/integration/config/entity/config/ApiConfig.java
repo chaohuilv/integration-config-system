@@ -191,6 +191,24 @@ public class ApiConfig {
     @Column(name = "TOKEN_CACHE_SECONDS")
     private Integer tokenCacheSeconds;
 
+    // ==================== Schema 校验 ====================
+
+    /** 是否启用请求参数 Schema 校验 */
+    @Column(name = "ENABLE_REQUEST_SCHEMA")
+    private Boolean enableRequestSchema;
+
+    /** 请求参数 JSON Schema（draft-07） */
+    @Column(name = "REQUEST_SCHEMA", columnDefinition = "TEXT")
+    private String requestSchema;
+
+    /** 是否启用响应结果 Schema 校验 */
+    @Column(name = "ENABLE_RESPONSE_SCHEMA")
+    private Boolean enableResponseSchema;
+
+    /** 响应结果 JSON Schema（draft-07） */
+    @Column(name = "RESPONSE_SCHEMA", columnDefinition = "TEXT")
+    private String responseSchema;
+
     // ==================== 审计字段 ====================
 
     /** 记录创建时间 */

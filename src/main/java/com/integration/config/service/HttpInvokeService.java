@@ -46,6 +46,7 @@ public class HttpInvokeService {
     private final TokenCacheManager tokenCacheManager;
     private final EnvironmentService environmentService;
     private final RedisCacheService redisCacheService;
+    private final SchemaValidationService schemaValidationService;
 
     /**
      * 调用接口（通过编码）
@@ -69,6 +70,12 @@ public class HttpInvokeService {
         try {
             // 1. 获取接口配置
             ApiConfig config = apiConfigService.getByCode(request.getApiCode());
+
+            // 1.1 Schema 校验 — 请求参数校验（在上游发现参数错误，避免打到下游）
+            String validationError = validateRequestSchema(config, request, traceId);
+            if (validationError != null) {
+                return buildValidationErrorResponse(validationError, traceId, startTime, logEntry);
+            }
 
             // 2. 检查缓存
             if (Boolean.TRUE.equals(config.getEnableCache())) {
@@ -109,6 +116,17 @@ public class HttpInvokeService {
 
             // 6. 执行调用（带失败重试）
             response = invokeWithRetry(config, request, traceId, dynamicToken);
+
+            // 6.1 Schema 校验 — 响应结果校验（仅对成功响应做校验，失败时不校验）
+            if (response.getSuccess() && Boolean.TRUE.equals(config.getEnableResponseSchema())) {
+                String respValidationError = schemaValidationService.validateResponse(
+                        config.getResponseSchema(), response.getData(), traceId);
+                if (respValidationError != null) {
+                    response.setSchemaValidationError(respValidationError);
+                    log.warn("[{}] 响应 Schema 校验失败（接口调用成功）: {}", traceId,
+                            respValidationError.replace("\n", " | "));
+                }
+            }
 
             // 7. 记录日志
             logEntry.setSuccess(response.getSuccess());
@@ -945,5 +963,77 @@ public class HttpInvokeService {
         } catch (UnknownHostException e) {
             return "unknown";
         }
+    }
+
+    // ==================== Schema 校验相关 ====================
+
+    /**
+     * 校验请求参数是否符合预定义的 Schema
+     * 返回 null 表示校验通过，返回 String 表示校验失败（包含错误信息）
+     */
+    private String validateRequestSchema(ApiConfig config, InvokeRequestDTO request, String traceId) {
+        if (!Boolean.TRUE.equals(config.getEnableRequestSchema())) {
+            return null;
+        }
+
+        String schemaStr = config.getRequestSchema();
+        if (schemaStr == null || schemaStr.isBlank()) {
+            return null;
+        }
+
+        StringBuilder errors = new StringBuilder();
+        int errorCount = 0;
+
+        // 1. 校验请求体（POST/PUT/PATCH）
+        if (request.getBody() != null && !request.getBody().isBlank()) {
+            String bodyError = schemaValidationService.validateRequestBody(schemaStr, request.getBody(), traceId);
+            if (bodyError != null) {
+                errors.append(bodyError);
+                errorCount++;
+            }
+        }
+
+        // 2. 校验 Query Params
+        if (request.getParams() != null && !request.getParams().isEmpty()) {
+            String paramsError = schemaValidationService.validateRequestParams(schemaStr, request.getParams(), traceId);
+            if (paramsError != null) {
+                if (errorCount > 0) {
+                    errors.append("\n");
+                }
+                errors.append(paramsError);
+                errorCount++;
+            }
+        }
+
+        if (errorCount > 0) {
+            return errors.toString();
+        }
+        return null;
+    }
+
+    /**
+     * 构建 Schema 校验失败的响应（不走下游 HTTP 调用）
+     */
+    private InvokeResponseDTO buildValidationErrorResponse(String validationError, String traceId,
+                                                          long startTime, InvokeLog logEntry) {
+        long costTime = System.currentTimeMillis() - startTime;
+        InvokeResponseDTO response = InvokeResponseDTO.builder()
+                .success(false)
+                .statusCode(400)
+                .message("请求参数校验失败")
+                .schemaValidationError(validationError)
+                .costTime(costTime)
+                .invokeTime(LocalDateTime.now())
+                .traceId(traceId)
+                .fromCache(false)
+                .build();
+
+        // 记录失败日志（请求未发出，标记为校验失败）
+        logEntry.setSuccess(false);
+        logEntry.setResponseStatus(400);
+        logEntry.setErrorMessage("Schema校验失败: " + validationError.replace("\n", " | "));
+        logEntry.setCostTime(costTime);
+
+        return response;
     }
 }

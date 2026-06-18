@@ -295,6 +295,16 @@
       "section": "安全管理",
       "sortOrder": 56,
       "pageType": "LIST"
+    },
+    {
+      "code": "system",
+      "name": "系统",
+      "icon": "⚙️",
+      "path": "system",
+      "pageFile": "pages/system.html",
+      "section": "系统管理",
+      "sortOrder": 57,
+      "pageType": "LIST"
     }
   ]
 }

@@ -509,6 +509,22 @@
       "module": "security",
       "menuCode": "ip-whitelist",
       "sortOrder": 113
+    },
+    {
+      "code": "system:backup:export",
+      "name": "导出配置备份",
+      "description": "导出全量配置为 JSON 文件",
+      "module": "system",
+      "menuCode": "system",
+      "sortOrder": 114
+    },
+    {
+      "code": "system:backup:import",
+      "name": "导入配置备份",
+      "description": "从 JSON 文件导入全量配置",
+      "module": "system",
+      "menuCode": "system",
+      "sortOrder": 115
     }
   ]
 }

@@ -65,6 +65,12 @@ public class InvokeController {
 
         InvokeResponseDTO response = httpInvokeService.invoke(request);
         if (!response.getSuccess()) {
+            // Schema 校验失败 → 400，错误信息包含详细校验报告
+            if (response.getStatusCode() != null && response.getStatusCode() == 400
+                    && response.getSchemaValidationError() != null) {
+                throw new BusinessException(ErrorCode.SCHEMA_VALIDATION_FAILED,
+                        response.getSchemaValidationError());
+            }
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invoke failed: " + response.getMessage());
         }
         return ResultVO.success(response);
@@ -96,6 +102,12 @@ public class InvokeController {
                 .build();
         InvokeResponseDTO response = httpInvokeService.invoke(request);
         if (!response.getSuccess()) {
+            // Schema 校验失败 → 400，错误信息包含详细校验报告
+            if (response.getStatusCode() != null && response.getStatusCode() == 400
+                    && response.getSchemaValidationError() != null) {
+                throw new BusinessException(ErrorCode.SCHEMA_VALIDATION_FAILED,
+                        response.getSchemaValidationError());
+            }
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invoke failed: " + response.getMessage());
         }
         return ResultVO.success(response);

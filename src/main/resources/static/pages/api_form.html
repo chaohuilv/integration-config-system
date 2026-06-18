@@ -335,6 +335,54 @@
             </div>
 
             <div class="form-section">
+                <h3>🔍 Schema 校验 <small style="color:#999;font-weight:400">（请求参数上游校验 + 响应结果下游校验，提前发现数据问题）</small></h3>
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label>启用请求参数校验</label>
+                        <select name="enableRequestSchema" id="fEnableRequestSchema">
+                            <option value="false">⛔ 禁用</option>
+                            <option value="true">✅ 启用</option>
+                        </select>
+                        <div class="hint">开启后，请求体和 Query 参数将根据下方 Schema 自动校验，校验失败不请求下游</div>
+                    </div>
+                    <div class="form-group">
+                        <label>启用响应结果校验</label>
+                        <select name="enableResponseSchema" id="fEnableResponseSchema">
+                            <option value="false">⛔ 禁用</option>
+                            <option value="true">✅ 启用</option>
+                        </select>
+                        <div class="hint">开启后，响应结果将根据下方 Schema 自动校验（仅记录警告，不阻断）</div>
+                    </div>
+                </div>
+
+                <!-- 请求 Schema -->
+                <div class="form-group" id="reqSchemaGroup" style="display:none;">
+                    <label>请求参数 Schema <small style="color:#999;">（JSON Schema draft-07）</small></label>
+                    <div style="display:flex;gap:8px;align-items:flex-start;">
+                        <textarea name="requestSchema" id="fRequestSchema" class="json-textarea" rows="6"
+                            style="flex:1;"
+                            placeholder='{"type": "object", "properties": {"name": {"type": "string", "minLength": 1}, "age": {"type": "integer", "minimum": 0}}, "required": ["name"]}'></textarea>
+                        <button type="button" class="btn btn-ghost" style="white-space:nowrap;padding:8px 12px;" onclick="validateRequestSchema()">🔍 校验定义</button>
+                    </div>
+                    <div class="hint" id="reqSchemaHint">支持 JSON Schema draft-07 标准。示例：定义 type=object + properties + required 来校验请求体结构</div>
+                    <div id="reqSchemaError" style="color:#ff4d4f;font-size:13px;margin-top:4px;display:none;"></div>
+                </div>
+
+                <!-- 响应 Schema -->
+                <div class="form-group" id="respSchemaGroup" style="display:none; margin-top: 8px;">
+                    <label>响应结果 Schema <small style="color:#999;">（JSON Schema draft-07）</small></label>
+                    <div style="display:flex;gap:8px;align-items:flex-start;">
+                        <textarea name="responseSchema" id="fResponseSchema" class="json-textarea" rows="6"
+                            style="flex:1;"
+                            placeholder='{"type": "object", "properties": {"code": {"type": "integer"}, "data": {"type": "object"}}}'></textarea>
+                        <button type="button" class="btn btn-ghost" style="white-space:nowrap;padding:8px 12px;" onclick="validateResponseSchema()">🔍 校验定义</button>
+                    </div>
+                    <div class="hint" id="respSchemaHint">响应校验失败时仅记录警告，不阻断返回数据</div>
+                    <div id="respSchemaError" style="color:#ff4d4f;font-size:13px;margin-top:4px;display:none;"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
                 <h3>其他</h3>
                 <div class="form-group">
                     <label>描述</label>
@@ -427,6 +475,18 @@
         // 绑定 Token 自动缓存切换事件
         $('#fEnableTokenCache').on('change', toggleTokenCache);
 
+        // 切换请求 Schema 显示/隐藏
+        $('#fEnableRequestSchema').on('change', function() {
+            const show = $(this).val() === 'true';
+            $('#reqSchemaGroup').toggle(show);
+        });
+
+        // 切换响应 Schema 显示/隐藏
+        $('#fEnableResponseSchema').on('change', function() {
+            const show = $(this).val() === 'true';
+            $('#respSchemaGroup').toggle(show);
+        });
+
         // 加载系统名称列表
         loadSystemNames();
 
@@ -446,7 +506,8 @@
                     const fields = ['name', 'code', 'groupName', 'url', 'requestParams', 'requestBody',
                         'authParamName', 'authInfo', 'description',
                         'tokenApiCode', 'tokenExtractPath', 'tokenParamName', 'tokenPrefix',
-                        'tokenCacheSeconds'];
+                        'tokenCacheSeconds',
+                        'requestSchema', 'responseSchema'];
                     
                     fields.forEach(k => {
                         if (d[k] && form[k]) {
@@ -473,6 +534,17 @@
                     }
                     if (d.rateLimitWindow) form.rateLimitWindow.value = d.rateLimitWindow;
                     if (d.rateLimitMax) form.rateLimitMax.value = d.rateLimitMax;
+
+                    // 填充 Schema 校验字段
+                    if (d.enableRequestSchema) {
+                        form.enableRequestSchema.value = 'true';
+                    }
+                    if (d.enableResponseSchema) {
+                        form.enableResponseSchema.value = 'true';
+                    }
+                    // 触发 toggle 显示/隐藏 schema 编辑区
+                    $('#fEnableRequestSchema').trigger('change');
+                    $('#fEnableResponseSchema').trigger('change');
 
                     // 格式化 headers JSON
                     if (d.headers) {
@@ -606,6 +678,41 @@
                 parent.loadPage('roles');
             }
         }
+
+        // 校验请求 Schema 定义（实时检查）
+        function validateRequestSchema() {
+            const schema = $('#fRequestSchema').val().trim();
+            const $error = $('#reqSchemaError');
+            if (!schema) {
+                $error.text('Schema 不能为空').show();
+                return;
+            }
+            try {
+                JSON.parse(schema); // 基础 JSON 格式检查
+                $error.text('✅ Schema 定义格式正确').css('color', '#52c41a').show();
+                setTimeout(() => $error.hide(), 3000);
+            } catch (e) {
+                $error.text('❌ JSON 格式错误: ' + e.message).show();
+            }
+        }
+
+        // 校验响应 Schema 定义（实时检查）
+        function validateResponseSchema() {
+            const schema = $('#fResponseSchema').val().trim();
+            const $error = $('#respSchemaError');
+            if (!schema) {
+                $error.text('Schema 不能为空').show();
+                return;
+            }
+            try {
+                JSON.parse(schema);
+                $error.text('✅ Schema 定义格式正确').css('color', '#52c41a').show();
+                setTimeout(() => $error.hide(), 3000);
+            } catch (e) {
+                $error.text('❌ JSON 格式错误: ' + e.message).show();
+            }
+        }
+
         } // end initForm
     });
     </script>

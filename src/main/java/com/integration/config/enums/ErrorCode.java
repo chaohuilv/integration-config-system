@@ -33,6 +33,8 @@ public enum ErrorCode {
     VALIDATION_FAILED(400, "VALIDATION_FAILED", "Validation failed"),
     /** 参数绑定失败 */
     BIND_FAILED(400, "BIND_FAILED", "Binding failed"),
+    /** Schema 校验失败 */
+    SCHEMA_VALIDATION_FAILED(400, "SCHEMA_VALIDATION_FAILED", "Schema validation failed"),
 
     // ========== 未认证 (401) ==========
     /** 未登录 / Token 缺失 */
